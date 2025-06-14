@@ -47,7 +47,7 @@
         });
 
         const ctx = document.getElementById('revenueChart');
-        const branchRevenue = {{ Illuminate\Support\Js::from($branchRevenue) }};
+        const branchRevenue = @json($branchRevenue);
 
         const dataValues = Object.values(branchRevenue);
         const SBY = branchRevenue['SBY'] || 0;
