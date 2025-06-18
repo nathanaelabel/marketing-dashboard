@@ -2,7 +2,7 @@
     <div class="flex justify-between items-start mb-4">
         <div>
             <h3 class="text-2xl font-bold text-gray-900">National Revenue</h3>
-            <p class="mt-2 mb-2 text-1xl font-medium text-gray-700">Rp {{ number_format($totalRevenue, 0, ',', '.') }}</p>
+            <p id="nationalTotalRevenueDisplay" class="mt-2 mb-2 text-1xl font-medium text-gray-700">Rp 0</p> <!-- Updated by JS -->
         </div>
         <form id="dateFilterForm" method="GET" action="{{ route('dashboard') }}" class="flex items-end space-x-3">
             <div>
@@ -32,119 +32,190 @@
             </div>
         </form>
     </div>
-    <canvas id="revenueChart"></canvas>
+    <canvas id="revenueChart" style="max-height: 300px; width: 100%;"></canvas>
 </div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        let nationalRevenueChartInstance;
+        const nationalTotalRevenueDisplay = document.getElementById('nationalTotalRevenueDisplay');
+        const startDateInput = document.getElementById('start_date');
+        const endDateInput = document.getElementById('end_date');
+        const revenueChartCanvas = document.getElementById('revenueChart');
+
+        function updateNationalRevenueDisplayAndChart(dataFromServer) {
+            if (!dataFromServer) {
+                nationalTotalRevenueDisplay.textContent = 'Error loading data';
+                return;
+            }
+
+            nationalTotalRevenueDisplay.textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(dataFromServer.totalRevenue);
+
+            const chartLabels = dataFromServer.labels;
+            const chartDataValues = dataFromServer.datasets[0].data;
+
+            let sbyValue = 0;
+            const sbyIndex = chartLabels.indexOf('SBY');
+            if (sbyIndex !== -1) sbyValue = chartDataValues[sbyIndex];
+
+            let jktValue = 0;
+            const jktIndex = chartLabels.indexOf('JKT');
+            if (jktIndex !== -1) jktValue = chartDataValues[jktIndex];
+
+            let bdgValue = 0;
+            const bdgIndex = chartLabels.indexOf('BDG');
+            if (bdgIndex !== -1) bdgValue = chartDataValues[bdgIndex];
+
+            const totalForAvg = sbyValue + jktValue + bdgValue;
+            const numBranchesForAvg = (sbyValue > 0 ? 1 : 0) + (jktValue > 0 ? 1 : 0) + (bdgValue > 0 ? 1 : 0);
+            const averageRevenue = numBranchesForAvg > 0 ? totalForAvg / numBranchesForAvg : 0;
+
+            const useBillions = averageRevenue >= 1000000000;
+            const yAxisLabel = useBillions ? 'Billion Rupiah (Rp)' : 'Million Rupiah (Rp)';
+            const divisor = useBillions ? 1000000000 : 1000000;
+            const maxValue = chartDataValues.length > 0 ? Math.max(...chartDataValues) : 0;
+            const suggestedMaxVal = maxValue > 0 ? (maxValue / divisor) * 1.2 * divisor : (useBillions ? 1000000000 : 1000000);
+
+            if (nationalRevenueChartInstance) {
+                nationalRevenueChartInstance.data.labels = chartLabels;
+                nationalRevenueChartInstance.data.datasets[0].data = chartDataValues;
+                nationalRevenueChartInstance.options.scales.y.title.text = yAxisLabel;
+                nationalRevenueChartInstance.options.scales.y.suggestedMax = suggestedMaxVal;
+                nationalRevenueChartInstance.options.scales.y.ticks.callback = function(value) {
+                    return value / divisor;
+                };
+                nationalRevenueChartInstance.options.plugins.datalabels.formatter = (value) => Math.round(value / divisor);
+                nationalRevenueChartInstance.update();
+            } else {
+                if (!revenueChartCanvas) return;
+                const ctx = revenueChartCanvas.getContext('2d');
+                Chart.register(ChartDataLabels);
+                nationalRevenueChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: chartLabels,
+                        datasets: [{
+                            label: dataFromServer.datasets[0].label || 'Revenue',
+                            data: chartDataValues,
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1,
+                            borderRadius: 6,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: false
+                            },
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += new Intl.NumberFormat('id-ID', {
+                                                minimumFractionDigits: 0
+                                            }).format(context.parsed.y);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            },
+                            datalabels: {
+                                anchor: 'end',
+                                align: 'top',
+                                formatter: (value) => Math.round(value / divisor),
+                                font: {
+                                    weight: 'bold'
+                                },
+                                color: '#444'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                suggestedMax: suggestedMaxVal,
+                                title: {
+                                    display: true,
+                                    text: yAxisLabel,
+                                    padding: {
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 20
+                                    }
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return value / divisor;
+                                    }
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: false
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function fetchAndUpdateNationalRevenueChart(startDate, endDate) {
+            nationalTotalRevenueDisplay.textContent = 'Loading...'; // Indicate loading
+            const url = `{{ route('national-revenue.data') }}?start_date=${startDate}&end_date=${endDate}`;
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    updateNationalRevenueDisplayAndChart(data);
+                    // Optionally update flatpickr inputs if server modified dates, though unlikely here
+                    // startDateInput._flatpickr.setDate(data.startDate, false);
+                    // endDateInput._flatpickr.setDate(data.endDate, false);
+                })
+                .catch(error => {
+                    console.error('Error fetching National Revenue data:', error);
+                    nationalTotalRevenueDisplay.textContent = 'Error loading data';
+                    // Optionally clear or show error state in chart
+                    if (nationalRevenueChartInstance) {
+                        nationalRevenueChartInstance.data.labels = [];
+                        nationalRevenueChartInstance.data.datasets[0].data = [];
+                        nationalRevenueChartInstance.update();
+                    }
+                });
+        }
+
         flatpickr('.flatpickr-input', {
             altInput: true,
             altFormat: "d-m-Y",
             dateFormat: "Y-m-d",
             onChange: function(selectedDates, dateStr, instance) {
-                document.getElementById('dateFilterForm').submit();
-            }
-        });
-
-        const ctx = document.getElementById('revenueChart');
-        const branchRevenue = @json($branchRevenue);
-
-        const dataValues = Object.values(branchRevenue);
-        const SBY = branchRevenue['SBY'] || 0;
-        const JKT = branchRevenue['JKT'] || 0;
-        const BDG = branchRevenue['BDG'] || 0;
-        const totalRevenueForAvg = SBY + JKT + BDG;
-        const numberOfBranchesForAvg = (SBY > 0 ? 1 : 0) + (JKT > 0 ? 1 : 0) + (BDG > 0 ? 1 : 0);
-        const averageRevenue = numberOfBranchesForAvg > 0 ? totalRevenueForAvg / numberOfBranchesForAvg : 0;
-
-        const useBillions = averageRevenue >= 1000000000;
-        const yAxisLabel = useBillions ? 'Billion Rupiah (Rp)' : 'Million Rupiah (Rp)';
-        const divisor = useBillions ? 1000000000 : 1000000;
-
-        const maxValue = dataValues.length > 0 ? Math.max(...dataValues) : 0;
-
-        // Ensure some default max if all data is 0
-        const suggestedMax = maxValue > 0 ? (maxValue / divisor) * 1.2 * divisor : (useBillions ? 1000000000 : 1000000);
-
-        Chart.register(ChartDataLabels);
-
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: Object.keys(branchRevenue),
-                datasets: [{
-                    label: 'Revenue',
-                    data: Object.values(branchRevenue),
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1,
-                    borderRadius: 6,
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    title: {
-                        display: false,
-                    },
-                    legend: {
-                        display: false,
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed.y !== null) {
-                                    label += new Intl.NumberFormat('id-ID', {
-                                        minimumFractionDigits: 0
-                                    }).format(context.parsed.y);
-                                }
-                                return label;
-                            }
-                        }
-                    },
-                    datalabels: {
-                        anchor: 'end',
-                        align: 'top',
-                        formatter: (value, context) => {
-                            return Math.round(value / divisor);
-                        },
-                        font: {
-                            weight: 'bold'
-                        },
-                        color: '#444'
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        suggestedMax: suggestedMax,
-                        title: {
-                            display: true,
-                            text: yAxisLabel,
-                            padding: {
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 20
-                            }
-                        },
-                        ticks: {
-                            callback: function(value, index, values) {
-                                return value / divisor;
-                            }
-                        }
-                    },
-                    x: {
-                        title: {
-                            display: false,
-                        }
-                    }
+                const currentStartDate = startDateInput.value;
+                const currentEndDate = endDateInput.value;
+                if (currentStartDate && currentEndDate) {
+                    fetchAndUpdateNationalRevenueChart(currentStartDate, currentEndDate);
                 }
             }
         });
+
+        // Initial data load using values from PHP for the input fields
+        const initialStartDate = startDateInput.value;
+        const initialEndDate = endDateInput.value;
+        if (initialStartDate && initialEndDate) {
+            fetchAndUpdateNationalRevenueChart(initialStartDate, initialEndDate);
+        }
     });
 </script>
