@@ -6,7 +6,6 @@
         </div>
         <div class="text-right">
             <p class="text-sm text-gray-500">{{ $currentDateFormatted }}</p>
-            <p id="arLastUpdateDisplay" class="text-xs text-gray-400">Data as of: Loading...</p>
         </div>
     </div>
 
@@ -21,89 +20,23 @@
         const arLastUpdateDisplay = document.getElementById('arLastUpdateDisplay');
         const arChartCanvas = document.getElementById('accountsReceivableChart');
 
-        function formatARNumber(num) {
-            if (num >= 1e9) {
-                return (num / 1e9).toFixed(2) + 'B';
-            }
-            if (num >= 1e6) {
-                return (num / 1e6).toFixed(2) + 'M';
-            }
-            if (num >= 1e3) {
-                return (num / 1e3).toFixed(2) + 'K';
-            }
-            return num;
-        }
-
         function updateARDisplayAndChart(dataFromServer) {
-            console.log('AR: updateARDisplayAndChart received:', dataFromServer); // DEBUG
+            // console.log('AR: updateARDisplayAndChart received:', dataFromServer); // DEBUG for server data
             if (!dataFromServer) {
                 arTotalOverdueDisplay.textContent = 'Error loading data';
-                arLastUpdateDisplay.textContent = 'Data as of: Error';
+                console.log('AR Data as of: Error');
                 return;
             }
 
             arTotalOverdueDisplay.textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(dataFromServer.totalOverdue);
-            arLastUpdateDisplay.textContent = 'Data as of: ' + dataFromServer.lastUpdate;
+            console.log(dataFromServer.lastUpdate ? 'AR Data as of: ' + dataFromServer.lastUpdate : 'AR Data as of: Not available');
 
-            // Calculate dynamic scaling for AR chart
-            let maxIndividualStackTotal = 0;
-            let sumOfBranchStackTotals = 0;
-            let numberOfBranchesWithData = 0;
+            // Y-axis scaling parameters are now provided by the server
+            const yAxisLabel = dataFromServer.yAxisLabel;
+            const yAxisDivisor = dataFromServer.yAxisDivisor;
+            const suggestedMax = dataFromServer.suggestedMax;
 
-            if (dataFromServer.labels && dataFromServer.labels.length > 0) {
-                dataFromServer.labels.forEach((label, index) => {
-                    const stackTotal =
-                        (dataFromServer.data_1_30[index] || 0) +
-                        (dataFromServer.data_31_60[index] || 0) +
-                        (dataFromServer.data_61_90[index] || 0) +
-                        (dataFromServer.data_over_90[index] || 0);
-
-                    if (stackTotal > 0) {
-                        sumOfBranchStackTotals += stackTotal;
-                        numberOfBranchesWithData++;
-                    }
-                    if (stackTotal > maxIndividualStackTotal) {
-                        maxIndividualStackTotal = stackTotal;
-                    }
-                });
-            }
-
-            const averageARStackTotal = numberOfBranchesWithData > 0 ? sumOfBranchStackTotals / numberOfBranchesWithData : 0;
-
-            const useARBillions = averageARStackTotal >= 1000000000; // Threshold for billions
-            const arDivisor = useARBillions ? 1000000000 : 1000000;
-            const yAxisARTitle = useARBillions ? 'Billion Rupiah (Rp)' : 'Million Rupiah (Rp)';
-
-            // Calculate suggestedMax for y-axis.
-            // Aim for a y-axis max of 100 (scaled units), unless data + padding exceeds this.
-            let finalSuggestedMaxVal;
-            let desiredMaxRaw;
-            if (useARBillions) {
-                desiredMaxRaw = 100 * 1000000000; // 100 Billion
-            } else {
-                desiredMaxRaw = 100 * 1000000; // 100 Million
-            }
-
-            if (maxIndividualStackTotal === 0) {
-                finalSuggestedMaxVal = desiredMaxRaw; // If no data, axis goes to 100 (scaled)
-            } else if (maxIndividualStackTotal * 1.05 > desiredMaxRaw) {
-                // If max data (with 5% padding) exceeds our desired 100 (scaled) limit,
-                // then we must use a larger max, based on the actual data + 20% padding.
-                finalSuggestedMaxVal = maxIndividualStackTotal * 1.2;
-            } else {
-                // Otherwise, the data fits comfortably, so set the axis max to 100 (scaled).
-                finalSuggestedMaxVal = desiredMaxRaw;
-            }
-
-            // Safety fallback if calculations result in zero but there's data, or ensure a minimum if no data and desiredMaxRaw was 0.
-            if (finalSuggestedMaxVal === 0 && maxIndividualStackTotal > 0) {
-                finalSuggestedMaxVal = maxIndividualStackTotal * 1.2;
-            } else if (finalSuggestedMaxVal === 0 && maxIndividualStackTotal === 0) {
-                finalSuggestedMaxVal = useARBillions ? 1000000000 : 1000000; // Default to 1 unit (1B or 1M)
-            }
-            const arSuggestedMaxVal = finalSuggestedMaxVal; // Use this for the chart
-
-            console.log(`AR Scaling Pre-Config: Title: ${yAxisARTitle}, Divisor: ${arDivisor}, MaxStack: ${maxIndividualStackTotal}, SuggestedMax: ${arSuggestedMaxVal}`); // DEBUG
+            // console.log(`AR Scaling From Server: Title: ${yAxisLabel}, Divisor: ${yAxisDivisor}, SuggestedMax: ${suggestedMax}`);
 
             const chartConfig = {
                 type: 'bar',
@@ -163,20 +96,24 @@
                         datalabels: {
                             anchor: 'center',
                             align: 'center',
-                            formatter: (value, context) => {
-                                const currentArDivisor = arDivisor;
-                                const currentArSuggestedMaxVal = arSuggestedMaxVal;
-
-                                if (value === 0) return null;
-
-                                if (currentArSuggestedMaxVal > 0 && (value / currentArSuggestedMaxVal) < 0.015) {
-                                    return null;
-                                }
-                                return Math.round(value / currentArDivisor);
-                            },
                             font: {
                                 weight: 'bold',
                                 size: 10
+                            },
+                            formatter: (value, context) => {
+                                if (value === 0) return null;
+
+                                // Hide label if it's too small compared to the max value of the axis
+                                // Use yAxisDivisor and suggestedMax from dataFromServer scope
+                                if (suggestedMax > 0 && (value / suggestedMax) < 0.015) {
+                                    return null;
+                                }
+                                const scaledValue = value / yAxisDivisor;
+                                if (dataFromServer.yAxisUnit === 'B') {
+                                    return (Math.round(scaledValue * 10) / 10).toFixed(1);
+                                } else {
+                                    return Math.round(scaledValue);
+                                }
                             },
                             color: function(context) {
                                 const bgColor = context.dataset.backgroundColor;
@@ -197,19 +134,22 @@
                         y: {
                             stacked: true,
                             beginAtZero: true,
-                            suggestedMax: arSuggestedMaxVal, // Apply dynamic max
+                            suggestedMax: dataFromServer.suggestedMax,
                             ticks: {
                                 callback: function(value) {
-                                    // Ensure arDivisor is from the surrounding scope
-                                    const currentArDivisor = arDivisor;
-                                    console.log(`AR Y-axis tick value: ${value}, arDivisor: ${currentArDivisor}, scaled: ${value / currentArDivisor}`); // DEBUG
-                                    return value / currentArDivisor;
+                                    const scaledValue = value / dataFromServer.yAxisDivisor;
+                                    if (dataFromServer.yAxisUnit === 'B') {
+                                        if (scaledValue % 1 === 0) return scaledValue.toFixed(0);
+                                        return scaledValue.toFixed(1);
+                                    } else {
+                                        return Math.round(scaledValue);
+                                    }
                                 }
                             },
                             title: {
                                 display: true,
-                                text: yAxisARTitle
-                            } // Apply dynamic title
+                                text: dataFromServer.yAxisLabel
+                            }
                         }
                     },
                     interaction: {
@@ -217,7 +157,7 @@
                         intersect: false
                     },
                 },
-                plugins: [ChartDataLabels] // Ensure ChartDataLabels is registered globally or passed here
+                plugins: [ChartDataLabels]
             };
 
             if (arChartInstance) {
@@ -226,27 +166,36 @@
                 arChartInstance.data.datasets[1].data = dataFromServer.data_31_60;
                 arChartInstance.data.datasets[2].data = dataFromServer.data_61_90;
                 arChartInstance.data.datasets[3].data = dataFromServer.data_over_90;
-                // Update dynamic axis options before redrawing
-                arChartInstance.options.scales.y.title.text = yAxisARTitle;
-                arChartInstance.options.scales.y.suggestedMax = arSuggestedMaxVal;
-                console.log(`AR Scaling Pre-Update: Title: ${yAxisARTitle}, Divisor: ${arDivisor}, MaxStack: ${maxIndividualStackTotal}, SuggestedMax: ${arSuggestedMaxVal}`); // DEBUG
+
+                // Update dynamic axis options using server-provided data
+                const yAxisLabel = dataFromServer.yAxisLabel;
+                const yAxisDivisor = dataFromServer.yAxisDivisor;
+                const suggestedMax = dataFromServer.suggestedMax;
+
+                arChartInstance.options.scales.y.title.text = yAxisLabel;
+                arChartInstance.options.scales.y.suggestedMax = suggestedMax;
                 arChartInstance.options.scales.y.ticks.callback = function(value) {
-                    // Ensure arDivisor is from the surrounding scope for updates too
-                    const currentArDivisor = arDivisor;
-                    console.log(`AR Y-axis tick (update) value: ${value}, arDivisor: ${currentArDivisor}, scaled: ${value / currentArDivisor}`); // DEBUG
-                    return value / currentArDivisor;
+                    const scaledValue = value / yAxisDivisor;
+                    if (dataFromServer.yAxisUnit === 'B') {
+                        if (scaledValue % 1 === 0) return scaledValue.toFixed(0);
+                        return scaledValue.toFixed(1);
+                    } else {
+                        return Math.round(scaledValue);
+                    }
                 };
-                arChartInstance.options.plugins.datalabels.anchor = 'center';
-                arChartInstance.options.plugins.datalabels.align = 'center';
+                // Ensure datalabels font size is set if not already
                 arChartInstance.options.plugins.datalabels.font.size = 10;
                 arChartInstance.options.plugins.datalabels.formatter = (value, context) => {
-                    const currentArDivisor = arDivisor;
-                    const currentArSuggestedMaxVal = arSuggestedMaxVal;
                     if (value === 0) return null;
-                    if (currentArSuggestedMaxVal > 0 && (value / currentArSuggestedMaxVal) < 0.015) {
+                    if (suggestedMax > 0 && (value / suggestedMax) < 0.015) {
                         return null;
                     }
-                    return Math.round(value / currentArDivisor);
+                    const scaledValue = value / yAxisDivisor;
+                    if (dataFromServer.yAxisUnit === 'B') {
+                        return (Math.round(scaledValue * 10) / 10).toFixed(1);
+                    } else {
+                        return Math.round(scaledValue);
+                    }
                 };
                 arChartInstance.update();
             } else {
@@ -258,7 +207,7 @@
 
         function fetchAndUpdateARChart() {
             arTotalOverdueDisplay.textContent = 'Loading...';
-            arLastUpdateDisplay.textContent = 'Data as of: Loading...';
+            console.log('Fetching AR data...');
             const url = `{{ route('accounts-receivable.data') }}`;
 
             fetch(url)
@@ -269,14 +218,11 @@
                     return response.json();
                 })
                 .then(data => {
-                    console.log('AR: Fetched data from server:', data);
                     updateARDisplayAndChart(data);
                 })
                 .catch(error => {
                     console.error('AR: Error fetching Accounts Receivable data:', error);
-                    console.error('Error fetching Accounts Receivable data:', error);
                     arTotalOverdueDisplay.textContent = 'Error loading data';
-                    arLastUpdateDisplay.textContent = 'Data as of: Error';
                     if (arChartInstance) {
                         arChartInstance.data.labels = [];
                         arChartInstance.data.datasets.forEach(dataset => dataset.data = []);

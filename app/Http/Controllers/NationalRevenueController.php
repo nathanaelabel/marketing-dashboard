@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\NationalRevenue;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use App\Helpers\ChartHelper;
 
 class NationalRevenueController extends Controller
 {
@@ -51,6 +52,17 @@ class NationalRevenueController extends Controller
 
         $branchRevenueData = $allBranches->merge($revenueByBranch);
 
+        // Calculate the maximum branch revenue for Y-axis scaling
+        $maxBranchRevenue = 0;
+        if ($branchRevenueData->isNotEmpty()) {
+            $maxBranchRevenue = $branchRevenueData->values()->max();
+        }
+
+        $allBranchValues = $branchRevenueData->values()->all();
+        $yAxisConfig = ChartHelper::getYAxisConfig($maxBranchRevenue, null, $allBranchValues);
+        // Pass the yAxisConfig divisor to calculateSuggestedMax, as it might have changed based on average
+        $suggestedMaxY = ChartHelper::calculateSuggestedMax($maxBranchRevenue, $yAxisConfig['divisor']);
+
         return response()->json([
             'totalRevenue' => $totalRevenue,
             'labels' => $branchRevenueData->keys(),
@@ -62,6 +74,10 @@ class NationalRevenueController extends Controller
             ],
             'startDate' => $startDate,
             'endDate' => $endDate,
+            'yAxisLabel' => $yAxisConfig['label'],
+            'yAxisDivisor' => $yAxisConfig['divisor'],
+            'yAxisUnit' => $yAxisConfig['unit'],
+            'suggestedMax' => $suggestedMaxY,
         ]);
     }
 }

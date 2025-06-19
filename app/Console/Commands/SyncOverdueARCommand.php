@@ -34,81 +34,95 @@ class SyncOverdueARCommand extends Command
         $this->info('Starting overdue accounts receivable synchronization...');
         Log::info('SyncOverdueARCommand: Starting synchronization.');
 
-        $today = Carbon::today();
-        $calculationDate = $today->toDateString();
+        $calculationDate = Carbon::today()->toDateString();
+        $totalProcessedCount = 0;
 
         try {
-            $connections = ['pgsql_surabaya', 'pgsql_bandung', 'pgsql_jakarta'];
+            $connections = config('database.sync_connections.overdue_ar', ['pgsql_surabaya', 'pgsql_bandung', 'pgsql_jakarta']); // Example: make connections configurable
 
-            foreach ($connections as $connection) {
-                $this->info("Processing connection: {$connection}");
-                Log::info("SyncOverdueARCommand: Processing connection {$connection} for date {$calculationDate}");
-
-                // Query untuk mengambil invoice yang belum lunas (ispaid = 'N') dan relevan (docstatus CO/CL)
-                // dan menghitung umur piutang berdasarkan dateinvoiced dan tanggal hari ini.
-                $sql = "
-                    SELECT 
-                        org.name AS branch_name,
-                        SUM(CASE 
-                            WHEN ('{$calculationDate}'::date - inv.dateinvoiced::date) BETWEEN 1 AND 30 THEN inv.grandtotal 
-                            ELSE 0 
-                        END) AS days_1_30,
-                        SUM(CASE 
-                            WHEN ('{$calculationDate}'::date - inv.dateinvoiced::date) BETWEEN 31 AND 60 THEN inv.grandtotal 
-                            ELSE 0 
-                        END) AS days_31_60,
-                        SUM(CASE 
-                            WHEN ('{$calculationDate}'::date - inv.dateinvoiced::date) BETWEEN 61 AND 90 THEN inv.grandtotal 
-                            ELSE 0 
-                        END) AS days_61_90,
-                        SUM(CASE 
-                            WHEN ('{$calculationDate}'::date - inv.dateinvoiced::date) > 90 THEN inv.grandtotal 
-                            ELSE 0 
-                        END) AS days_over_90
-                    FROM c_invoice inv
-                    INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
-                    WHERE inv.ad_client_id = 1000001 -- Sesuai informasi Anda
-                        AND inv.issotrx = 'Y' -- Sales transaction
-                        AND inv.ispaid = 'N' -- Belum lunas
-                        AND inv.docstatus IN ('CO', 'CL') -- Completed or Closed
-                        AND inv.grandtotal > 0
-                    GROUP BY org.name;
-                ";
-
-                $overdueData = DB::connection($connection)->select($sql);
-
-                if (empty($overdueData)) {
-                    $this->info("No overdue AR data found for {$connection} on {$calculationDate}.");
-                    Log::info("SyncOverdueARCommand: No overdue AR data found for {$connection} on {$calculationDate}.");
-                    continue;
-                }
-
-                foreach ($overdueData as $data) {
-                    DB::table('overdue_accounts_receivables')->updateOrInsert(
-                        [
-                            'branch_name' => $data->branch_name,
-                            'calculation_date' => $calculationDate,
-                        ],
-                        [
-                            'days_1_30_overdue_amount' => $data->days_1_30,
-                            'days_31_60_overdue_amount' => $data->days_31_60,
-                            'days_61_90_overdue_amount' => $data->days_61_90,
-                            'days_over_90_overdue_amount' => $data->days_over_90,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]
-                    );
-                    Log::info("SyncOverdueARCommand: Updated/Inserted AR data for branch: {$data->branch_name}, date: {$calculationDate}");
-                }
+            foreach ($connections as $connectionName) {
+                $processedCount = $this->processConnection($connectionName, $calculationDate);
+                $totalProcessedCount += $processedCount;
             }
 
-            $this->info('Overdue accounts receivable synchronization completed successfully.');
-            Log::info('SyncOverdueARCommand: Synchronization completed successfully.');
-            return 0;
+            $this->info("Overdue accounts receivable synchronization completed. Total records processed: {$totalProcessedCount}.");
+            Log::info("SyncOverdueARCommand: Synchronization completed successfully. Total records processed: {$totalProcessedCount}.");
+            return Command::SUCCESS;
+
         } catch (\Exception $e) {
-            Log::error('Error during overdue AR synchronization: ' . $e->getMessage() . ' Stack: ' . $e->getTraceAsString());
+            Log::error('Error during overdue AR synchronization', [
+                'message' => $e->getMessage(), 
+                'trace' => $e->getTraceAsString()
+            ]);
             $this->error('An error occurred: ' . $e->getMessage());
-            return 1;
+            return Command::FAILURE;
         }
+    }
+
+    private function processConnection(string $connectionName, string $calculationDate): int
+    {
+        $this->info("Processing connection: {$connectionName} for date {$calculationDate}");
+        Log::info("SyncOverdueARCommand: Processing connection {$connectionName} for date {$calculationDate}");
+
+        $sql = "
+            SELECT 
+                org.name AS branch_name,
+                SUM(CASE 
+                    WHEN ('{$calculationDate}'::date - inv.dateinvoiced::date) BETWEEN 1 AND 30 THEN inv.grandtotal 
+                    ELSE 0 
+                END) AS days_1_30,
+                SUM(CASE 
+                    WHEN ('{$calculationDate}'::date - inv.dateinvoiced::date) BETWEEN 31 AND 60 THEN inv.grandtotal 
+                    ELSE 0 
+                END) AS days_31_60,
+                SUM(CASE 
+                    WHEN ('{$calculationDate}'::date - inv.dateinvoiced::date) BETWEEN 61 AND 90 THEN inv.grandtotal 
+                    ELSE 0 
+                END) AS days_61_90,
+                SUM(CASE 
+                    WHEN ('{$calculationDate}'::date - inv.dateinvoiced::date) > 90 THEN inv.grandtotal 
+                    ELSE 0 
+                END) AS days_over_90
+            FROM c_invoice inv
+            INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+            WHERE inv.ad_client_id = 1000001 -- Client ID
+                AND inv.issotrx = 'Y' -- Sales transaction
+                AND inv.ispaid = 'N' -- Not paid
+                AND inv.docstatus IN ('CO', 'CL') -- Completed or Closed
+                AND inv.grandtotal > 0
+            GROUP BY org.name;
+        ";
+
+        $overdueData = DB::connection($connectionName)->select($sql);
+
+        if (empty($overdueData)) {
+            $this->info("No overdue AR data found for {$connectionName} on {$calculationDate}.");
+            Log::info("SyncOverdueARCommand: No overdue AR data found for {$connectionName} on {$calculationDate}.");
+            return 0;
+        }
+
+        $processedCount = 0;
+        DB::transaction(function () use ($overdueData, $calculationDate, &$processedCount) {
+            foreach ($overdueData as $data) {
+                DB::table('overdue_accounts_receivables')->updateOrInsert(
+                    [
+                        'branch_name' => $data->branch_name,
+                        'calculation_date' => $calculationDate,
+                    ],
+                    [
+                        'days_1_30_overdue_amount' => $data->days_1_30,
+                        'days_31_60_overdue_amount' => $data->days_31_60,
+                        'days_61_90_overdue_amount' => $data->days_61_90,
+                        'days_over_90_overdue_amount' => $data->days_over_90,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+                $processedCount++;
+            }
+        });
+
+        Log::info("SyncOverdueARCommand: Processed {$processedCount} records for branch(es) in {$connectionName}, date: {$calculationDate}");
+        return $processedCount;
     }
 }
