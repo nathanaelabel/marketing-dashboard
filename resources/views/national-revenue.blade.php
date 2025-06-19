@@ -153,10 +153,10 @@
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                suggestedMax: suggestedMax, // Use server-provided
+                                suggestedMax: suggestedMax,
                                 title: {
                                     display: true,
-                                    text: yAxisLabel, // Use server-provided
+                                    text: yAxisLabel,
                                     padding: {
                                         top: 0,
                                         left: 0,
@@ -189,7 +189,7 @@
         }
 
         function fetchAndUpdateNationalRevenueChart(startDate, endDate) {
-            nationalTotalRevenueDisplay.textContent = 'Loading...'; // Indicate loading
+            nationalTotalRevenueDisplay.textContent = 'Loading...';
             const url = `{{ route('national-revenue.data') }}?start_date=${startDate}&end_date=${endDate}`;
 
             fetch(url)

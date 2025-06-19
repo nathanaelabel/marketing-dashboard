@@ -21,7 +21,6 @@
         const arChartCanvas = document.getElementById('accountsReceivableChart');
 
         function updateARDisplayAndChart(dataFromServer) {
-            // console.log('AR: updateARDisplayAndChart received:', dataFromServer); // DEBUG for server data
             if (!dataFromServer) {
                 arTotalOverdueDisplay.textContent = 'Error loading data';
                 console.log('AR Data as of: Error');
@@ -35,8 +34,6 @@
             const yAxisLabel = dataFromServer.yAxisLabel;
             const yAxisDivisor = dataFromServer.yAxisDivisor;
             const suggestedMax = dataFromServer.suggestedMax;
-
-            // console.log(`AR Scaling From Server: Title: ${yAxisLabel}, Divisor: ${yAxisDivisor}, SuggestedMax: ${suggestedMax}`);
 
             const chartConfig = {
                 type: 'bar',
@@ -104,7 +101,6 @@
                                 if (value === 0) return null;
 
                                 // Hide label if it's too small compared to the max value of the axis
-                                // Use yAxisDivisor and suggestedMax from dataFromServer scope
                                 if (suggestedMax > 0 && (value / suggestedMax) < 0.015) {
                                     return null;
                                 }
