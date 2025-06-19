@@ -32,7 +32,7 @@
             </div>
         </form>
     </div>
-    <canvas id="revenueChart" style="max-height: 300px; width: 100%;"></canvas>
+    <canvas id="revenueChart" style="max-height: 400px; width: 100%;"></canvas>
 </div>
 
 <script>
@@ -54,37 +54,38 @@
             const chartLabels = dataFromServer.labels;
             const chartDataValues = dataFromServer.datasets[0].data;
 
-            let sbyValue = 0;
-            const sbyIndex = chartLabels.indexOf('SBY');
-            if (sbyIndex !== -1) sbyValue = chartDataValues[sbyIndex];
-
-            let jktValue = 0;
-            const jktIndex = chartLabels.indexOf('JKT');
-            if (jktIndex !== -1) jktValue = chartDataValues[jktIndex];
-
-            let bdgValue = 0;
-            const bdgIndex = chartLabels.indexOf('BDG');
-            if (bdgIndex !== -1) bdgValue = chartDataValues[bdgIndex];
-
-            const totalForAvg = sbyValue + jktValue + bdgValue;
-            const numBranchesForAvg = (sbyValue > 0 ? 1 : 0) + (jktValue > 0 ? 1 : 0) + (bdgValue > 0 ? 1 : 0);
-            const averageRevenue = numBranchesForAvg > 0 ? totalForAvg / numBranchesForAvg : 0;
-
-            const useBillions = averageRevenue >= 1000000000;
-            const yAxisLabel = useBillions ? 'Billion Rupiah (Rp)' : 'Million Rupiah (Rp)';
-            const divisor = useBillions ? 1000000000 : 1000000;
-            const maxValue = chartDataValues.length > 0 ? Math.max(...chartDataValues) : 0;
-            const suggestedMaxVal = maxValue > 0 ? (maxValue / divisor) * 1.2 * divisor : (useBillions ? 1000000000 : 1000000);
+            // Y-axis scaling parameters are now provided by the server
+            const yAxisLabel = dataFromServer.yAxisLabel;
+            const yAxisDivisor = dataFromServer.yAxisDivisor;
+            const suggestedMax = dataFromServer.suggestedMax;
 
             if (nationalRevenueChartInstance) {
                 nationalRevenueChartInstance.data.labels = chartLabels;
                 nationalRevenueChartInstance.data.datasets[0].data = chartDataValues;
                 nationalRevenueChartInstance.options.scales.y.title.text = yAxisLabel;
-                nationalRevenueChartInstance.options.scales.y.suggestedMax = suggestedMaxVal;
+                nationalRevenueChartInstance.options.scales.y.suggestedMax = suggestedMax;
                 nationalRevenueChartInstance.options.scales.y.ticks.callback = function(value) {
-                    return value / divisor;
+                    const scaledValue = value / yAxisDivisor;
+                    if (dataFromServer.yAxisUnit === 'B') {
+                        // Avoid unnecessary decimals for whole numbers like 1.0, 2.0
+                        if (scaledValue % 1 === 0) return scaledValue.toFixed(0);
+                        return scaledValue.toFixed(1);
+                    } else {
+                        return Math.round(scaledValue);
+                    }
                 };
-                nationalRevenueChartInstance.options.plugins.datalabels.formatter = (value) => Math.round(value / divisor);
+                nationalRevenueChartInstance.options.plugins.datalabels.formatter = (value) => {
+                    if (value === 0) return null;
+                    if (suggestedMax > 0 && (value / suggestedMax) < 0.025) {
+                        return null;
+                    }
+                    const scaledValue = value / yAxisDivisor;
+                    if (dataFromServer.yAxisUnit === 'B') {
+                        return (Math.round(scaledValue * 10) / 10).toFixed(1);
+                    } else {
+                        return Math.round(scaledValue);
+                    }
+                };
                 nationalRevenueChartInstance.update();
             } else {
                 if (!revenueChartCanvas) return;
@@ -131,7 +132,18 @@
                             datalabels: {
                                 anchor: 'end',
                                 align: 'top',
-                                formatter: (value) => Math.round(value / divisor),
+                                formatter: (value) => {
+                                    if (value === 0) return null;
+                                    if (suggestedMax > 0 && (value / suggestedMax) < 0.025) {
+                                        return null;
+                                    }
+                                    const scaledValue = value / yAxisDivisor;
+                                    if (dataFromServer.yAxisUnit === 'B') {
+                                        return (Math.round(scaledValue * 10) / 10).toFixed(1);
+                                    } else {
+                                        return Math.round(scaledValue);
+                                    }
+                                },
                                 font: {
                                     weight: 'bold'
                                 },
@@ -141,10 +153,10 @@
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                suggestedMax: suggestedMaxVal,
+                                suggestedMax: suggestedMax, // Use server-provided
                                 title: {
                                     display: true,
-                                    text: yAxisLabel,
+                                    text: yAxisLabel, // Use server-provided
                                     padding: {
                                         top: 0,
                                         left: 0,
@@ -154,7 +166,14 @@
                                 },
                                 ticks: {
                                     callback: function(value) {
-                                        return value / divisor;
+                                        const scaledValue = value / yAxisDivisor;
+                                        if (dataFromServer.yAxisUnit === 'B') {
+                                            // Avoid unnecessary decimals for whole numbers like 1.0, 2.0
+                                            if (scaledValue % 1 === 0) return scaledValue.toFixed(0);
+                                            return scaledValue.toFixed(1);
+                                        } else {
+                                            return Math.round(scaledValue);
+                                        }
                                     }
                                 }
                             },

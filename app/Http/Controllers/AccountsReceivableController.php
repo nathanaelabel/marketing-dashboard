@@ -6,6 +6,7 @@ use App\Models\OverdueAccountsReceivable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Helpers\ChartHelper;
 
 class AccountsReceivableController extends Controller
 {
@@ -45,6 +46,24 @@ class AccountsReceivableController extends Controller
 
         $lastUpdate = Carbon::parse($latestCalculationDate)->format('l, d F Y');
 
+        // Calculate the maximum individual stack total for Y-axis scaling
+        $maxIndividualStackTotal = 0;
+        if ($arDataByBranch->isNotEmpty()) {
+            $maxIndividualStackTotal = $arDataByBranch->reduce(function ($max, $item) {
+                $currentStack = $item->days_1_30_overdue_amount +
+                    $item->days_31_60_overdue_amount +
+                    $item->days_61_90_overdue_amount +
+                    $item->days_over_90_overdue_amount;
+                return $currentStack > $max ? $currentStack : $max;
+            }, 0);
+        }
+
+        $yAxisConfig = ChartHelper::getYAxisConfig($maxIndividualStackTotal);
+        // The client-side JS also calculates a suggestedMax. We provide one from the server
+        // based on our helper to ensure consistency and allow more complex server-side logic if needed.
+        // The client-side logic for suggestedMax will be updated to use this or be simplified.
+        $suggestedMaxY = ChartHelper::calculateSuggestedMax($maxIndividualStackTotal, $yAxisConfig['divisor']);
+
         $labels = $arDataByBranch->pluck('branch_name')->map(function ($branch) {
             $shortcodes = [
                 'PWM Surabaya' => 'SBY',
@@ -62,6 +81,10 @@ class AccountsReceivableController extends Controller
             'data_over_90' => $arDataByBranch->pluck('days_over_90_overdue_amount'),
             'totalOverdue' => $totalOverdue,
             'lastUpdate' => $lastUpdate,
+            'yAxisLabel' => $yAxisConfig['label'],
+            'yAxisDivisor' => $yAxisConfig['divisor'],
+            'yAxisUnit' => $yAxisConfig['unit'],
+            'suggestedMax' => $suggestedMaxY, // Renamed from suggestedMaxVal for clarity
         ]);
     }
 }
