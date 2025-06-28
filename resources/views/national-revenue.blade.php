@@ -59,6 +59,19 @@
             const yAxisDivisor = dataFromServer.yAxisDivisor;
             const suggestedMax = dataFromServer.suggestedMax;
 
+            // Helper to format value with proper unit suffix for DataLabels
+            const formatValueWithUnit = (value) => {
+                if (value === 0) return null;
+                const scaledValue = value / yAxisDivisor;
+                if (dataFromServer.yAxisUnit === 'B') {
+                    const rounded = Math.round(scaledValue * 10) / 10;
+                    const display = (rounded % 1 === 0) ? rounded.toFixed(0) : rounded.toFixed(1);
+                    return display + 'B';
+                }
+                // Default to Millions
+                return Math.round(scaledValue) + 'M';
+            };
+
             if (nationalRevenueChartInstance) {
                 nationalRevenueChartInstance.data.labels = chartLabels;
                 nationalRevenueChartInstance.data.datasets[0].data = chartDataValues;
@@ -74,18 +87,8 @@
                         return Math.round(scaledValue);
                     }
                 };
-                nationalRevenueChartInstance.options.plugins.datalabels.formatter = (value) => {
-                    if (value === 0) return null;
-                    if (suggestedMax > 0 && (value / suggestedMax) < 0.025) {
-                        return null;
-                    }
-                    const scaledValue = value / yAxisDivisor;
-                    if (dataFromServer.yAxisUnit === 'B') {
-                        return (Math.round(scaledValue * 10) / 10).toFixed(1);
-                    } else {
-                        return Math.round(scaledValue);
-                    }
-                };
+                nationalRevenueChartInstance.options.plugins.datalabels.formatter = formatValueWithUnit;
+
                 nationalRevenueChartInstance.update();
             } else {
                 if (!revenueChartCanvas) return;
@@ -132,18 +135,7 @@
                             datalabels: {
                                 anchor: 'end',
                                 align: 'top',
-                                formatter: (value) => {
-                                    if (value === 0) return null;
-                                    if (suggestedMax > 0 && (value / suggestedMax) < 0.025) {
-                                        return null;
-                                    }
-                                    const scaledValue = value / yAxisDivisor;
-                                    if (dataFromServer.yAxisUnit === 'B') {
-                                        return (Math.round(scaledValue * 10) / 10).toFixed(1);
-                                    } else {
-                                        return Math.round(scaledValue);
-                                    }
-                                },
+                                formatter: formatValueWithUnit,
                                 font: {
                                     weight: 'bold'
                                 },

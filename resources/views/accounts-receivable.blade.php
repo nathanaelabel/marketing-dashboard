@@ -34,6 +34,32 @@
             const yAxisLabel = dataFromServer.yAxisLabel;
             const yAxisDivisor = dataFromServer.yAxisDivisor;
             const suggestedMax = dataFromServer.suggestedMax;
+            const yAxisUnit = dataFromServer.yAxisUnit;
+
+            function formatValueWithUnit(value, context) {
+                if (value === 0) return null;
+                // Hide labels for very small segments relative to the max value
+                if (suggestedMax > 0 && (value / suggestedMax) < 0.015) {
+                    return null;
+                }
+
+                const scaledValue = value / yAxisDivisor;
+                let label;
+
+                if (yAxisUnit === 'B') {
+                    label = (Math.round(scaledValue * 10) / 10);
+                    if (label % 1 === 0) {
+                        label = label.toFixed(0) + 'B';
+                    } else {
+                        label = label.toFixed(1) + 'B';
+                    }
+                } else if (yAxisUnit === 'M') {
+                    label = Math.round(scaledValue) + 'M';
+                } else { // 'K' or default
+                    label = Math.round(scaledValue) + 'K';
+                }
+                return label;
+            }
 
             const chartConfig = {
                 type: 'bar',
@@ -44,28 +70,32 @@
                             data: dataFromServer.data_1_30,
                             backgroundColor: 'rgba(75, 192, 192, 0.7)', // Green
                             borderColor: 'rgba(75, 192, 192, 1)',
-                            borderWidth: 1
+                            borderWidth: 1,
+                            borderRadius: 6
                         },
                         {
                             label: '31 - 60 Days',
                             data: dataFromServer.data_31_60,
                             backgroundColor: 'rgba(153, 102, 255, 0.7)', // Purple
                             borderColor: 'rgba(153, 102, 255, 1)',
-                            borderWidth: 1
+                            borderWidth: 1,
+                            borderRadius: 6
                         },
                         {
                             label: '61 - 90 Days',
                             data: dataFromServer.data_61_90,
                             backgroundColor: 'rgba(255, 159, 64, 0.7)', // Orange
                             borderColor: 'rgba(255, 159, 64, 1)',
-                            borderWidth: 1
+                            borderWidth: 1,
+                            borderRadius: 6
                         },
                         {
                             label: '> 90 Days',
                             data: dataFromServer.data_over_90,
                             backgroundColor: 'rgba(255, 99, 132, 0.7)', // Red
                             borderColor: 'rgba(255, 99, 132, 1)',
-                            borderWidth: 1
+                            borderWidth: 1,
+                            borderRadius: 6
                         }
                     ]
                 },
@@ -73,9 +103,6 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        title: {
-                            display: false
-                        },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -97,27 +124,8 @@
                                 weight: 'bold',
                                 size: 10
                             },
-                            formatter: (value, context) => {
-                                if (value === 0) return null;
-
-                                // Hide label if it's too small compared to the max value of the axis
-                                if (suggestedMax > 0 && (value / suggestedMax) < 0.015) {
-                                    return null;
-                                }
-                                const scaledValue = value / yAxisDivisor;
-                                if (dataFromServer.yAxisUnit === 'B') {
-                                    return (Math.round(scaledValue * 10) / 10).toFixed(1);
-                                } else {
-                                    return Math.round(scaledValue);
-                                }
-                            },
-                            color: function(context) {
-                                const bgColor = context.dataset.backgroundColor;
-                                if (bgColor === 'rgba(153, 102, 255, 0.7)' || bgColor === 'rgba(255, 99, 132, 0.7)') {
-                                    if (context.datasetIndex === 1 /* 31-60 days */ || context.datasetIndex === 3 /* >90 days, if it were dark */ ) {}
-                                }
-                                return '#333';
-                            }
+                            formatter: formatValueWithUnit,
+                            color: '#000'
                         }
                     },
                     scales: {
@@ -130,10 +138,10 @@
                         y: {
                             stacked: true,
                             beginAtZero: true,
-                            suggestedMax: dataFromServer.suggestedMax,
+                            suggestedMax: suggestedMax,
                             ticks: {
                                 callback: function(value) {
-                                    const scaledValue = value / dataFromServer.yAxisDivisor;
+                                    const scaledValue = value / yAxisDivisor;
                                     if (dataFromServer.yAxisUnit === 'B') {
                                         if (scaledValue % 1 === 0) return scaledValue.toFixed(0);
                                         return scaledValue.toFixed(1);
@@ -144,7 +152,13 @@
                             },
                             title: {
                                 display: true,
-                                text: dataFromServer.yAxisLabel
+                                text: dataFromServer.yAxisLabel,
+                                padding: {
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 10
+                                }
                             }
                         }
                     },
@@ -169,6 +183,12 @@
                 const suggestedMax = dataFromServer.suggestedMax;
 
                 arChartInstance.options.scales.y.title.text = yAxisLabel;
+                arChartInstance.options.scales.y.title.padding = {
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 10
+                };
                 arChartInstance.options.scales.y.suggestedMax = suggestedMax;
                 arChartInstance.options.scales.y.ticks.callback = function(value) {
                     const scaledValue = value / yAxisDivisor;
@@ -181,18 +201,7 @@
                 };
                 // Ensure datalabels font size is set if not already
                 arChartInstance.options.plugins.datalabels.font.size = 10;
-                arChartInstance.options.plugins.datalabels.formatter = (value, context) => {
-                    if (value === 0) return null;
-                    if (suggestedMax > 0 && (value / suggestedMax) < 0.015) {
-                        return null;
-                    }
-                    const scaledValue = value / yAxisDivisor;
-                    if (dataFromServer.yAxisUnit === 'B') {
-                        return (Math.round(scaledValue * 10) / 10).toFixed(1);
-                    } else {
-                        return Math.round(scaledValue);
-                    }
-                };
+                arChartInstance.options.plugins.datalabels.formatter = formatValueWithUnit;
                 arChartInstance.update();
             } else {
                 if (!arChartCanvas) return;
