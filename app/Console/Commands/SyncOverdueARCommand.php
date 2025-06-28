@@ -48,10 +48,9 @@ class SyncOverdueARCommand extends Command
             $this->info("Overdue accounts receivable synchronization completed. Total records processed: {$totalProcessedCount}.");
             Log::info("SyncOverdueARCommand: Synchronization completed successfully. Total records processed: {$totalProcessedCount}.");
             return Command::SUCCESS;
-
         } catch (\Exception $e) {
             Log::error('Error during overdue AR synchronization', [
-                'message' => $e->getMessage(), 
+                'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
             $this->error('An error occurred: ' . $e->getMessage());

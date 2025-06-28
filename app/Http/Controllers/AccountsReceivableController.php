@@ -33,8 +33,34 @@ class AccountsReceivableController extends Controller
             ]);
         }
 
+        $branchOrder = [
+            'PWM Surabaya',
+            'PWM Jakarta',
+            'PWM Bandung',
+            'TGR',
+            'BKS',
+            'PTK',
+            'LMP',
+            'BJM',
+            'CRB',
+            'MKS',
+            'SMG',
+            'PWT',
+            'DPS',
+            'PLB',
+            'PDG',
+            'MDN',
+            'PKU'
+        ];
+
+        $orderClause = "CASE branch_name ";
+        foreach ($branchOrder as $index => $branchName) {
+            $orderClause .= "WHEN '{$branchName}' THEN " . ($index + 1) . " ";
+        }
+        $orderClause .= "ELSE " . (count($branchOrder) + 1) . " END";
+
         $arDataByBranch = OverdueAccountsReceivable::where('calculation_date', $latestCalculationDate)
-            ->orderBy('branch_name')
+            ->orderByRaw($orderClause)
             ->get();
 
         $totalOverdue = $arDataByBranch->sum(function ($item) {
