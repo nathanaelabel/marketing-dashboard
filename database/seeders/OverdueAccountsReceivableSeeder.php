@@ -30,7 +30,7 @@ class OverdueAccountsReceivableSeeder extends Seeder
             'PKU' => 'Pekanbaru',
         ];
 
-        $calculationDate = Carbon::create(2025, 6, 25)->format('Y-m-d');
+        $calculationDate = Carbon::create(2025, 7, 5)->format('Y-m-d');
 
         foreach ($branches as $branchCode => $branchName) {
             $totalOverdue = rand(4_000_000_000, 7_000_000_000);
