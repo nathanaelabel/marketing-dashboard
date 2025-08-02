@@ -23,6 +23,9 @@ return new class extends Migration
             $table->decimal('qtyinvoiced', 16, 4);
             $table->decimal('priceactual', 16, 4);
             $table->decimal('linenetamt', 16, 2);
+
+            $table->foreign('c_invoice_id')->references('c_invoice_id')->on('c_invoice');
+            $table->foreign('m_product_id')->references('m_product_id')->on('m_product');
         });
     }
 

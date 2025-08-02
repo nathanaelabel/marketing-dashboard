@@ -30,4 +30,9 @@ class CAllocationhdr extends Model
     {
         return $this->belongsTo(AdOrg::class, 'ad_org_id', 'ad_org_id');
     }
+
+    public function allocationLines()
+    {
+        return $this->hasMany(CAllocationline::class, 'c_allocationhdr_id', 'c_allocationhdr_id');
+    }
 }

@@ -16,11 +16,15 @@ return new class extends Migration
             $table->integer('ad_client_id');
             $table->integer('ad_org_id');
             $table->char('isactive', 1)->default('Y');
+            $table->integer('c_allocationhdr_id');
             $table->integer('c_invoice_id')->nullable();
             $table->decimal('amount', 16, 2);
             $table->decimal('discountamt', 16, 2);
             $table->decimal('writeoffamt', 16, 2);
             $table->decimal('overunderamt', 16, 2);
+
+            $table->foreign('c_allocationhdr_id')->references('c_allocationhdr_id')->on('c_allocationhdr');
+            $table->foreign('c_invoice_id')->references('c_invoice_id')->on('c_invoice');
         });
     }
 

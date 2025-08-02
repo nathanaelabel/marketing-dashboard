@@ -24,6 +24,9 @@ return new class extends Migration
             $table->decimal('qtydelivered', 16, 4);
             $table->decimal('qtyinvoiced', 16, 4);
             $table->decimal('priceactual', 16, 4);
+
+            $table->foreign('c_order_id')->references('c_order_id')->on('c_order');
+            $table->foreign('m_product_id')->references('m_product_id')->on('m_product');
         });
     }
 

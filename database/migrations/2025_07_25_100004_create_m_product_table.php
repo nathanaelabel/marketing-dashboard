@@ -15,10 +15,13 @@ return new class extends Migration
             $table->integer('m_product_id')->primary();
             $table->char('isactive', 1)->default('Y');
             $table->string('name', 255);
-            $table->integer('m_product_category_id')->foreign()->references('m_product_category_id')->on('m_product_category');
-            $table->integer('m_productsubcat_id')->nullable()->foreign()->references('m_productsubcat_id')->on('m_productsubcat');
+            $table->integer('m_product_category_id')->nullable();
+            $table->integer('m_productsubcat_id')->nullable();
             $table->string('group1', 255)->nullable();
             $table->string('status', 255)->nullable();
+
+            $table->foreign('m_product_category_id')->references('m_product_category_id')->on('m_product_category');
+            $table->foreign('m_productsubcat_id')->references('m_productsubcat_id')->on('m_productsubcat');
         });
     }
 
