@@ -42,7 +42,7 @@ class SyncAndPruneAdempiereTableCommand extends Command
 
         // Step 1: Collect all valid primary keys from all sources efficiently, with resume capability
         $this->line('Step 1: Collecting all valid primary keys from all sources...');
-        
+
         $validKeySet = collect();
         $startConnectionIndex = 0;
 
@@ -57,7 +57,7 @@ class SyncAndPruneAdempiereTableCommand extends Command
         for ($i = $startConnectionIndex; $i < count($connections); $i++) {
             $connection = $connections[$i];
             $this->info("Fetching keys from {$connection} (Connection " . ($i + 1) . " of " . count($connections) . ")...");
-            
+
             try {
                 $query = DB::connection($connection)->table($tableName)->select($keyColumns);
                 foreach ($keyColumns as $keyColumn) {
@@ -65,10 +65,10 @@ class SyncAndPruneAdempiereTableCommand extends Command
                 }
 
                 foreach ($query->lazy(2000) as $record) {
-                    $keyString = (count($keyColumns) === 1) 
-                        ? $record->{$keyColumns[0]} 
+                    $keyString = (count($keyColumns) === 1)
+                        ? $record->{$keyColumns[0]}
                         : implode('-', array_map(fn($k) => $record->{$k}, $keyColumns));
-                    
+
                     $validKeySet[$keyString] = true;
 
                     if ($validKeySet->count() % 10000 === 0) {
@@ -79,7 +79,6 @@ class SyncAndPruneAdempiereTableCommand extends Command
                 // Save state after successfully processing a connection
                 file_put_contents($stateFilePath, json_encode(['last_connection_index' => $i, 'keys' => $validKeySet->all()]));
                 $this->info("Successfully processed {$connection}. State saved.");
-
             } catch (\Illuminate\Database\QueryException $e) {
                 $this->error("Failed to connect or query {$connection}. Error: " . $e->getMessage());
                 $this->error("Please check the connection and restart the command. Progress has been saved.");
@@ -200,4 +199,3 @@ class SyncAndPruneAdempiereTableCommand extends Command
         return $timestamps;
     }
 }
-

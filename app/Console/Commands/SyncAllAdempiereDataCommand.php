@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Artisan;
 
 class SyncAllAdempiereDataCommand extends Command
 {
-    protected $signature = 'app:sync-all-adempiere-data';
+    protected $signature = 'app:sync-all-adempiere-data {--type=full : The type of sync to perform (full|incremental)}';
     protected $description = 'Orchestrates the synchronization of all Adempiere tables.';
 
     public function handle()
@@ -47,20 +47,32 @@ class SyncAllAdempiereDataCommand extends Command
         // --- Execute Sync for Group 2 (Merge-only) ---
         $this->line('--- Syncing multi-source merge-only tables ---');
         $connections = config('database.sync_connections.adempiere', ['pgsql_surabaya', 'pgsql_bandung', 'pgsql_jakarta']);
-        foreach ($mergeOnlyTables as $table) {
+        foreach ($mergeOnlyTables as $tableInfo) {
             foreach ($connections as $connection) {
-                $this->line("--- Processing {$table['model']} from connection: {$connection} ---");
-                $this->callSyncCommand($table['model'], $connection, $table['incremental']);
+                $this->line("--- Processing {$tableInfo['model']} from connection: {$connection} ---");
+                $this->callSyncCommand($tableInfo['model'], $connection, $tableInfo['incremental']);
             }
         }
 
-        // --- Execute Sync for Group 3 (Sync & Prune) ---
-        $this->line('--- Syncing transactional tables (Sync & Prune) ---');
-        foreach ($syncAndPruneTables as $modelName) {
-            $this->call('app:sync-prune-adempiere-table', ['model' => $modelName]);
+        // --- Execute Sync for Group 3 (Transactional Tables) ---
+        $syncType = $this->option('type');
+
+        if ($syncType === 'full') {
+            $this->line('--- Syncing transactional tables (Full Sync & Prune) ---');
+            foreach ($syncAndPruneTables as $modelName) {
+                $this->call('app:sync-prune-adempiere-table', ['model' => $modelName]);
+            }
+        } elseif ($syncType === 'incremental') {
+            $this->line('--- Syncing transactional tables (Incremental) ---');
+            foreach ($syncAndPruneTables as $modelName) {
+                $this->call('app:sync-incremental-adempiere-table', ['model' => $modelName]);
+            }
+        } else {
+            $this->error('Invalid sync type specified. Use --type=full or --type=incremental.');
+            return Command::FAILURE;
         }
 
-        $this->info('Full Adempiere data synchronization process completed.');
+        $this->info('Adempiere data synchronization process completed.');
         return Command::SUCCESS;
     }
 
