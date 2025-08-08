@@ -98,13 +98,29 @@ class SyncAndPruneAdempiereTableCommand extends Command
 
             $sourceQuery = DB::connection($connection)->table($tableName)->select($columns);
 
-            $processChunk = function ($sourceData) use ($model, $keyColumns, $fillable, &$processedCount, $connection) {
-                DB::transaction(function () use ($model, $sourceData, $keyColumns, $fillable) {
+            $processChunk = function ($sourceData) use ($model, $tableName, $keyColumns, $fillable, &$processedCount, $connection) {
+                DB::transaction(function () use ($model, $sourceData, $keyColumns, $fillable, $connection, $tableName) {
                     foreach ($sourceData as $row) {
                         $condition = [];
+                        $hasNullKey = false;
                         foreach ($keyColumns as $key) {
+                            if (is_null($row->{$key})) {
+                                $hasNullKey = true;
+                                break;
+                            }
                             $condition[$key] = $row->{$key};
                         }
+
+                        // Also check other critical non-nullable foreign keys, like m_product_id for c_invoiceline
+                        if ($tableName === 'c_invoiceline' && is_null($row->m_product_id)) {
+                            $hasNullKey = true;
+                        }
+
+                        if ($hasNullKey) {
+                            $this->warn("Skipping row in {$tableName} from {$connection} due to NULL in a required key column. Data: " . json_encode($row));
+                            continue; // Skip this record
+                        }
+
                         $dataToUpdate = collect((array)$row)->only($fillable)->toArray();
                         $model->updateOrInsert($condition, $dataToUpdate);
                     }

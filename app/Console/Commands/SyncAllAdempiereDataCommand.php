@@ -28,7 +28,7 @@ class SyncAllAdempiereDataCommand extends Command
             ['model' => 'MLocator', 'incremental' => false],
         ];
 
-        // Group 3: Transactional tables that require a full 1:1 sync (sync and prune)
+        // Transactional tables that require a full 1:1 sync (sync and prune)
         $syncAndPruneTables = [
             'CInvoice',
             'CInvoiceline',
@@ -38,13 +38,13 @@ class SyncAllAdempiereDataCommand extends Command
             'CAllocationline',
         ];
 
-        // --- Execute Sync for Group 1 ---
+        // --- Execute Sync for single-source tables from pwmsby ---
         $this->line('--- Syncing single-source tables from pwmsby ---');
         foreach ($singleSourceTables as $model) {
             $this->callSyncCommand($model, 'pgsql_pwmsby', false); // false for full sync (merge mode)
         }
 
-        // --- Execute Sync for Group 2 (Merge-only) ---
+        // --- Execute Sync for multi-source merge-only tables ---
         $this->line('--- Syncing multi-source merge-only tables ---');
         $connections = config('database.sync_connections.adempiere', ['pgsql_surabaya', 'pgsql_bandung', 'pgsql_jakarta']);
         foreach ($mergeOnlyTables as $tableInfo) {
@@ -54,7 +54,7 @@ class SyncAllAdempiereDataCommand extends Command
             }
         }
 
-        // --- Execute Sync for Group 3 (Transactional Tables) ---
+        // --- Execute Sync for transactional tables (Full Sync & Prune) ---
         $syncType = $this->option('type');
 
         if ($syncType === 'full') {
