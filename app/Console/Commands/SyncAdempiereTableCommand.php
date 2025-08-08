@@ -68,33 +68,40 @@ class SyncAdempiereTableCommand extends Command
 
     private function runFullSync($model, $connectionName)
     {
-        $this->info('Running full sync (merge/upsert mode)...');
+        $this->info('Running full sync (merge/upsert mode) using lazy chunking...');
         $fillable = $model->getFillable();
         $primaryKey = $model->getKeyName();
         $keyColumns = is_array($primaryKey) ? $primaryKey : [$primaryKey];
         $columns = array_unique(array_merge($keyColumns, $fillable));
+        $processedCount = 0;
 
-        $sourceData = DB::connection($connectionName)->table($model->getTable())->select($columns)->get();
+        $query = DB::connection($connectionName)->table($model->getTable())->select($columns);
 
-        if ($sourceData->isEmpty()) {
-            $this->info('No data found in source. Skipping.');
-            return;
+        // Use lazy() for memory efficiency, then chunk the result for processing.
+        // This works for all primary key types, including composite keys.
+        foreach ($query->lazy(2000)->chunk(2000) as $records) {
+            DB::transaction(function () use ($records, $model, $keyColumns, $fillable) {
+                foreach ($records as $row) {
+                    $condition = [];
+                    foreach ($keyColumns as $key) {
+                        // Ensure we don't try to access a property on a non-object
+                        if (is_object($row) && property_exists($row, $key)) {
+                            $condition[$key] = $row->{$key};
+                        } else {
+                            // Handle cases where the key might not exist, though this is unlikely
+                            // with a proper select. You might want to log this.
+                            continue;
+                        }
+                    }
+                    $dataToUpdate = collect((array)$row)->only($fillable)->toArray();
+                    $model->updateOrInsert($condition, $dataToUpdate);
+                }
+            });
+            $processedCount += $records->count();
+            $this->info("Processed {$processedCount} records...");
         }
 
-        $this->info($sourceData->count() . ' records to process.');
-
-        DB::transaction(function () use ($model, $sourceData, $keyColumns, $fillable) {
-            foreach ($sourceData as $row) {
-                $condition = [];
-                foreach ($keyColumns as $key) {
-                    $condition[$key] = $row->{$key};
-                }
-                $dataToUpdate = collect($row)->only($fillable)->toArray();
-                $model->updateOrInsert($condition, $dataToUpdate);
-            }
-        });
-
-        $this->info('Full sync completed. ' . $sourceData->count() . ' records processed.');
+        $this->info("Full sync completed. Total {$processedCount} records processed.");
     }
 
     private function runIncrementalSync($model, $connectionName, $timestampFile)
