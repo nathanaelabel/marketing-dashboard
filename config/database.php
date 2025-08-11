@@ -148,6 +148,41 @@ return [
             'search_path' => 'adempiere',
         ],
 
+        'pgsql_pwmsby' => [
+            'driver' => 'pgsql',
+            'host' => env('ADEMPIERE_DB_HOST', '192.168.36.241'),
+            'port' => env('ADEMPIERE_DB_PORT', '5432'),
+            'database' => env('ADEMPIERE_DB_DATABASE_SURABAYA', 'pwmsby'),
+            'username' => env('ADEMPIERE_DB_USERNAME', 'adempiere'),
+            'password' => env('ADEMPIERE_DB_PASSWORD', 'adempiere'),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'search_path' => 'adempiere',
+        ],
+
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sync Connections
+    |--------------------------------------------------------------------------
+    |
+    | Define groups of connections to be used by synchronization commands.
+    |
+    */
+
+    'sync_connections' => [
+        'adempiere' => [
+            'pgsql_surabaya',
+            'pgsql_bandung',
+            'pgsql_jakarta',
+        ],
+        // for backward compatibility with old command
+        'national_revenue' => [
+            'pgsql_surabaya',
+            'pgsql_bandung',
+            'pgsql_jakarta',
+        ]
     ],
 
     /*
