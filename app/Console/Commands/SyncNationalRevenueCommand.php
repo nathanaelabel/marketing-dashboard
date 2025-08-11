@@ -37,105 +37,137 @@ class SyncNationalRevenueCommand extends Command
         $syncStartTime = now();
 
         try {
-            // Get the last sync timestamp, or a very old date if it's the first run.
-            $lastSyncTimestamp = file_exists($timestampFile) ? file_get_contents($timestampFile) : '1970-01-01 00:00:00';
+            $lastSyncTimestamp = $this->getLastSyncTimestamp($timestampFile);
             $this->info("Checking for updates since: {$lastSyncTimestamp}");
             Log::info("SyncNationalRevenueCommand: Checking for updates since {$lastSyncTimestamp}.");
 
-            $connections = ['pgsql_surabaya', 'pgsql_bandung', 'pgsql_jakarta'];
+            $connections = config('database.sync_connections.national_revenue', ['pgsql_surabaya', 'pgsql_bandung', 'pgsql_jakarta']); // Example: make connections configurable
             $allRevenueDataToUpdate = [];
 
-            foreach ($connections as $connection) {
-                $this->info("Finding affected days for connection: {$connection}");
-                Log::info("SyncNationalRevenueCommand: Finding affected days for {$connection}.");
-
-                $affectedPairsQuery = "
-                    SELECT DISTINCT
-                        org.name AS branch_name,
-                        CAST(inv.dateinvoiced AS DATE) AS invoice_date
-                    FROM c_invoice inv
-                    INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
-                    WHERE
-                        inv.updated >= ?
-                        AND inv.ad_client_id = 1000001
-                        AND inv.issotrx = 'Y'
-                        AND inv.docstatus IN ('CO', 'CL')
-                        AND inv.isactive = 'Y'
-                ";
-                $affectedPairs = DB::connection($connection)->select($affectedPairsQuery, [$lastSyncTimestamp]);
-
-                if (empty($affectedPairs)) {
-                    $this->info("No updates found for {$connection}.");
-                    Log::info("SyncNationalRevenueCommand: No updates found for {$connection}.");
-                    continue;
-                }
-
-                $this->info(count($affectedPairs) . " affected day(s) found for {$connection}. Recalculating totals...");
-                Log::info(count($affectedPairs) . " affected day(s) found for {$connection}.");
-
-                $whereClauses = [];
-                $bindings = [];
-                foreach ($affectedPairs as $pair) {
-                    $whereClauses[] = "(org.name = ? AND CAST(inv.dateinvoiced AS DATE) = ?)";
-                    $bindings[] = $pair->branch_name;
-                    $bindings[] = $pair->invoice_date;
-                }
-                $dynamicWhere = implode(' OR ', $whereClauses);
-
-                $recalcQuery = "
-                    SELECT
-                        org.name AS branch_name,
-                        CAST(inv.dateinvoiced AS DATE) AS invoice_date,
-                        SUM(invl.linenetamt) AS total_revenue
-                    FROM c_invoice inv
-                    INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
-                    INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
-                    WHERE
-                        ({$dynamicWhere})
-                        AND inv.ad_client_id = 1000001
-                        AND inv.issotrx = 'Y'
-                        AND invl.qtyinvoiced > 0
-                        AND invl.linenetamt > 0
-                        AND inv.docstatus IN ('CO', 'CL')
-                        AND inv.isactive = 'Y'
-                    GROUP BY
-                        org.name,
-                        CAST(inv.dateinvoiced AS DATE)
-                ";
-
-                $recalculatedData = DB::connection($connection)->select($recalcQuery, $bindings);
+            foreach ($connections as $connectionName) {
+                $this->info("Processing connection: {$connectionName}");
+                Log::info("SyncNationalRevenueCommand: Processing connection {$connectionName}.");
+                $recalculatedData = $this->fetchUpdatedDataFromSource($connectionName, $lastSyncTimestamp);
                 $allRevenueDataToUpdate = array_merge($allRevenueDataToUpdate, $recalculatedData);
             }
 
-            $recordCount = count($allRevenueDataToUpdate);
-            if ($recordCount > 0) {
-                $this->info("Found a total of {$recordCount} daily records to update. Processing...");
-                Log::info("SyncNationalRevenueCommand: Found a total of {$recordCount} records to update.");
+            $processedCount = $this->saveRevenueData($allRevenueDataToUpdate);
 
-                $processedCount = 0;
-                foreach ($allRevenueDataToUpdate as $data) {
-                    DB::table('national_revenues')->updateOrInsert(
-                        ['branch_name' => $data->branch_name, 'invoice_date' => $data->invoice_date],
-                        ['total_revenue' => $data->total_revenue, 'updated_at' => now()]
-                    );
-                    $processedCount++;
-                }
+            if ($processedCount > 0) {
+                $this->info("Processed {$processedCount} daily records.");
                 Log::info("SyncNationalRevenueCommand: Processed {$processedCount} records.");
             } else {
                 $this->info('No new updates across all databases. Synchronization is up-to-date.');
                 Log::info('SyncNationalRevenueCommand: No new updates found.');
             }
 
-            file_put_contents($timestampFile, $syncStartTime->toDateTimeString());
+            $this->recordSyncTimestamp($timestampFile, $syncStartTime);
 
             $this->info('Incremental national revenue synchronization completed successfully.');
             Log::info('SyncNationalRevenueCommand: Synchronization completed successfully.');
-            return 0;
+            return Command::SUCCESS;
 
         } catch (\Exception $e) {
-            Log::error('Error during incremental national revenue synchronization: ' . $e->getMessage());
+            Log::error('Error during incremental national revenue synchronization: ' . $e->getMessage(), ['exception' => $e]);
             $this->error('An error occurred: ' . $e->getMessage());
-            return 1;
+            return Command::FAILURE;
         }
+    }
+
+    private function getLastSyncTimestamp(string $timestampFile): string
+    {
+        return file_exists($timestampFile) ? file_get_contents($timestampFile) : '1970-01-01 00:00:00';
+    }
+
+    private function fetchUpdatedDataFromSource(string $connectionName, string $lastSyncTimestamp): array
+    {
+        $this->info("Finding affected day-branch pairs for {$connectionName} since {$lastSyncTimestamp}");
+        $affectedPairsQuery = "
+            SELECT DISTINCT
+                org.name AS branch_name,
+                CAST(inv.dateinvoiced AS DATE) AS invoice_date
+            FROM c_invoice inv
+            INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+            WHERE
+                inv.updated >= ?
+                AND inv.ad_client_id = 1000001
+                AND inv.issotrx = 'Y'
+                AND inv.docstatus IN ('CO', 'CL')
+                AND inv.isactive = 'Y'
+        ";
+        $affectedPairs = DB::connection($connectionName)->select($affectedPairsQuery, [$lastSyncTimestamp]);
+
+        if (empty($affectedPairs)) {
+            $this->info("No updates found for {$connectionName}.");
+            Log::info("SyncNationalRevenueCommand: No updates found for {$connectionName}.");
+            return [];
+        }
+
+        $this->info(count($affectedPairs) . " affected day-branch pair(s) found for {$connectionName}. Recalculating totals...");
+        Log::info(count($affectedPairs) . " affected day-branch pair(s) found for {$connectionName}.");
+
+        list($dynamicWhere, $bindings) = $this->buildDynamicWhereClauseForPairs($affectedPairs);
+
+        $recalcQuery = "
+            SELECT
+                org.name AS branch_name,
+                CAST(inv.dateinvoiced AS DATE) AS invoice_date,
+                SUM(invl.linenetamt) AS total_revenue
+            FROM c_invoice inv
+            INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
+            INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+            WHERE
+                ({$dynamicWhere})
+                AND inv.ad_client_id = 1000001
+                AND inv.issotrx = 'Y'
+                AND invl.qtyinvoiced > 0
+                AND invl.linenetamt > 0
+                AND inv.docstatus IN ('CO', 'CL')
+                AND inv.isactive = 'Y'
+            GROUP BY
+                org.name,
+                CAST(inv.dateinvoiced AS DATE)
+        ";
+        return DB::connection($connectionName)->select($recalcQuery, $bindings);
+    }
+
+    private function buildDynamicWhereClauseForPairs(array $affectedPairs): array
+    {
+        $whereClauses = [];
+        $bindings = [];
+        foreach ($affectedPairs as $pair) {
+            $whereClauses[] = "(org.name = ? AND CAST(inv.dateinvoiced AS DATE) = ?)";
+            $bindings[] = $pair->branch_name;
+            $bindings[] = $pair->invoice_date;
+        }
+        return [implode(' OR ', $whereClauses), $bindings];
+    }
+
+    private function saveRevenueData(array $allRevenueDataToUpdate): int
+    {
+        $recordCount = count($allRevenueDataToUpdate);
+        if ($recordCount === 0) {
+            return 0;
+        }
+
+        $this->info("Found a total of {$recordCount} daily records to update/insert. Processing...");
+        Log::info("SyncNationalRevenueCommand: Found a total of {$recordCount} records to update/insert.");
+
+        $processedCount = 0;
+        DB::transaction(function () use ($allRevenueDataToUpdate, &$processedCount) {
+            foreach ($allRevenueDataToUpdate as $data) {
+                DB::table('national_revenues')->updateOrInsert(
+                    ['branch_name' => $data->branch_name, 'invoice_date' => $data->invoice_date],
+                    ['total_revenue' => $data->total_revenue, 'updated_at' => now()]
+                );
+                $processedCount++;
+            }
+        });
+        return $processedCount;
+    }
+
+    private function recordSyncTimestamp(string $timestampFile, \Carbon\Carbon $syncStartTime): void
+    {
+        file_put_contents($timestampFile, $syncStartTime->toDateTimeString());
     }
 }
