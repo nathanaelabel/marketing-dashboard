@@ -85,26 +85,67 @@ class SyncAdempiereTableCommand extends Command
                 break;
             }
 
-            DB::transaction(function () use ($records, $model, $keyColumns, $fillable) {
-                foreach ($records as $row) {
-                    $condition = [];
-                    foreach ($keyColumns as $key) {
-                        if (is_object($row) && property_exists($row, $key)) {
-                            $condition[$key] = $row->{$key};
-                        }
-                    }
-                    // Skip if condition is empty, which means no valid keys found
-                    if (empty($condition)) continue;
+            if ($model instanceof \App\Models\MStorage) {
+                // For MStorage, we cannot do a simple upsert as we need to aggregate quantities.
+                // This logic is complex and requires careful handling of existing data.
+                // The most robust way is to fetch existing records that match the incoming keys,
+                // aggregate in memory, and then perform a final upsert.
 
-                    $dataToUpdate = collect((array)$row)->only($fillable)->toArray();
-                    $model->updateOrInsert($condition, $dataToUpdate);
+                $keys = $records->map(function ($row) {
+                    return ['m_product_id' => $row->m_product_id, 'm_locator_id' => $row->m_locator_id];
+                })->unique()->all();
+
+                // Fetch all existing storage data for the keys in the current chunk
+                $existingStorage = $model->whereInMultiple(['m_product_id', 'm_locator_id'], $keys)->get()->keyBy(function ($item) {
+                    return $item->m_product_id . '-' . $item->m_locator_id;
+                });
+
+                // Aggregate new data from the source chunk
+                $upsertData = [];
+                foreach ($records as $row) {
+                    $key = $row->m_product_id . '-' . $row->m_locator_id;
+                    $data = collect((array)$row)->only($fillable)->toArray();
+
+                    if (isset($upsertData[$key])) {
+                        // Aggregate within the current chunk
+                        $upsertData[$key]['qtyonhand'] += $data['qtyonhand'];
+                    } else {
+                        // If it's a new entry in the chunk, check against existing DB data
+                        if ($existingStorage->has($key)) {
+                            // It exists in DB, so add source qty to existing qty
+                            $data['qtyonhand'] += $existingStorage->get($key)->qtyonhand;
+                        }
+                        $upsertData[$key] = $data;
+                    }
                 }
-            });
+
+                // Perform a single, powerful upsert operation
+                $model->upsert(
+                    array_values($upsertData),
+                    ['m_product_id', 'm_locator_id'], // Unique by columns
+                    ['qtyonhand'] // Columns to update if record exists
+                );
+            } else {
+                // Default behavior for all other models
+                DB::transaction(function () use ($model, $records, $keyColumns, $fillable) {
+                    foreach ($records as $row) {
+                        $condition = [];
+                        foreach ($keyColumns as $key) {
+                            if (isset($row->{$key})) {
+                                $condition[$key] = $row->{$key};
+                            }
+                        }
+                        if (empty($condition)) continue;
+
+                        $dataToUpdate = collect((array)$row)->only($fillable)->toArray();
+                        $model->updateOrInsert($condition, $dataToUpdate);
+                    }
+                });
+            }
 
             $processedCount += $records->count();
             $this->info("Processed {$processedCount} records...");
             $page++;
-
         } while ($records->count() === $chunkSize);
 
         $this->info("Full sync completed. Total {$processedCount} records processed.");
