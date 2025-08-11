@@ -68,38 +68,44 @@ class SyncAdempiereTableCommand extends Command
 
     private function runFullSync($model, $connectionName)
     {
-        $this->info('Running full sync (merge/upsert mode) using lazy chunking...');
+        $this->info('Running full sync (merge/upsert mode) using manual chunking...');
         $fillable = $model->getFillable();
         $primaryKey = $model->getKeyName();
         $keyColumns = is_array($primaryKey) ? $primaryKey : [$primaryKey];
         $columns = array_unique(array_merge($keyColumns, $fillable));
         $processedCount = 0;
+        $chunkSize = 2000;
+        $page = 1;
 
-        $query = DB::connection($connectionName)->table($model->getTable())->select($columns);
+        do {
+            $query = DB::connection($connectionName)->table($model->getTable())->select($columns);
+            $records = $query->forPage($page, $chunkSize)->get();
 
-        // Use lazy() for memory efficiency, then chunk the result for processing.
-        // This works for all primary key types, including composite keys.
-        foreach ($query->lazy(2000)->chunk(2000) as $records) {
+            if ($records->isEmpty()) {
+                break;
+            }
+
             DB::transaction(function () use ($records, $model, $keyColumns, $fillable) {
                 foreach ($records as $row) {
                     $condition = [];
                     foreach ($keyColumns as $key) {
-                        // Ensure we don't try to access a property on a non-object
                         if (is_object($row) && property_exists($row, $key)) {
                             $condition[$key] = $row->{$key};
-                        } else {
-                            // Handle cases where the key might not exist, though this is unlikely
-                            // with a proper select. You might want to log this.
-                            continue;
                         }
                     }
+                    // Skip if condition is empty, which means no valid keys found
+                    if (empty($condition)) continue;
+
                     $dataToUpdate = collect((array)$row)->only($fillable)->toArray();
                     $model->updateOrInsert($condition, $dataToUpdate);
                 }
             });
+
             $processedCount += $records->count();
             $this->info("Processed {$processedCount} records...");
-        }
+            $page++;
+
+        } while ($records->count() === $chunkSize);
 
         $this->info("Full sync completed. Total {$processedCount} records processed.");
     }
