@@ -18,9 +18,10 @@ return new class extends Migration
             $table->integer('ad_org_id');
             $table->char('isactive', 1)->default('Y');
             $table->decimal('qtyonhand', 16, 4);
-            $table->integer('m_attributesetinstance_id');
+            $table->integer('m_attributesetinstance_id')->nullable();
 
-            $table->primary(['m_product_id', 'm_locator_id', 'm_attributesetinstance_id'], 'm_storage_pkey');
+            // Primary key now only contains essential columns
+            $table->primary(['m_product_id', 'm_locator_id'], 'm_storage_pkey');
 
             // Add individual indexes for performance on lookups
             $table->index('m_product_id');
