@@ -24,8 +24,8 @@ class SyncAllAdempiereDataCommand extends Command
 
         // Tables that require merging from multiple sources without pruning
         $mergeOnlyTables = [
-            ['model' => 'MStorage', 'incremental' => false],
             ['model' => 'MLocator', 'incremental' => false],
+            ['model' => 'MStorage', 'incremental' => false],
         ];
 
         // Transactional tables that require a full 1:1 sync (sync and prune)
