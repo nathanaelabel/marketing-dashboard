@@ -14,12 +14,10 @@ class SyncAllAdempiereDataCommand extends Command
     {
         $this->info('Starting full Adempiere data synchronization process...');
 
-        // Tables to be synced from a single source (pwmsby)
+        // Define tables and their single source connections
         $singleSourceTables = [
-            'AdOrg',
-            'MProductCategory',
-            'MProductsubcat',
-            'MProduct',
+            'pgsql_pwmsby' => ['AdOrg'],
+            'pgsql_bandung' => ['MProductCategory', 'MProductsubcat', 'MProduct'],
         ];
 
         // Tables that require merging from multiple sources without pruning
@@ -38,10 +36,16 @@ class SyncAllAdempiereDataCommand extends Command
             'CAllocationline',
         ];
 
-        // --- Execute Sync for single-source tables from pwmsby ---
-        $this->line('--- Syncing single-source tables from pwmsby ---');
-        foreach ($singleSourceTables as $model) {
-            $this->callSyncCommand($model, 'pgsql_pwmsby', false); // false for full sync (merge mode)
+        // --- Sync single-source tables
+        foreach ($singleSourceTables as $connection => $models) {
+            $this->info("--- Syncing single-source tables from {$connection} ---");
+            foreach ($models as $modelName) {
+                $this->call('app:sync-adempiere-table', [
+                    'model' => $modelName,
+                    '--type' => $this->option('type'),
+                    '--connection' => $connection
+                ]);
+            }
         }
 
         // --- Execute Sync for multi-source merge-only tables ---
