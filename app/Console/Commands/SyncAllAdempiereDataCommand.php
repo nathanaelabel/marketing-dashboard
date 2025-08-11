@@ -17,9 +17,9 @@ class SyncAllAdempiereDataCommand extends Command
         // Tables to be synced from a single source (pwmsby)
         $singleSourceTables = [
             'AdOrg',
-            'MProduct',
             'MProductCategory',
             'MProductsubcat',
+            'MProduct',
         ];
 
         // Tables that require merging from multiple sources without pruning
