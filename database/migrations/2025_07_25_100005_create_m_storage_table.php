@@ -20,7 +20,11 @@ return new class extends Migration
             $table->decimal('qtyonhand', 16, 4);
             $table->integer('m_attributesetinstance_id');
 
-            $table->primary(['m_product_id', 'm_locator_id', 'm_attributesetinstance_id']);
+            $table->primary(['m_product_id', 'm_locator_id', 'm_attributesetinstance_id'], 'm_storage_pkey');
+
+            // Add individual indexes for performance on lookups
+            $table->index('m_product_id');
+            $table->index('m_locator_id');
         });
     }
 
