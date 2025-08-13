@@ -16,8 +16,8 @@ class SyncAllAdempiereDataCommand extends Command
 
         // Define tables and their single source connections
         $singleSourceTables = [
-            'pgsql_pwmsby' => ['AdOrg'],
-            'pgsql_bandung' => ['MProductCategory', 'MProductsubcat', 'MProduct'],
+            'pgsql_lmp' => ['AdOrg'],
+            'pgsql_sby' => ['MProductCategory', 'MProductsubcat', 'MProduct'],
         ];
 
         // Tables that require merging from multiple sources without pruning
@@ -53,7 +53,11 @@ class SyncAllAdempiereDataCommand extends Command
 
         // --- Execute Sync for multi-source merge-only tables ---
         $this->line('--- Syncing multi-source merge-only tables ---');
-        $connections = config('database.sync_connections.adempiere', ['pgsql_surabaya', 'pgsql_bandung', 'pgsql_jakarta']);
+        $connections = config('database.sync_connections.adempiere', []);
+        if (empty($connections)) {
+            $this->error('No sync connections configured in config/database.php for merge-only tables.');
+        }
+
         foreach ($mergeOnlyTables as $tableInfo) {
             foreach ($connections as $connection) {
                 $this->line("--- Processing {$tableInfo['model']} from connection: {$connection} ---");
