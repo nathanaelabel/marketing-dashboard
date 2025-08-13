@@ -26,8 +26,8 @@ class SyncAllAdempiereDataCommand extends Command
             ['model' => 'MStorage', 'incremental' => false],
         ];
 
-        // Transactional tables that require a full 1:1 sync (sync and prune)
-        $syncAndPruneTables = [
+        // Transactional tables for fast, limited sync (temporary solution)
+        $fastSyncTables = [
             'CInvoice',
             'CInvoiceline',
             'COrder',
@@ -36,7 +36,8 @@ class SyncAllAdempiereDataCommand extends Command
             'CAllocationline',
         ];
 
-        // --- Sync single-source tables
+        // --- Sync single-source tables (SKIPPED) ---
+        /*
         foreach ($singleSourceTables as $connection => $models) {
             $this->info("--- Syncing single-source tables from {$connection} ---");
             foreach ($models as $modelName) {
@@ -50,8 +51,10 @@ class SyncAllAdempiereDataCommand extends Command
                 $this->line('');
             }
         }
+        */
 
-        // --- Execute Sync for multi-source merge-only tables ---
+        // --- Execute Sync for multi-source merge-only tables (SKIPPED) ---
+        /*
         $this->line('--- Syncing multi-source merge-only tables ---');
         $connections = config('database.sync_connections.adempiere', []);
         if (empty($connections)) {
@@ -70,43 +73,28 @@ class SyncAllAdempiereDataCommand extends Command
                 $this->line('');
             }
         }
+        */
 
-        // --- Execute Sync for transactional tables (Full Sync & Prune) ---
-        $syncType = $this->option('type');
-
-        if ($syncType === 'full') {
-            $this->line('--- Syncing transactional tables (Full Sync & Prune) ---');
-            foreach ($syncAndPruneTables as $modelName) {
-                $this->call('app:sync-prune-adempiere-table', ['model' => $modelName]);
-            }
-        } elseif ($syncType === 'incremental') {
-            $this->line('--- Syncing transactional tables (Incremental) ---');
-            foreach ($syncAndPruneTables as $modelName) {
-                $this->call('app:sync-incremental-adempiere-table', ['model' => $modelName]);
-            }
+        // --- Execute Fast Sync for large transactional tables ---
+        $this->line('--- Starting fast sync for large transactional tables ---');
+        $allConnections = config('database.sync_connections.adempiere', []);
+        if (empty($allConnections)) {
+            $this->error('No sync connections configured. Aborting fast sync.');
         } else {
-            $this->error('Invalid sync type specified. Use --type=full or --type=incremental.');
-            return Command::FAILURE;
+            foreach ($fastSyncTables as $modelName) {
+                foreach ($allConnections as $connection) {
+                    $this->info("--- Calling fast sync for {$modelName} from {$connection} ---");
+                    $this->call('app:fast-sync-adempiere-table', [
+                        'model' => $modelName,
+                        '--connection' => $connection,
+                    ]);
+                }
+                $this->info("--- Finished all fast syncs for {$modelName} ---");
+                $this->line('');
+            }
         }
 
         $this->info('Adempiere data synchronization process completed.');
         return Command::SUCCESS;
-    }
-
-    private function callSyncCommand(string $model, string $connection, bool $isIncremental)
-    {
-        $this->info("Calling sync for {$model} from {$connection}...");
-        $params = [
-            'model' => $model,
-            'connection' => $connection,
-        ];
-
-        if ($isIncremental) {
-            $params['--incremental'] = true;
-        }
-
-        // Using Artisan::call to run the command internally
-        Artisan::call('app:sync-adempiere-table', $params);
-        $this->comment(Artisan::output());
     }
 }
