@@ -40,11 +40,14 @@ class SyncAllAdempiereDataCommand extends Command
         foreach ($singleSourceTables as $connection => $models) {
             $this->info("--- Syncing single-source tables from {$connection} ---");
             foreach ($models as $modelName) {
+                $this->info("--- Calling sync for {$modelName} from {$connection} ---");
                 $this->call('app:sync-adempiere-table', [
                     'model' => $modelName,
+                    '--connection' => $connection,
                     '--type' => $this->option('type'),
-                    '--connection' => $connection
                 ]);
+                $this->info("--- Finished sync for {$modelName} ---");
+                $this->line('');
             }
         }
 
@@ -54,7 +57,13 @@ class SyncAllAdempiereDataCommand extends Command
         foreach ($mergeOnlyTables as $tableInfo) {
             foreach ($connections as $connection) {
                 $this->line("--- Processing {$tableInfo['model']} from connection: {$connection} ---");
-                $this->callSyncCommand($tableInfo['model'], $connection, $tableInfo['incremental']);
+                $this->call('app:sync-adempiere-table', [
+                    'model' => $tableInfo['model'],
+                    '--connection' => $connection,
+                    '--type' => 'full' // Merge-only tables always run a full sync
+                ]);
+                $this->info("--- Finished sync for {$tableInfo['model']} from {$connection} ---");
+                $this->line('');
             }
         }
 
