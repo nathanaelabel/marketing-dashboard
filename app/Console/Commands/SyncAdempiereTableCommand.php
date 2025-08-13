@@ -20,15 +20,15 @@ use App\Models\CAllocationline;
 
 class SyncAdempiereTableCommand extends Command
 {
-    protected $signature = 'app:sync-adempiere-table {model} {connection} {--incremental}';
+    protected $signature = 'app:sync-adempiere-table {model} {--connection= : The database connection to use} {--type=full : The type of sync to perform (full|incremental)}';
     protected $description = 'Synchronize a single Adempiere table to the local database.';
 
     public function handle()
     {
         ini_set('memory_limit', '-1');
         $modelName = $this->argument('model');
-        $connectionName = $this->argument('connection');
-        $isIncremental = $this->option('incremental');
+        $connectionName = $this->option('connection');
+        $syncType = $this->option('type');
 
         $modelClass = "App\\Models\\{$modelName}";
 
@@ -45,7 +45,7 @@ class SyncAdempiereTableCommand extends Command
         Log::info("SyncAdempiereTableCommand: Starting sync for {$tableName}");
 
         try {
-            if ($isIncremental && $this->isTimestamped($model)) {
+            if ($syncType === 'incremental' && $this->isTimestamped($model)) {
                 $this->runIncrementalSync($model, $connectionName, $timestampFile);
             } else {
                 $this->runFullSync($model, $connectionName);

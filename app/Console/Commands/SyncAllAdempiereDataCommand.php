@@ -14,12 +14,10 @@ class SyncAllAdempiereDataCommand extends Command
     {
         $this->info('Starting full Adempiere data synchronization process...');
 
-        // Tables to be synced from a single source (pwmsby)
+        // Define tables and their single source connections
         $singleSourceTables = [
-            'AdOrg',
-            'MProductCategory',
-            'MProductsubcat',
-            'MProduct',
+            'pgsql_lmp' => ['AdOrg'],
+            'pgsql_sby' => ['MProductCategory', 'MProductsubcat', 'MProduct'],
         ];
 
         // Tables that require merging from multiple sources without pruning
@@ -38,19 +36,38 @@ class SyncAllAdempiereDataCommand extends Command
             'CAllocationline',
         ];
 
-        // --- Execute Sync for single-source tables from pwmsby ---
-        $this->line('--- Syncing single-source tables from pwmsby ---');
-        foreach ($singleSourceTables as $model) {
-            $this->callSyncCommand($model, 'pgsql_pwmsby', false); // false for full sync (merge mode)
+        // --- Sync single-source tables
+        foreach ($singleSourceTables as $connection => $models) {
+            $this->info("--- Syncing single-source tables from {$connection} ---");
+            foreach ($models as $modelName) {
+                $this->info("--- Calling sync for {$modelName} from {$connection} ---");
+                $this->call('app:sync-adempiere-table', [
+                    'model' => $modelName,
+                    '--connection' => $connection,
+                    '--type' => $this->option('type'),
+                ]);
+                $this->info("--- Finished sync for {$modelName} ---");
+                $this->line('');
+            }
         }
 
         // --- Execute Sync for multi-source merge-only tables ---
         $this->line('--- Syncing multi-source merge-only tables ---');
-        $connections = config('database.sync_connections.adempiere', ['pgsql_surabaya', 'pgsql_bandung', 'pgsql_jakarta']);
+        $connections = config('database.sync_connections.adempiere', []);
+        if (empty($connections)) {
+            $this->error('No sync connections configured in config/database.php for merge-only tables.');
+        }
+
         foreach ($mergeOnlyTables as $tableInfo) {
             foreach ($connections as $connection) {
                 $this->line("--- Processing {$tableInfo['model']} from connection: {$connection} ---");
-                $this->callSyncCommand($tableInfo['model'], $connection, $tableInfo['incremental']);
+                $this->call('app:sync-adempiere-table', [
+                    'model' => $tableInfo['model'],
+                    '--connection' => $connection,
+                    '--type' => 'full' // Merge-only tables always run a full sync
+                ]);
+                $this->info("--- Finished sync for {$tableInfo['model']} from {$connection} ---");
+                $this->line('');
             }
         }
 
