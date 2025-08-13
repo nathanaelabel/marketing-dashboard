@@ -36,7 +36,8 @@ class FastSyncAdempiereTableCommand extends Command
         Log::info("FastSync: Starting for {$tableName} from {$connectionName}");
 
         try {
-            $this->runFastSync($model, $connectionName, $tableName);
+            $this->runFastSync($model, $connectionName, $tableName, $modelName);
+
             $this->info("Fast sync for table {$tableName} from {$connectionName} completed successfully.");
             Log::info("FastSync: Completed for {$tableName} from {$connectionName}.");
             return Command::SUCCESS;
@@ -47,7 +48,7 @@ class FastSyncAdempiereTableCommand extends Command
         }
     }
 
-    private function runFastSync(Model $model, string $connectionName, string $tableName)
+    private function runFastSync(Model $model, string $connectionName, string $tableName, string $modelName)
     {
         // Define a map for table-specific ordering columns to get the 'latest' records.
         $orderColumnMap = [
@@ -98,12 +99,22 @@ class FastSyncAdempiereTableCommand extends Command
         $insertColumns = array_unique(array_merge($keyColumns, $fillable, $timestampColumns));
 
         $dataToInsert = $sourceData->map(function ($row) use ($insertColumns) {
-            return collect((array)$row)->only($insertColumns)->all();
-        })->all();
+            // Standardize source keys to lowercase to ensure case-insensitive matching.
+            $lowerCaseRow = collect((array)$row)->mapWithKeys(function ($value, $key) {
+                return [strtolower($key) => $value];
+            });
+            return $lowerCaseRow->only($insertColumns)->all();
+        })->filter()->all(); // Use filter() to remove any empty arrays that might result from the mapping.
 
-        // Use insertOrIgnore to efficiently add new records without failing on duplicates.
-        // This is much faster than checking for existence row-by-row.
-        $model->insertOrIgnore($dataToInsert);
+        // Log the first processed record for debugging purposes.
+        if (!empty($dataToInsert)) {
+            Log::channel('sync')->info('Sample processed data for ' . $modelName . ':', [reset($dataToInsert)]);
+        }
+
+        // Chunk the data to avoid hitting the parameter limit in PostgreSQL.
+        collect($dataToInsert)->chunk(500)->each(function ($chunk) use ($model) {
+            $model->insertOrIgnore($chunk->toArray());
+        });
 
         $this->info("Insertion attempt complete for {$tableName} from {$connectionName}.");
     }
