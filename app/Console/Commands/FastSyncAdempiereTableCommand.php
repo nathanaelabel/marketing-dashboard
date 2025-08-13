@@ -15,6 +15,9 @@ class FastSyncAdempiereTableCommand extends Command
 
     public function handle()
     {
+        // Explicitly disable the query log to prevent messy console output.
+        DB::disableQueryLog();
+
         ini_set('memory_limit', '-1');
         $modelName = $this->argument('model');
         $connectionName = $this->option('connection');
@@ -48,12 +51,12 @@ class FastSyncAdempiereTableCommand extends Command
     {
         // Define a map for table-specific ordering columns to get the 'latest' records.
         $orderColumnMap = [
-            'cinvoice' => 'dateinvoiced',
-            'corder' => 'dateordered',
-            'callocationhdr' => 'datetrx',
-            'cinvoiceline' => 'c_invoiceline_id',
-            'corderline' => 'c_orderline_id',
-            'callocationline' => 'c_allocationline_id',
+            'c_invoice' => 'dateinvoiced',
+            'c_order' => 'dateordered',
+            'c_allocationhdr' => 'datetrx',
+            'c_invoiceline' => 'c_invoiceline_id',
+            'c_orderline' => 'c_orderline_id',
+            'c_allocationline' => 'c_allocationline_id',
         ];
 
         // Get the table name in lowercase, as it's returned by getTable()
