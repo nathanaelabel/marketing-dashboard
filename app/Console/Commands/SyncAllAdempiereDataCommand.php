@@ -21,7 +21,7 @@ class SyncAllAdempiereDataCommand extends Command
 
         $targetConnection = $this->option('connection');
         $skipStep1 = $this->option('skip-step1');
-        $connectionsToProcess = $targetConnection ? [$targetConnection] : config('database.sync_connections.adempiere', []);
+        $connectionsToProcess = $targetConnection ? explode(',', $targetConnection) : config('database.sync_connections.adempiere', []);
 
         if (empty($connectionsToProcess)) {
             $this->warn('No sync connections to process. Please check your configuration or command arguments.');
