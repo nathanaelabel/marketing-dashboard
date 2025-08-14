@@ -18,7 +18,7 @@ return new class extends Migration
             $table->char('isactive', 1)->default('Y');
             $table->timestamp('created')->nullable();
             $table->timestamp('updated')->nullable();
-            $table->integer('c_order_id')->nullable();
+            $table->integer('c_order_id');
             $table->integer('m_product_id');
             $table->decimal('qtyordered', 16, 4);
             $table->decimal('qtydelivered', 16, 4);

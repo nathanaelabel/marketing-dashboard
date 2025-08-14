@@ -19,7 +19,7 @@ return new class extends Migration
             $table->timestamp('created')->nullable();
             $table->timestamp('updated')->nullable();
             $table->integer('c_invoice_id');
-            $table->integer('m_product_id')->nullable();
+            $table->integer('m_product_id');
             $table->decimal('qtyinvoiced', 16, 4);
             $table->decimal('priceactual', 16, 4);
             $table->decimal('linenetamt', 16, 2);
