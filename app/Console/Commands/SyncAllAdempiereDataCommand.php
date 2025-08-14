@@ -36,8 +36,17 @@ class SyncAllAdempiereDataCommand extends Command
             'CAllocationline',
         ];
 
+        /* CATATAN SEMENTARA
+        Yang sudah aman:
+            'CInvoice',
+            'CInvoiceline',
+
+        Yang perlu dijalankan salah satu db saja:
+            'COrder',
+            'CAllocationhdr',
+        */
+
         // --- Sync single-source tables (SKIPPED) ---
-        /*
         foreach ($singleSourceTables as $connection => $models) {
             $this->info("--- Syncing single-source tables from {$connection} ---");
             foreach ($models as $modelName) {
@@ -51,10 +60,8 @@ class SyncAllAdempiereDataCommand extends Command
                 $this->line('');
             }
         }
-        */
 
         // --- Execute Sync for multi-source merge-only tables (SKIPPED) ---
-        /*
         $this->line('--- Syncing multi-source merge-only tables ---');
         $connections = config('database.sync_connections.adempiere', []);
         if (empty($connections)) {
@@ -73,7 +80,6 @@ class SyncAllAdempiereDataCommand extends Command
                 $this->line('');
             }
         }
-        */
 
         // --- Execute Fast Sync for large transactional tables ---
         $this->line('--- Starting fast sync for large transactional tables ---');

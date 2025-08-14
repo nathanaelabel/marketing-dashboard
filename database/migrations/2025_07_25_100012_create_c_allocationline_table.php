@@ -16,7 +16,7 @@ return new class extends Migration
             $table->integer('ad_client_id');
             $table->integer('ad_org_id');
             $table->char('isactive', 1)->default('Y');
-            $table->integer('c_allocationhdr_id');
+            $table->unsignedBigInteger('c_allocationhdr_id')->nullable();
             $table->integer('c_invoice_id')->nullable();
             $table->decimal('amount', 16, 2);
             $table->decimal('discountamt', 16, 2);
