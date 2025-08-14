@@ -98,7 +98,6 @@ class FastSyncAdempiereTableCommand extends Command
         $dependencies = [
             'c_invoice' => [
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
-                ['parent_table' => 'c_bpartner', 'foreign_key' => 'c_bpartner_id'],
                 ['parent_table' => 'c_order', 'foreign_key' => 'c_order_id', 'optional' => true],
             ],
             'c_invoiceline' => [
@@ -107,7 +106,6 @@ class FastSyncAdempiereTableCommand extends Command
             ],
             'c_order' => [
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
-                ['parent_table' => 'c_bpartner', 'foreign_key' => 'c_bpartner_id'],
             ],
             'c_orderline' => [
                 ['parent_table' => 'c_order', 'foreign_key' => 'c_order_id'],

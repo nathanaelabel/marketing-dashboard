@@ -9,7 +9,10 @@ use Illuminate\Support\Facades\Artisan;
 
 class SyncAllAdempiereDataCommand extends Command
 {
-    protected $signature = 'app:sync-all-adempiere-data {--connection=} {--type=full : The type of sync to perform (full|incremental)}';
+    protected $signature = 'app:sync-all-adempiere-data 
+                           {--connection= : The specific connection to process}
+                           {--type=full : The type of sync to perform (full|incremental)}
+                           {--skip-step1 : Skip Step 1 (single-source tables sync)}';
     protected $description = 'Orchestrates the synchronization of all Adempiere tables, optionally for a single connection.';
 
     public function handle()
@@ -17,6 +20,7 @@ class SyncAllAdempiereDataCommand extends Command
         $this->info('Starting Adempiere data synchronization process...');
 
         $targetConnection = $this->option('connection');
+        $skipStep1 = $this->option('skip-step1');
         $connectionsToProcess = $targetConnection ? [$targetConnection] : config('database.sync_connections.adempiere', []);
 
         if (empty($connectionsToProcess)) {
@@ -28,7 +32,7 @@ class SyncAllAdempiereDataCommand extends Command
         $mergeOnlyTables = [['model' => 'MLocator'], ['model' => 'MStorage']];
         $fastSyncTables = ['CInvoice', 'CInvoiceline', 'COrder', 'COrderline', 'CAllocationhdr', 'CAllocationline'];
 
-        if (!$targetConnection) {
+        if (!$targetConnection && !$skipStep1) {
             $this->line("====================================================================");
             $this->info("Step 1: Processing all single-source tables first.");
             $this->line("====================================================================");
