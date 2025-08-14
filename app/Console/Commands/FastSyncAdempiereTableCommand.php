@@ -115,7 +115,7 @@ class FastSyncAdempiereTableCommand extends Command
             ],
             'c_allocationline' => [
                 ['parent_table' => 'c_allocationhdr', 'foreign_key' => 'c_allocationhdr_id'],
-                ['parent_table' => 'c_invoice', 'foreign_key' => 'c_invoice_id', 'optional' => true],
+                ['parent_table' => 'c_invoice', 'foreign_key' => 'c_invoice_id'],
             ],
         ];
 
