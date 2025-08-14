@@ -17,6 +17,8 @@ return new class extends Migration
             $table->integer('ad_org_id');
             $table->char('isactive', 1)->default('Y');
             $table->string('value', 40);
+
+            $table->foreign('ad_org_id')->references('ad_org_id')->on('ad_org');
         });
     }
 

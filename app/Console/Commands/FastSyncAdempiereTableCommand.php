@@ -91,14 +91,13 @@ class FastSyncAdempiereTableCommand extends Command
         }
 
         $this->comment("Found {" . $sourceData->count() . "} records. Preparing for insertion...");
-        $this->line(''); // Add spacing
+        $this->line('');
 
         // Define foreign key dependencies. A table can have multiple dependencies.
         // 'optional' => true means the foreign key can be null and will be ignored if so.
         $dependencies = [
             'c_invoice' => [
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
-                ['parent_table' => 'c_order', 'foreign_key' => 'c_order_id', 'optional' => true],
             ],
             'c_invoiceline' => [
                 ['parent_table' => 'c_invoice', 'foreign_key' => 'c_invoice_id'],

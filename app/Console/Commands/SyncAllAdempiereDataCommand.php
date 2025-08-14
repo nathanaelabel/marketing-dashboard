@@ -112,16 +112,16 @@ class SyncAllAdempiereDataCommand extends Command
                     if ($attempts < $retries) {
                         $this->warn("Connection to [{$connectionName}] failed. Retrying in 5 seconds... ({$attempts}/{$retries})");
                         sleep(5);
-                        continue; // Go to the next attempt in the while loop
+                        continue;
                     }
                     $this->error("Connection to [{$connectionName}] failed after {$retries} attempts. Skipping this connection.");
-                    return false; // All retries failed
+                    return false;
                 } else {
                     $this->error("An unexpected SQL error on [{$connectionName}]: " . $e->getMessage());
-                    return false; // Non-retriable error
+                    return false;
                 }
             }
         }
-        return false; // Fallback in case loop completes unexpectedly
+        return false;
     }
 }

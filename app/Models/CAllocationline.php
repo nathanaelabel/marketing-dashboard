@@ -25,6 +25,7 @@ class CAllocationline extends Model
         'discountamt',
         'writeoffamt',
         'overunderamt',
+        'c_allocationhdr_id',
     ];
 
     public function invoice()

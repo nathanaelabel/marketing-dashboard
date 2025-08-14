@@ -20,6 +20,7 @@ return new class extends Migration
             $table->decimal('qtyonhand', 16, 4);
             $table->integer('m_attributesetinstance_id')->nullable();
 
+            $table->foreign('ad_org_id')->references('ad_org_id')->on('ad_org');
             // Primary key now only contains essential columns
             $table->primary(['m_product_id', 'm_locator_id'], 'm_storage_pkey');
 
