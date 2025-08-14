@@ -3,94 +3,121 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Artisan;
 
 class SyncAllAdempiereDataCommand extends Command
 {
-    protected $signature = 'app:sync-all-adempiere-data {--type=full : The type of sync to perform (full|incremental)}';
-    protected $description = 'Orchestrates the synchronization of all Adempiere tables.';
+    protected $signature = 'app:sync-all-adempiere-data {--connection=} {--type=full : The type of sync to perform (full|incremental)}';
+    protected $description = 'Orchestrates the synchronization of all Adempiere tables, optionally for a single connection.';
 
     public function handle()
     {
-        $this->info('Starting full Adempiere data synchronization process...');
+        $this->info('Starting Adempiere data synchronization process...');
 
-        // Define tables and their single source connections
-        $singleSourceTables = [
-            'pgsql_lmp' => ['AdOrg'],
-            'pgsql_sby' => ['MProductCategory', 'MProductsubcat', 'MProduct'],
-        ];
+        $targetConnection = $this->option('connection');
+        $connectionsToProcess = $targetConnection ? [$targetConnection] : config('database.sync_connections.adempiere', []);
 
-        // Tables that require merging from multiple sources without pruning
-        $mergeOnlyTables = [
-            ['model' => 'MLocator', 'incremental' => false],
-            ['model' => 'MStorage', 'incremental' => false],
-        ];
-
-        // Transactional tables for fast, limited sync (temporary solution)
-        $fastSyncTables = [
-            'CInvoice',
-            'CInvoiceline',
-            'COrder',
-            'COrderline',
-            'CAllocationhdr',
-            'CAllocationline',
-        ];
-
-        // --- Sync single-source tables ---
-        foreach ($singleSourceTables as $connection => $models) {
-            $this->info("--- Syncing single-source tables from {$connection} ---");
-            foreach ($models as $modelName) {
-                $this->info("--- Calling sync for {$modelName} from {$connection} ---");
-                $this->call('app:sync-adempiere-table', [
-                    'model' => $modelName,
-                    '--connection' => $connection,
-                    '--type' => $this->option('type'),
-                ]);
-                $this->info("--- Finished sync for {$modelName} ---");
-                $this->line('');
-            }
+        if (empty($connectionsToProcess)) {
+            $this->warn('No sync connections to process. Please check your configuration or command arguments.');
+            return Command::FAILURE;
         }
 
-        // --- Execute Sync for multi-source merge-only tables ---
-        $this->line('--- Syncing multi-source merge-only tables ---');
-        $connections = config('database.sync_connections.adempiere', []);
-        if (empty($connections)) {
-            $this->error('No sync connections configured in config/database.php for merge-only tables.');
-        }
+        $singleSourceTables = ['pgsql_lmp' => ['AdOrg'], 'pgsql_sby' => ['MProductCategory', 'MProductsubcat', 'MProduct']];
+        $mergeOnlyTables = [['model' => 'MLocator'], ['model' => 'MStorage']];
+        $fastSyncTables = ['CInvoice', 'CInvoiceline', 'COrder', 'COrderline', 'CAllocationhdr', 'CAllocationline'];
 
-        foreach ($mergeOnlyTables as $tableInfo) {
-            foreach ($connections as $connection) {
-                $this->line("--- Processing {$tableInfo['model']} from connection: {$connection} ---");
-                $this->call('app:sync-adempiere-table', [
-                    'model' => $tableInfo['model'],
-                    '--connection' => $connection,
-                    '--type' => 'full' // Merge-only tables always run a full sync
-                ]);
-                $this->info("--- Finished sync for {$tableInfo['model']} from {$connection} ---");
-                $this->line('');
-            }
-        }
-
-        // --- Execute Fast Sync for large transactional tables ---
-        $this->line('--- Starting fast sync for large transactional tables ---');
-        $allConnections = config('database.sync_connections.adempiere', []);
-        if (empty($allConnections)) {
-            $this->error('No sync connections configured. Aborting fast sync.');
-        } else {
-            foreach ($fastSyncTables as $modelName) {
-                foreach ($allConnections as $connection) {
-                    $this->info("--- Calling fast sync for {$modelName} from {$connection} ---");
-                    $this->call('app:fast-sync-adempiere-table', [
-                        'model' => $modelName,
-                        '--connection' => $connection,
-                    ]);
+        if (!$targetConnection) {
+            $this->line("====================================================================");
+            $this->info("Step 1: Processing all single-source tables first.");
+            $this->line("====================================================================");
+            foreach ($singleSourceTables as $connection => $models) {
+                $this->info("--- Syncing from designated source: [{$connection}] ---");
+                foreach ($models as $modelName) {
+                    if (!$this->callWithRetries('app:sync-adempiere-table', ['model' => $modelName, '--connection' => $connection, '--type' => 'full'])) {
+                        $this->error("Critical failure syncing single-source table {$modelName}. Aborting process.");
+                        return Command::FAILURE;
+                    }
                 }
-                $this->info("--- Finished all fast syncs for {$modelName} ---");
-                $this->line('');
+            }
+        }
+
+        $this->line("====================================================================");
+        $this->info("Step 2: Processing remaining tables for each connection.");
+        $this->line("====================================================================");
+
+        foreach ($connectionsToProcess as $connection) {
+            $this->line('');
+            $this->info("Processing connection: [{$connection}]");
+
+            if ($targetConnection && array_key_exists($connection, $singleSourceTables)) {
+                $this->info("--- Syncing single-source tables for {$connection} ---");
+                foreach ($singleSourceTables[$connection] as $modelName) {
+                    if (!$this->callWithRetries('app:sync-adempiere-table', ['model' => $modelName, '--connection' => $connection, '--type' => 'full'])) {
+                        continue 2; // Skip to the next connection in the outer loop
+                    }
+                }
+            }
+
+            $this->info("--- Syncing merge-only tables for {$connection} ---");
+            foreach ($mergeOnlyTables as $tableInfo) {
+                $params = ['model' => $tableInfo['model'], '--connection' => $connection, '--type' => 'full'];
+                if ($tableInfo['model'] === 'MStorage') {
+                    $params['--limit'] = 50000;
+                }
+                if (!$this->callWithRetries('app:sync-adempiere-table', $params)) {
+                    continue 2; // Skip to the next connection in the outer loop
+                }
+            }
+
+            $this->info("--- Syncing fast-sync tables for {$connection} ---");
+            foreach ($fastSyncTables as $modelName) {
+                if (!$this->callWithRetries('app:fast-sync-adempiere-table', ['model' => $modelName, '--connection' => $connection])) {
+                    continue 2; // Skip to the next connection in the outer loop
+                }
+            }
+
+            $this->info("Finished processing for [{$connection}].");
+            $this->line('');
+        }
+
+        if (!$targetConnection) {
+            $this->info('--- Pruning records for merge-only tables after all connections are synced ---');
+            foreach ($mergeOnlyTables as $tableInfo) {
+                $this->call('app:prune-records', ['model' => $tableInfo['model']]);
             }
         }
 
         $this->info('Adempiere data synchronization process completed.');
         return Command::SUCCESS;
+    }
+
+    private function callWithRetries(string $command, array $parameters, int $retries = 3): bool
+    {
+        $attempts = 0;
+        while ($attempts < $retries) {
+            try {
+                $this->call($command, $parameters);
+                return true; // Success
+            } catch (QueryException $e) {
+                $attempts++;
+                $connectionName = $parameters['--connection'] ?? 'N/A';
+
+                if (str_contains($e->getMessage(), 'could not connect to server') || str_contains($e->getMessage(), 'Connection timed out')) {
+                    if ($attempts < $retries) {
+                        $this->warn("Connection to [{$connectionName}] failed. Retrying in 5 seconds... ({$attempts}/{$retries})");
+                        sleep(5);
+                        continue; // Go to the next attempt in the while loop
+                    }
+                    $this->error("Connection to [{$connectionName}] failed after {$retries} attempts. Skipping this connection.");
+                    return false; // All retries failed
+                } else {
+                    $this->error("An unexpected SQL error on [{$connectionName}]: " . $e->getMessage());
+                    return false; // Non-retriable error
+                }
+            }
+        }
+        return false; // Fallback in case loop completes unexpectedly
     }
 }

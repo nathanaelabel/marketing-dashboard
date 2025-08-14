@@ -33,6 +33,7 @@ class FastSyncAdempiereTableCommand extends Command
         $tableName = $model->getTable();
 
         $this->info("Starting fast sync for table: {$tableName} from connection: {$connectionName}");
+        $this->line('');
         Log::info("FastSync: Starting for {$tableName} from {$connectionName}");
 
         try {
@@ -90,13 +91,97 @@ class FastSyncAdempiereTableCommand extends Command
         }
 
         $this->comment("Found {" . $sourceData->count() . "} records. Preparing for insertion...");
+        $this->line(''); // Add spacing
+
+        // Define foreign key dependencies. A table can have multiple dependencies.
+        // 'optional' => true means the foreign key can be null and will be ignored if so.
+        $dependencies = [
+            'c_invoice' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+                ['parent_table' => 'c_bpartner', 'foreign_key' => 'c_bpartner_id'],
+                ['parent_table' => 'c_order', 'foreign_key' => 'c_order_id', 'optional' => true],
+            ],
+            'c_invoiceline' => [
+                ['parent_table' => 'c_invoice', 'foreign_key' => 'c_invoice_id'],
+                ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
+            ],
+            'c_order' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+                ['parent_table' => 'c_bpartner', 'foreign_key' => 'c_bpartner_id'],
+            ],
+            'c_orderline' => [
+                ['parent_table' => 'c_order', 'foreign_key' => 'c_order_id'],
+                ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
+            ],
+            'c_allocationhdr' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+            ],
+            'c_allocationline' => [
+                ['parent_table' => 'c_allocationhdr', 'foreign_key' => 'c_allocationhdr_id'],
+                ['parent_table' => 'c_invoice', 'foreign_key' => 'c_invoice_id', 'optional' => true],
+            ],
+        ];
+
+        // Filter records if dependencies are defined for the current table
+        if (isset($dependencies[$tableName])) {
+            $this->line("Checking foreign key dependencies for {$tableName}...");
+            $originalCount = $sourceData->count();
+
+            // Pre-fetch all required parent IDs to optimize DB queries
+            $existingParentIds = [];
+            foreach ($dependencies[$tableName] as $dep) {
+                $parentTable = $dep['parent_table'];
+                $foreignKey = $dep['foreign_key'];
+                if (!isset($existingParentIds[$parentTable])) {
+                    $this->comment("Fetching parent IDs from {$parentTable}...");
+                    $existingParentIds[$parentTable] = DB::table($parentTable)->pluck($foreignKey)->flip(); // Use flip for O(1) lookups
+                }
+            }
+
+            $sourceData = $sourceData->filter(function ($record) use ($dependencies, $tableName, $existingParentIds) {
+                foreach ($dependencies[$tableName] as $dep) {
+                    $foreignKey = $dep['foreign_key'];
+                    $parentTable = $dep['parent_table'];
+                    $isOptional = $dep['optional'] ?? false;
+                    $fkValue = $record->$foreignKey ?? null;
+
+                    // If the foreign key is null
+                    if ($fkValue === null) {
+                        // If it's optional, we can ignore it and proceed to the next dependency.
+                        if ($isOptional) {
+                            continue;
+                        }
+                        // If it's not optional, the record is invalid.
+                        return false;
+                    }
+
+                    // If the foreign key has a value, it must exist in the parent table.
+                    if (!isset($existingParentIds[$parentTable][$fkValue])) {
+                        return false; // Skip if parent ID doesn't exist
+                    }
+                }
+                return true; // All dependencies are satisfied
+            });
+
+            $filteredCount = $sourceData->count();
+            $skippedCount = $originalCount - $filteredCount;
+            if ($skippedCount > 0) {
+                $this->warn("Skipped {$skippedCount} of {$originalCount} records from {$tableName} due to missing or null foreign keys.");
+            }
+        }
 
         // Get all columns that should be inserted
         $fillable = $model->getFillable();
         $primaryKey = $model->getKeyName();
         $keyColumns = is_array($primaryKey) ? $primaryKey : [$primaryKey];
         $timestampColumns = $this->getTimestampColumns($model);
-        $insertColumns = array_unique(array_merge($keyColumns, $fillable, $timestampColumns));
+        $foreignKeyColumns = [];
+        if (isset($dependencies[$tableName])) {
+            $foreignKeyColumns = array_map(function ($dep) {
+                return $dep['foreign_key'];
+            }, $dependencies[$tableName]);
+        }
+        $insertColumns = array_unique(array_merge($keyColumns, $fillable, $timestampColumns, $foreignKeyColumns));
 
         $dataToInsert = $sourceData->map(function ($row) use ($insertColumns) {
             // Standardize source keys to lowercase to ensure case-insensitive matching.
@@ -116,6 +201,7 @@ class FastSyncAdempiereTableCommand extends Command
             $model->insertOrIgnore($chunk->toArray());
         });
 
+        $this->line(''); // Add spacing
         $this->info("Insertion attempt complete for {$tableName} from {$connectionName}.");
     }
 

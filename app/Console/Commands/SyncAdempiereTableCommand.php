@@ -20,7 +20,7 @@ use App\Models\CAllocationline;
 
 class SyncAdempiereTableCommand extends Command
 {
-    protected $signature = 'app:sync-adempiere-table {model} {--connection= : The database connection to use} {--type=full : The type of sync to perform (full|incremental)}';
+    protected $signature = 'app:sync-adempiere-table {model} {--connection=} {--type=full} {--limit=}';
     protected $description = 'Synchronize a single Adempiere table to the local database.';
 
     public function handle()
@@ -42,6 +42,7 @@ class SyncAdempiereTableCommand extends Command
         $timestampFile = storage_path("app/sync_{$tableName}_timestamp.txt");
 
         $this->info("Starting sync for table: {$tableName} from connection: {$connectionName}");
+        $this->line('');
         Log::info("SyncAdempiereTableCommand: Starting sync for {$tableName}");
 
         try {
@@ -51,13 +52,16 @@ class SyncAdempiereTableCommand extends Command
                 $this->runFullSync($model, $connectionName);
             }
 
+            $this->line('');
             $this->info("Synchronization for table {$tableName} completed successfully.");
             Log::info("SyncAdempiereTableCommand: Sync for {$tableName} completed.");
             return Command::SUCCESS;
         } catch (\Exception $e) {
             Log::error("Error during synchronization for table {$tableName}: " . $e->getMessage(), ['exception' => $e]);
             $this->error('An error occurred: ' . $e->getMessage());
-            return Command::FAILURE;
+
+            // Re-throw the exception so the orchestrator (SyncAllAdempiereDataCommand) can catch it and handle retries.
+            throw $e;
         }
     }
 
@@ -75,10 +79,16 @@ class SyncAdempiereTableCommand extends Command
         $columns = array_unique(array_merge($keyColumns, $fillable));
         $processedCount = 0;
         $chunkSize = 2000;
-        $page = 1;
+        $limit = $this->option('limit');
+        $query = DB::connection($connectionName)->table($model->getTable())->select($columns);
 
+        if ($limit && is_numeric($limit) && $limit > 0) {
+            $this->info("Applying a limit of {$limit} rows to the query.");
+            $query->limit($limit);
+        }
+
+        $page = 1;
         do {
-            $query = DB::connection($connectionName)->table($model->getTable())->select($columns);
             $records = $query->forPage($page, $chunkSize)->get();
 
             if ($records->isEmpty()) {
@@ -146,6 +156,12 @@ class SyncAdempiereTableCommand extends Command
             $processedCount += $records->count();
             $this->info("Processed {$processedCount} records...");
             $page++;
+
+            // Stop processing if the specified limit has been reached or exceeded.
+            if ($limit && is_numeric($limit) && $processedCount >= $limit) {
+                $this->info("Reached the specified limit of {$limit} records. Stopping sync for this table.");
+                break;
+            }
         } while ($records->count() === $chunkSize);
 
         $this->info("Full sync completed. Total {$processedCount} records processed.");
