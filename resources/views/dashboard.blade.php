@@ -11,9 +11,9 @@
                 @include('partials.national-revenue')
             </div>
 
-            <!-- <div class="mt-10 bg-white overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="mt-10 bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 @include('partials.accounts-receivable')
-            </div> -->
+            </div>
 
             @push('scripts')
             <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

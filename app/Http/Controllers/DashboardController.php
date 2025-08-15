@@ -12,6 +12,8 @@ class DashboardController extends Controller
         $endDate = now()->endOfMonth()->toDateString();
 
         // The view will be created in a later step
-        return view('dashboard', compact('startDate', 'endDate'));
+        $currentDateFormatted = now()->format('d F Y');
+
+        return view('dashboard', compact('startDate', 'endDate', 'currentDateFormatted'));
     }
 }
