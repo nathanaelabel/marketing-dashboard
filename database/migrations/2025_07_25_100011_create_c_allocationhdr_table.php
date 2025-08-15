@@ -20,6 +20,8 @@ return new class extends Migration
             $table->timestamp('datetrx')->nullable();
             $table->decimal('approvalamt', 16, 2);
             $table->string('docstatus', 2);
+
+            $table->foreign('ad_org_id')->references('ad_org_id')->on('ad_org');
         });
     }
 

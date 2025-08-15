@@ -16,14 +16,15 @@ return new class extends Migration
             $table->integer('ad_client_id');
             $table->integer('ad_org_id');
             $table->char('isactive', 1)->default('Y');
-            $table->timestamp('created')->nullable();
-            $table->timestamp('updated')->nullable();
             $table->integer('c_invoice_id');
             $table->integer('m_product_id');
             $table->decimal('qtyinvoiced', 16, 4);
             $table->decimal('priceactual', 16, 4);
             $table->decimal('linenetamt', 16, 2);
+            $table->timestamp('created')->nullable();
+            $table->timestamp('updated')->nullable();
 
+            $table->foreign('ad_org_id')->references('ad_org_id')->on('ad_org');
             $table->foreign('c_invoice_id')->references('c_invoice_id')->on('c_invoice');
             $table->foreign('m_product_id')->references('m_product_id')->on('m_product');
         });

@@ -42,9 +42,9 @@ class DiagnoseDbQueryCommand extends Command
 
         try {
             $results = DB::connection($connectionName)->select($query);
-            
+
             $this->info('Query executed successfully. Results:');
-            
+
             // The result of EXPLAIN ANALYZE is an array of objects, each with a 'QUERY PLAN' property.
             foreach ($results as $row) {
                 // Convert row to array to access its properties

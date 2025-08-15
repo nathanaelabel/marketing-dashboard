@@ -118,7 +118,7 @@ class SyncAndPruneAdempiereTableCommand extends Command
 
                         if ($hasNullKey) {
                             $this->warn("Skipping row in {$tableName} from {$connection} due to NULL in a required key column. Data: " . json_encode($row));
-                            continue; // Skip this record
+                            continue;
                         }
 
                         $dataToUpdate = collect((array)$row)->only($fillable)->toArray();
