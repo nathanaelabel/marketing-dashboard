@@ -28,7 +28,7 @@ class AccountsReceivableController extends Controller
             ->select(
                 'inv.ad_org_id',
                 DB::raw("inv.grandtotal - COALESCE(p.paidamt, 0) as open_amount"),
-                DB::raw("DATE_PART('day', '{$currentDate}'::date - inv.dateinvoiced::date) as age")
+                DB::raw("DATE_PART('day', NOW() - inv.dateinvoiced::date) as age")
             )
             ->where('inv.issotrx', 'Y')
             ->where('inv.docstatus', 'CO')

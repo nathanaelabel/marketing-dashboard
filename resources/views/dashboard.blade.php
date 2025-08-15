@@ -16,9 +16,9 @@
             </div>
 
             @push('scripts')
-            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
-            <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+            <script src="https://cdn.jsdelivr.net/npm/chart.js?v=1.1"></script>
+            <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0?v=1.1"></script>
+            <script src="https://cdn.jsdelivr.net/npm/flatpickr?v=1.1"></script>
             <script>
                 const ChartHelper = {
                     calculateYAxisMax(datasets, increment) {

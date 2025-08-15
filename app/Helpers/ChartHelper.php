@@ -146,22 +146,22 @@ class ChartHelper
         $datasets = [
             [
                 'label' => '1 - 30 Days',
-                'data' => $data->pluck('overdue_1_30'),
+                'data' => $data->pluck('overdue_1_30')->all(),
                 'backgroundColor' => 'rgba(22, 220, 160, 0.8)',
             ],
             [
                 'label' => '31 - 60 Days',
-                'data' => $data->pluck('overdue_31_60'),
+                'data' => $data->pluck('overdue_31_60')->all(),
                 'backgroundColor' => 'rgba(139, 92, 246, 0.8)',
             ],
             [
                 'label' => '61 - 90 Days',
-                'data' => $data->pluck('overdue_61_90'),
+                'data' => $data->pluck('overdue_61_90')->all(),
                 'backgroundColor' => 'rgba(251, 146, 60, 0.8)',
             ],
             [
                 'label' => '> 90 Days',
-                'data' => $data->pluck('overdue_90_plus'),
+                'data' => $data->pluck('overdue_90_plus')->all(),
                 'backgroundColor' => 'rgba(244, 63, 94, 0.8)',
             ],
         ];
