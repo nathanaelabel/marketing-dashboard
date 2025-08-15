@@ -135,10 +135,36 @@ class ChartHelper
         return $suggestedMax;
     }
 
+    private static function getBranchAbbreviation(string $branchName): string
+    {
+        $abbreviations = [
+            'PWM Medan' => 'MDN',
+            'PWM Makassar' => 'MKS',
+            'PWM Palembang' => 'PLB',
+            'PWM Denpasar' => 'DPS',
+            'PWM Surabaya' => 'SBY',
+            'PWM Pekanbaru' => 'PKU',
+            'PWM Cirebon' => 'CRB',
+            'MPM Tangerang' => 'TRG',
+            'PWM Bekasi' => 'BKS',
+            'PWM Semarang' => 'SMG',
+            'PWM Banjarmasin' => 'BJM',
+            'PWM Bandung' => 'BDG',
+            'PWM Lampung' => 'LMP',
+            'PWM Jakarta' => 'JKT',
+            'PWM Pontianak' => 'PTK',
+            'PWM Purwokerto' => 'PWT',
+            'PWM Padang' => 'PDG',
+        ];
+
+        // Return the abbreviation if found, otherwise return the original name
+        return $abbreviations[$branchName] ?? $branchName;
+    }
+
     public static function formatNationalRevenueData($queryResult)
     {
         $totalRevenue = $queryResult->sum('total_revenue');
-        $labels = $queryResult->pluck('branch_name');
+        $labels = $queryResult->pluck('branch_name')->map(fn($name) => self::getBranchAbbreviation($name));
         $dataValues = $queryResult->pluck('total_revenue')->all();
 
         $maxRevenue = $queryResult->max('total_revenue') ?? 0;
