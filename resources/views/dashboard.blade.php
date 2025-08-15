@@ -406,7 +406,7 @@
                     // Initialize Flatpickr
                     const startDatePicker = flatpickr(startDateFilter, {
                         dateFormat: "d/m/Y",
-                        defaultDate: new Date().fp_incr(-21), // Default to 21 days ago
+                        defaultDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
                         onChange: function(selectedDates, dateStr, instance) {
                             endDatePicker.set('minDate', selectedDates[0]);
                             fetchSalesMetrics();
@@ -423,17 +423,32 @@
 
                     // Fetch locations
                     function fetchLocations() {
-                        fetch(locationsUrl)
-                            .then(response => response.json())
-                            .then(data => {
-                                data.forEach(location => {
+                        fetch('/locations')
+                            .then(response => {
+                                if (!response.ok) {
+                                    return response.json().then(err => {
+                                        throw err;
+                                    });
+                                }
+                                return response.json();
+                            })
+                            .then(locations => {
+                                if (locations.error) {
+                                    throw locations;
+                                }
+                                locations.forEach(location => {
                                     const option = document.createElement('option');
                                     option.value = location;
                                     option.textContent = location;
                                     locationFilter.appendChild(option);
                                 });
                             })
-                            .catch(error => console.error('Error fetching locations:', error));
+                            .catch(error => {
+                                console.error('Error fetching locations:', error.error || error);
+                                const option = document.createElement('option');
+                                option.textContent = 'Error loading locations';
+                                locationFilter.appendChild(option);
+                            });
                     }
 
                     // Fetch and update sales metrics data
@@ -445,8 +460,6 @@
                         const url = new URL(salesMetricsUrl);
                         url.searchParams.append('location', location);
                         url.searchParams.append('start_date', startDate);
-                        url.searchParams.append('end_date', endDate);
-
                         // Show loading state
                         totalSoValue.textContent = 'Loading...';
                         pendingSoValue.textContent = 'Loading...';
@@ -454,13 +467,23 @@
                         storeReturnsValue.textContent = 'Loading...';
                         arPieTotal.textContent = 'Loading...';
 
-                        fetch(url)
-                            .then(response => response.json())
+                        fetch(`/sales-metrics?location=${location}&start_date=${startDate}&end_date=${endDate}`)
+                            .then(response => {
+                                if (!response.ok) {
+                                    return response.json().then(err => {
+                                        throw err;
+                                    });
+                                }
+                                return response.json();
+                            })
                             .then(data => {
+                                if (data.error) {
+                                    throw data;
+                                }
                                 updateUI(data);
                             })
                             .catch(error => {
-                                console.error('Error fetching sales metrics:', error)
+                                console.error('Error fetching sales metrics:', error.error || error);
                                 totalSoValue.textContent = 'Error';
                                 pendingSoValue.textContent = 'Error';
                                 stockValueValue.textContent = 'Error';
