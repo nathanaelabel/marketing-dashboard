@@ -20,6 +20,7 @@
             <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0?v=1.1"></script>
             <script src="https://cdn.jsdelivr.net/npm/flatpickr?v=1.1"></script>
             <script>
+                console.log('Script version 2.0 loaded');
                 const ChartHelper = {
                     calculateYAxisMax(datasets, increment) {
                         let maxTotal = 0;
@@ -323,7 +324,22 @@
                                                 }
                                             },
                                             datalabels: {
-                                                display: false
+                                                display: true,
+                                                color: '#333',
+                                                font: {
+                                                    weight: 'bold'
+                                                },
+                                                formatter: function(value, context) {
+                                                    if (value < 1500000000) { // Hide labels for values less than 1.5B
+                                                        return null;
+                                                    }
+                                                    const billions = value / 1000000000;
+                                                    const display = Math.round(billions * 10) / 10;
+                                                    if (display % 1 === 0) {
+                                                        return display.toFixed(0) + 'B';
+                                                    }
+                                                    return display.toFixed(1) + 'B';
+                                                }
                                             }
                                         },
                                         scales: {

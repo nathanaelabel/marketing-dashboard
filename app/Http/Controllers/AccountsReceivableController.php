@@ -50,7 +50,14 @@ class AccountsReceivableController extends Controller
             ->where('overdue.age', '>', 0)
             ->groupBy('org.name')
             ->orderBy('total_overdue', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($item) {
+                $item->overdue_1_30 = (float) $item->overdue_1_30;
+                $item->overdue_31_60 = (float) $item->overdue_31_60;
+                $item->overdue_61_90 = (float) $item->overdue_61_90;
+                $item->overdue_90_plus = (float) $item->overdue_90_plus;
+                return $item;
+            });
 
         // The formatting method will be created in the next step
         $formattedData = ChartHelper::formatAccountsReceivableData($queryResult, $currentDate);
