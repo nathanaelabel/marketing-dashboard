@@ -15,6 +15,12 @@
                 @include('partials.accounts-receivable')
             </div>
 
+            @include('partials.sales-metrics')
+
+            <div id="js-data"
+                data-locations-url="{{ route('locations') }}"
+                data-sales-metrics-url="{{ route('sales.metrics.data') }}"></div>
+
             @push('scripts')
             <script src="https://cdn.jsdelivr.net/npm/chart.js?v=1.1"></script>
             <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0?v=1.1"></script>
@@ -371,6 +377,182 @@
                     }
 
                     fetchAndUpdateAccountsReceivableChart();
+                });
+            </script>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const jsData = document.getElementById('js-data');
+                    const locationsUrl = jsData.dataset.locationsUrl;
+                    const salesMetricsUrl = jsData.dataset.salesMetricsUrl;
+
+                    // Selectors for the new elements
+                    const locationFilter = document.getElementById('location-filter');
+                    const startDateFilter = document.getElementById('start-date-filter');
+                    const endDateFilter = document.getElementById('end-date-filter');
+
+                    const totalSoLabel = document.getElementById('total-so-label');
+                    const totalSoValue = document.getElementById('total-so-value');
+                    const pendingSoLabel = document.getElementById('pending-so-label');
+                    const pendingSoValue = document.getElementById('pending-so-value');
+                    const stockValueLabel = document.getElementById('stock-value-label');
+                    const stockValueValue = document.getElementById('stock-value-value');
+                    const storeReturnsLabel = document.getElementById('store-returns-label');
+                    const storeReturnsValue = document.getElementById('store-returns-value');
+
+                    const arPieTotal = document.getElementById('ar-pie-total');
+                    const arPieChartCanvas = document.getElementById('ar-pie-chart');
+                    let arPieChart;
+
+                    // Initialize Flatpickr
+                    const startDatePicker = flatpickr(startDateFilter, {
+                        dateFormat: "d/m/Y",
+                        defaultDate: new Date().fp_incr(-21), // Default to 21 days ago
+                        onChange: function(selectedDates, dateStr, instance) {
+                            endDatePicker.set('minDate', selectedDates[0]);
+                            fetchSalesMetrics();
+                        }
+                    });
+
+                    const endDatePicker = flatpickr(endDateFilter, {
+                        dateFormat: "d/m/Y",
+                        defaultDate: new Date(),
+                        onChange: function(selectedDates, dateStr, instance) {
+                            fetchSalesMetrics();
+                        }
+                    });
+
+                    // Fetch locations
+                    function fetchLocations() {
+                        fetch(locationsUrl)
+                            .then(response => response.json())
+                            .then(data => {
+                                data.forEach(location => {
+                                    const option = document.createElement('option');
+                                    option.value = location;
+                                    option.textContent = location;
+                                    locationFilter.appendChild(option);
+                                });
+                            })
+                            .catch(error => console.error('Error fetching locations:', error));
+                    }
+
+                    // Fetch and update sales metrics data
+                    function fetchSalesMetrics() {
+                        const location = locationFilter.value;
+                        const startDate = startDatePicker.selectedDates[0] ? startDatePicker.selectedDates[0].toISOString().split('T')[0] : '';
+                        const endDate = endDatePicker.selectedDates[0] ? endDatePicker.selectedDates[0].toISOString().split('T')[0] : '';
+
+                        const url = new URL(salesMetricsUrl);
+                        url.searchParams.append('location', location);
+                        url.searchParams.append('start_date', startDate);
+                        url.searchParams.append('end_date', endDate);
+
+                        // Show loading state
+                        totalSoValue.textContent = 'Loading...';
+                        pendingSoValue.textContent = 'Loading...';
+                        stockValueValue.textContent = 'Loading...';
+                        storeReturnsValue.textContent = 'Loading...';
+                        arPieTotal.textContent = 'Loading...';
+
+                        fetch(url)
+                            .then(response => response.json())
+                            .then(data => {
+                                updateUI(data);
+                            })
+                            .catch(error => {
+                                console.error('Error fetching sales metrics:', error)
+                                totalSoValue.textContent = 'Error';
+                                pendingSoValue.textContent = 'Error';
+                                stockValueValue.textContent = 'Error';
+                                storeReturnsValue.textContent = 'Error';
+                                arPieTotal.textContent = 'Error';
+                            });
+                    }
+
+                    function formatCurrency(value, precision = 2) {
+                        if (value >= 1e9) {
+                            return `Rp ${(value / 1e9).toFixed(precision)}B`;
+                        } else if (value >= 1e6) {
+                            return `Rp ${(value / 1e6).toFixed(precision)}M`;
+                        } else if (value >= 1e3) {
+                            return `Rp ${(value / 1e3).toFixed(2)}K`;
+                        }
+                        return `Rp ${value}`;
+                    }
+
+                    // Update UI with fetched data
+                    function updateUI(data) {
+                        // Update labels
+                        totalSoLabel.textContent = `Total Sales Order ${data.date_range}`;
+                        pendingSoLabel.textContent = `Pending Sales Order ${data.date_range}`;
+                        stockValueLabel.textContent = `Stock Value ${data.date_range}`;
+                        storeReturnsLabel.textContent = `Store Returns ${data.date_range}`;
+
+                        // Update values
+                        totalSoValue.textContent = formatCurrency(data.total_so, 2);
+                        pendingSoValue.textContent = formatCurrency(data.pending_so, 2);
+                        stockValueValue.textContent = formatCurrency(data.stock_value, 2);
+                        storeReturnsValue.textContent = formatCurrency(data.store_returns, 2);
+
+                        arPieTotal.textContent = formatCurrency(data.ar_pie_chart.total, 2);
+
+                        // Update Pie Chart
+                        if (arPieChart) {
+                            arPieChart.destroy();
+                        }
+                        arPieChart = new Chart(arPieChartCanvas, {
+                            type: 'pie',
+                            data: {
+                                labels: data.ar_pie_chart.labels,
+                                datasets: [{
+                                    data: data.ar_pie_chart.data,
+                                    backgroundColor: [
+                                        'rgba(22, 220, 160, 0.8)', // 1 - 30 Days
+                                        'rgba(139, 92, 246, 0.8)', // 31 - 60 Days
+                                        'rgba(251, 146, 60, 0.8)', // 61 - 90 Days
+                                        'rgba(244, 63, 94, 0.8)' // > 90 Days
+                                    ],
+                                    borderColor: '#fff',
+                                    borderWidth: 2
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                    },
+                                    datalabels: {
+                                        formatter: (value, ctx) => {
+                                            let sum = 0;
+                                            let dataArr = ctx.chart.data.datasets[0].data;
+                                            dataArr.map(data => {
+                                                sum += data;
+                                            });
+                                            if (sum === 0) return '0.00%';
+                                            let percentage = (value * 100 / sum).toFixed(2) + "%";
+                                            return percentage;
+                                        },
+                                        color: '#fff',
+                                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                                        borderRadius: 4,
+                                        font: {
+                                            weight: 'bold'
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    // Add event listeners
+                    locationFilter.addEventListener('change', fetchSalesMetrics);
+
+                    // Initial load
+                    fetchLocations();
+                    fetchSalesMetrics();
                 });
             </script>
             @endpush
