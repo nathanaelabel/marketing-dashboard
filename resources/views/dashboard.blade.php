@@ -288,7 +288,7 @@
                                 arTotalEl.textContent = data.total;
                                 arDateEl.textContent = data.date;
 
-                                const yMax = ChartHelper.calculateYAxisMax(data.datasets, 1000000000);
+                                const yMax = ChartHelper.calculateYAxisMax(data.datasets, 5000000000);
 
                                 arChart = new Chart(arChartCanvas, {
                                     type: 'bar',
