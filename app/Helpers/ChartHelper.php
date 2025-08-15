@@ -134,4 +134,32 @@ class ChartHelper
 
         return $suggestedMax;
     }
+
+    public static function formatNationalRevenueData($queryResult)
+    {
+        $totalRevenue = $queryResult->sum('total_revenue');
+        $labels = $queryResult->pluck('branch_name');
+        $dataValues = $queryResult->pluck('total_revenue')->all();
+
+        $maxRevenue = $queryResult->max('total_revenue') ?? 0;
+
+        $yAxisConfig = self::getYAxisConfig($maxRevenue, null, $dataValues);
+
+        $suggestedMax = self::calculateSuggestedMax($maxRevenue, $yAxisConfig['divisor']);
+
+        return [
+            'totalRevenue' => $totalRevenue,
+            'labels' => $labels,
+            'datasets' => [
+                [
+                    'label' => 'Revenue',
+                    'data' => $dataValues,
+                ],
+            ],
+            'yAxisLabel' => $yAxisConfig['label'],
+            'yAxisDivisor' => $yAxisConfig['divisor'],
+            'yAxisUnit' => $yAxisConfig['unit'],
+            'suggestedMax' => $suggestedMax,
+        ];
+    }
 }

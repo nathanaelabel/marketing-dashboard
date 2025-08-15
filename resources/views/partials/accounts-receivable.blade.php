@@ -4,9 +4,9 @@
             <h3 class="text-2xl font-bold text-gray-900">Accounts Receivable</h3>
             <p id="arTotalOverdueDisplay" class="mt-2 mb-2 text-1xl font-medium text-gray-700">Rp 0</p>
         </div>
-        <div class="text-right">
+        <!-- <div class="text-right">
             <p class="text-sm text-gray-500">{{ $currentDateFormatted }}</p>
-        </div>
+        </div> -->
     </div>
 
     <canvas id="accountsReceivableChart" style="max-height: 500px; width: 100%;"></canvas>
