@@ -1,33 +1,35 @@
-<div class="p-6 bg-white border-b border-gray-200">
+<div class="p-6 bg-white rounded-lg shadow-md">
     <div class="flex justify-between items-start mb-4">
         <div>
             <h3 class="text-2xl font-bold text-gray-900">Accounts Receivable</h3>
-            <p id="arTotalOverdueDisplay" class="mt-2 mb-2 text-1xl font-medium text-gray-700">Rp 0</p>
+            <p id="arTotal" class="mt-2 mb-2 text-1xl font-medium text-gray-700">Loading...</p>
         </div>
         <div class="text-right">
-            <p class="text-sm text-gray-500">{{ $currentDateFormatted }}</p>
+            <p id="arDate" class="text-sm text-gray-500"></p>
         </div>
     </div>
-
-    <canvas id="accountsReceivableChart" style="max-height: 500px; width: 100%;"></canvas>
+    <div style="height: 400px;">
+        <canvas id="accountsReceivableChart" data-url="{{ route('accounts-receivable.data') }}"></canvas>
+    </div>
 </div>
 
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         let arChartInstance;
-        const arTotalOverdueDisplay = document.getElementById('arTotalOverdueDisplay');
-        const arLastUpdateDisplay = document.getElementById('arLastUpdateDisplay');
+        const arTotalDisplay = document.getElementById('arTotal');
+        const arDateDisplay = document.getElementById('arDate');
         const arChartCanvas = document.getElementById('accountsReceivableChart');
 
         function updateARDisplayAndChart(dataFromServer) {
             if (!dataFromServer) {
-                arTotalOverdueDisplay.textContent = 'Error loading data';
+                arTotalDisplay.textContent = 'Error loading data';
                 console.log('AR Data as of: Error');
                 return;
             }
 
-            arTotalOverdueDisplay.textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(dataFromServer.totalOverdue);
+            arTotalDisplay.textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(dataFromServer.totalOverdue);
+            arDateDisplay.textContent = dataFromServer.lastUpdate ? 'As of ' + dataFromServer.lastUpdate : 'Not available';
             console.log(dataFromServer.lastUpdate ? 'AR Data as of: ' + dataFromServer.lastUpdate : 'AR Data as of: Not available');
 
             // Y-axis scaling parameters are now provided by the server

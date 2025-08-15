@@ -20,7 +20,38 @@
             <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
             <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
             <script>
+                const ChartHelper = {
+                    calculateYAxisMax(datasets, increment) {
+                        let maxTotal = 0;
+                        if (datasets.length > 0) {
+                            const dataLength = datasets[0].data.length;
+                            for (let i = 0; i < dataLength; i++) {
+                                let total = 0;
+                                for (const dataset of datasets) {
+                                    total += dataset.data[i] || 0;
+                                }
+                                if (total > maxTotal) {
+                                    maxTotal = total;
+                                }
+                            }
+                        }
+                        return Math.ceil(maxTotal / increment) * increment;
+                    },
+
+                    formatCurrency(value, divisor) {
+                        const scaledValue = value / divisor;
+                        if (scaledValue >= 1) {
+                            return scaledValue.toFixed(0);
+                        } else if (scaledValue > 0) {
+                            return scaledValue.toFixed(1);
+                        } else {
+                            return '0';
+                        }
+                    }
+                };
+
                 document.addEventListener('DOMContentLoaded', function() {
+                    // --- National Revenue Chart --- //
                     let nationalRevenueChartInstance;
                     const nationalTotalRevenueDisplay = document.getElementById('nationalTotalRevenueDisplay');
                     const startDateInput = document.getElementById('start_date');
@@ -160,6 +191,7 @@
                     }
 
                     function fetchAndUpdateNationalRevenueChart(startDate, endDate) {
+                        if (!nationalTotalRevenueDisplay) return;
                         nationalTotalRevenueDisplay.textContent = 'Loading...';
                         const url = `{{ route('national-revenue.data') }}?start_date=${startDate}&end_date=${endDate}`;
 
@@ -184,24 +216,145 @@
                             });
                     }
 
-                    flatpickr('.flatpickr-input', {
-                        altInput: true,
-                        altFormat: "d-m-Y",
-                        dateFormat: "Y-m-d",
-                        onChange: function(selectedDates, dateStr, instance) {
+                    if (revenueChartCanvas) {
+                        let startDatePicker, endDatePicker;
+
+                        const triggerUpdate = () => {
                             const currentStartDate = startDateInput.value;
                             const currentEndDate = endDateInput.value;
                             if (currentStartDate && currentEndDate) {
                                 fetchAndUpdateNationalRevenueChart(currentStartDate, currentEndDate);
                             }
-                        }
-                    });
+                        };
 
-                    const initialStartDate = startDateInput.value;
-                    const initialEndDate = endDateInput.value;
-                    if (initialStartDate && initialEndDate) {
-                        fetchAndUpdateNationalRevenueChart(initialStartDate, initialEndDate);
+                        startDatePicker = flatpickr(startDateInput, {
+                            altInput: true,
+                            altFormat: "d-m-Y",
+                            dateFormat: "Y-m-d",
+                            maxDate: endDateInput.value,
+                            onChange: function(selectedDates, dateStr, instance) {
+                                if (endDatePicker) {
+                                    endDatePicker.set('minDate', selectedDates[0]);
+                                }
+                                triggerUpdate();
+                            }
+                        });
+
+                        endDatePicker = flatpickr(endDateInput, {
+                            altInput: true,
+                            altFormat: "d-m-Y",
+                            dateFormat: "Y-m-d",
+                            maxDate: "today",
+                            onChange: function(selectedDates, dateStr, instance) {
+                                if (startDatePicker) {
+                                    startDatePicker.set('maxDate', selectedDates[0]);
+                                }
+                                triggerUpdate();
+                            }
+                        });
+
+                        const initialStartDate = startDateInput.value;
+                        const initialEndDate = endDateInput.value;
+                        if (initialStartDate && initialEndDate) {
+                            fetchAndUpdateNationalRevenueChart(initialStartDate, initialEndDate);
+                        }
                     }
+
+                    // --- Accounts Receivable Chart --- //
+                    const arChartCanvas = document.getElementById('accountsReceivableChart');
+                    let arChart;
+
+                    function fetchAndUpdateAccountsReceivableChart() {
+                        if (!arChartCanvas) return;
+
+                        const arTotalEl = document.getElementById('arTotal');
+                        const arDateEl = document.getElementById('arDate');
+                        arTotalEl.textContent = 'Loading...';
+
+                        const url = arChartCanvas.dataset.url;
+                        fetch(url)
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error(`HTTP error! status: ${response.status}`);
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                if (arChart) {
+                                    arChart.destroy();
+                                }
+
+                                arTotalEl.textContent = data.total;
+                                arDateEl.textContent = data.date;
+
+                                const yMax = ChartHelper.calculateYAxisMax(data.datasets, 1000000000);
+
+                                arChart = new Chart(arChartCanvas, {
+                                    type: 'bar',
+                                    data: {
+                                        labels: data.labels,
+                                        datasets: data.datasets
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        plugins: {
+                                            legend: {
+                                                position: 'top',
+                                            },
+                                            tooltip: {
+                                                mode: 'index',
+                                                intersect: false,
+                                                callbacks: {
+                                                    label: function(context) {
+                                                        let label = context.dataset.label || '';
+                                                        if (label) {
+                                                            label += ': ';
+                                                        }
+                                                        if (context.parsed.y !== null) {
+                                                            label += new Intl.NumberFormat('id-ID', {
+                                                                style: 'currency',
+                                                                currency: 'IDR',
+                                                                minimumFractionDigits: 0
+                                                            }).format(context.parsed.y);
+                                                        }
+                                                        return label;
+                                                    }
+                                                }
+                                            },
+                                            datalabels: {
+                                                display: false
+                                            }
+                                        },
+                                        scales: {
+                                            x: {
+                                                stacked: true,
+                                            },
+                                            y: {
+                                                stacked: true,
+                                                beginAtZero: true,
+                                                max: yMax,
+                                                ticks: {
+                                                    callback: function(value) {
+                                                        return ChartHelper.formatCurrency(value, 1000000000);
+                                                    }
+                                                },
+                                                title: {
+                                                    display: true,
+                                                    text: 'Billion Rupiah (Rp)'
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                            })
+                            .catch(error => {
+                                console.error('Error fetching Accounts Receivable data:', error);
+                                if (arTotalEl) arTotalEl.textContent = 'Error loading data.';
+                            });
+                    }
+
+                    fetchAndUpdateAccountsReceivableChart();
                 });
             </script>
             @endpush

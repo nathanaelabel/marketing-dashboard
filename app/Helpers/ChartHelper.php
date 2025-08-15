@@ -135,6 +135,45 @@ class ChartHelper
         return $suggestedMax;
     }
 
+    public static function formatAccountsReceivableData($data, $currentDate)
+    {
+        $labels = $data->pluck('branch_name')->map(function ($name) {
+            return self::getBranchAbbreviation($name);
+        });
+
+        $totalOverdue = $data->sum('total_overdue');
+
+        $datasets = [
+            [
+                'label' => '1 - 30 Days',
+                'data' => $data->pluck('overdue_1_30'),
+                'backgroundColor' => 'rgba(22, 220, 160, 0.8)',
+            ],
+            [
+                'label' => '31 - 60 Days',
+                'data' => $data->pluck('overdue_31_60'),
+                'backgroundColor' => 'rgba(139, 92, 246, 0.8)',
+            ],
+            [
+                'label' => '61 - 90 Days',
+                'data' => $data->pluck('overdue_61_90'),
+                'backgroundColor' => 'rgba(251, 146, 60, 0.8)',
+            ],
+            [
+                'label' => '> 90 Days',
+                'data' => $data->pluck('overdue_90_plus'),
+                'backgroundColor' => 'rgba(244, 63, 94, 0.8)',
+            ],
+        ];
+
+        return [
+            'labels' => $labels,
+            'datasets' => $datasets,
+            'total' => 'Rp ' . number_format($totalOverdue, 0, ',', '.'),
+            'date' => \Carbon\Carbon::parse($currentDate)->format('l, d F Y'),
+        ];
+    }
+
     private static function getBranchAbbreviation(string $branchName): string
     {
         $abbreviations = [

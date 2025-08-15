@@ -1,9 +1,9 @@
 <?php
 
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\NationalRevenueController;
 use App\Http\Controllers\AccountsReceivableController;
-use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 
 
