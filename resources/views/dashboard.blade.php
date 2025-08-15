@@ -26,7 +26,6 @@
             <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0?v=1.1"></script>
             <script src="https://cdn.jsdelivr.net/npm/flatpickr?v=1.1"></script>
             <script>
-                console.log('Script version 2.0 loaded');
                 const ChartHelper = {
                     calculateYAxisMax(datasets, increment) {
                         let maxTotal = 0;
