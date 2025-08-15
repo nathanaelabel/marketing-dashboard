@@ -12,8 +12,19 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->command('app:sync-national-revenue')->everyThirtyMinutes();
-        $schedule->command('app:sync-overdue-ar')->everyThirtyMinutes();
+        // Adempiere Data Sync Scheduler
+        // --------------------------------------------------------------------
+        // Runs the fast, incremental sync every 30 minutes to catch recent changes.
+        $schedule->command('app:sync-all-adempiere-data --type=incremental')
+            ->everyThirtyMinutes()
+            ->withoutOverlapping()
+            ->sendOutputTo(storage_path('logs/sync-incremental.log'));
+
+        // Runs the full, robust sync and prune once daily to ensure 1:1 data parity.
+        $schedule->command('app:sync-all-adempiere-data --type=full')
+            ->dailyAt('01:00')
+            ->withoutOverlapping()
+            ->sendOutputTo(storage_path('logs/sync-full.log'));
     }
 
     /**
