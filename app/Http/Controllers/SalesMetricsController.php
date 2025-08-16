@@ -21,7 +21,7 @@ class SalesMetricsController extends Controller
             $salesOrderQuery = "
             SELECT
               SUM(d.linenetamt) AS total_so,
-              SUM(d.qtydelivered * d.priceactual) as total_completed_so,
+              SUM(d.qtydelivered * d.priceactual) AS total_completed_so,
               SUM((d.qtyordered - d.qtydelivered) * d.priceactual) AS total_pending_so
             FROM
               c_orderline d
@@ -35,27 +35,30 @@ class SalesMetricsController extends Controller
               AND h.isactive = 'Y'
               AND org.name like ?
               AND DATE(h.dateordered) BETWEEN ? AND ?
-        ";
+            ";
             $salesOrderData = DB::selectOne($salesOrderQuery, [$locationFilter, $startDate, $endDate]);
 
             // 2. Stock Value Query
             $stockValueQuery = "
-            SELECT 
-                SUM(s.qtyonhand * pp.pricestd) AS stock_value
-            FROM 
-                m_storage s
-            JOIN m_product p ON s.m_product_id = p.m_product_id
-            JOIN m_productprice pp ON p.m_product_id = pp.m_product_id
-            JOIN m_pricelist_version plv ON pp.m_pricelist_version_id = plv.m_pricelist_version_id
-            JOIN m_locator loc ON s.m_locator_id = loc.m_locator_id
-            JOIN ad_org org ON s.ad_org_id = org.ad_org_id
-            WHERE 
-                loc.value = 'Main'
-            AND org.name LIKE ?
-        ";
+            SELECT
+              SUM(s.qtyonhand * prc.pricelist * 0.615) as stock_value
+            FROM
+              m_storage s
+              INNER JOIN m_product prd on s.m_product_id = prd.m_product_id
+              INNER JOIN m_productprice prc on prd.m_product_id = prc.m_product_id
+              INNER JOIN m_pricelist_version plv ON prc.m_pricelist_version_id = plv.m_pricelist_version_id
+              INNER JOIN m_locator loc ON s.m_locator_id = loc.m_locator_id
+              INNER JOIN ad_org org ON s.ad_org_id = org.ad_org_id
+            WHERE
+              UPPER(plv.name) LIKE '%PURCHASE%'
+              AND plv.isactive = 'Y'
+              AND loc.value = 'Main'
+              AND org.name like ?
+            ";
             $stockValueData = DB::selectOne($stockValueQuery, [$locationFilter]);
 
             // 3. Store Returns Query
+            // AND DATE(h.dateordered) sementara diganti dateinvoiced karena belum ada dateordered di table c_invoice
             $storeReturnsQuery = "
             SELECT
               SUM(d.linenetamt) AS store_returns
@@ -70,25 +73,43 @@ class SalesMetricsController extends Controller
               AND d.linenetamt > 0
               AND h.docstatus in ('CO', 'CL')
               AND h.documentno LIKE 'CNC%'
-              AND DATE(h.dateordered) BETWEEN ? AND ?
+              AND DATE(h.dateinvoiced) BETWEEN ? AND ?
         ";
             $storeReturnsData = DB::selectOne($storeReturnsQuery, [$locationFilter, $startDate, $endDate]);
 
             // 4. Accounts Receivable Pie Chart Query
+            $paymentsSubquery = "
+                SELECT
+                    c_invoice_id,
+                    SUM(amount + discountamt + writeoffamt) as paidamt
+                FROM c_allocationline
+                GROUP BY c_invoice_id
+            ";
+
+            $overdueQuery = "
+                SELECT
+                    inv.ad_org_id,
+                    inv.grandtotal - COALESCE(p.paidamt, 0) as open_amount,
+                    DATE_PART('day', NOW() - inv.dateinvoiced::date) as age
+                FROM c_invoice as inv
+                LEFT JOIN ({$paymentsSubquery}) as p ON inv.c_invoice_id = p.c_invoice_id
+                WHERE inv.issotrx = 'Y'
+                AND inv.docstatus = 'CO'
+                AND (inv.grandtotal - COALESCE(p.paidamt, 0)) > 0.01
+            ";
+
             $arPieQuery = "
-            SELECT 
-                SUM(CASE WHEN h.duedate >= CURRENT_DATE - INTERVAL '30 days' THEN h.grandtotal ELSE 0 END) as days_1_30,
-                SUM(CASE WHEN h.duedate BETWEEN CURRENT_DATE - INTERVAL '60 days' AND CURRENT_DATE - INTERVAL '31 days' THEN h.grandtotal ELSE 0 END) as days_31_60,
-                SUM(CASE WHEN h.duedate BETWEEN CURRENT_DATE - INTERVAL '90 days' AND CURRENT_DATE - INTERVAL '61 days' THEN h.grandtotal ELSE 0 END) as days_61_90,
-                SUM(CASE WHEN h.duedate < CURRENT_DATE - INTERVAL '90 days' THEN h.grandtotal ELSE 0 END) as days_90_plus
-            FROM c_invoice_v h
-            INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
-            WHERE h.ad_client_id = 1000001 
-            AND h.issotrx = 'Y' 
-            AND h.docstatus IN ('CO', 'CL') 
-            AND h.ispaid = 'N'
-            AND org.name LIKE ?
-        ";
+                SELECT
+                    SUM(CASE WHEN overdue.age BETWEEN 1 AND 30 THEN overdue.open_amount ELSE 0 END) as days_1_30,
+                    SUM(CASE WHEN overdue.age BETWEEN 31 AND 60 THEN overdue.open_amount ELSE 0 END) as days_31_60,
+                    SUM(CASE WHEN overdue.age BETWEEN 61 AND 90 THEN overdue.open_amount ELSE 0 END) as days_61_90,
+                    SUM(CASE WHEN overdue.age > 90 THEN overdue.open_amount ELSE 0 END) as days_90_plus
+                FROM ad_org as org
+                JOIN ({$overdueQuery}) as overdue ON org.ad_org_id = overdue.ad_org_id
+                WHERE overdue.age > 0
+                AND org.name LIKE ?
+            ";
+
             $arPieData = DB::selectOne($arPieQuery, [$locationFilter]);
 
             $formattedStartDate = Carbon::parse($startDate)->format('j M Y');
