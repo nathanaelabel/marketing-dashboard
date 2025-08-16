@@ -39,6 +39,7 @@ class SalesMetricsController extends Controller
             $salesOrderData = DB::selectOne($salesOrderQuery, [$locationFilter, $startDate, $endDate]);
 
             // 2. Stock Value Query
+            // AND loc.value = 'Main' dihilangkan sementara perlu konfirmasi P. Loka
             $stockValueQuery = "
             SELECT
               SUM(s.qtyonhand * prc.pricelist * 0.615) as stock_value
@@ -52,13 +53,11 @@ class SalesMetricsController extends Controller
             WHERE
               UPPER(plv.name) LIKE '%PURCHASE%'
               AND plv.isactive = 'Y'
-              AND loc.value = 'Main'
               AND org.name like ?
             ";
             $stockValueData = DB::selectOne($stockValueQuery, [$locationFilter]);
 
             // 3. Store Returns Query
-            // AND DATE(h.dateordered) sementara diganti dateinvoiced karena belum ada dateordered di table c_invoice
             $storeReturnsQuery = "
             SELECT
               SUM(d.linenetamt) AS store_returns
@@ -148,12 +147,17 @@ class SalesMetricsController extends Controller
     public function getLocations()
     {
         try {
-            $locations = DB::table('ad_org')
+            $rawLocations = DB::table('ad_org')
                 ->where('isactive', 'Y')
+                ->whereNotIn('name', ['*', 'HQ', 'Store', 'PWM Pusat'])
                 ->orderBy('name')
                 ->pluck('name');
 
-            return response()->json($locations);
+            // $locations = $rawLocations->map(function ($name) {
+            //     return str_replace(['MPM ', 'PWM '], '', $name);
+            // });
+
+            return response()->json($rawLocations);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }

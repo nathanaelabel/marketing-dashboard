@@ -404,19 +404,40 @@
                     let arPieChart;
 
                     // Initialize Flatpickr
-                    const startDatePicker = flatpickr(startDateFilter, {
-                        dateFormat: "d/m/Y",
-                        defaultDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                    let startDatePicker, endDatePicker;
+
+                    const today = new Date();
+                    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+                    // Set initial values before initializing flatpickr
+                    const yyyy = today.getFullYear();
+                    const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+                    const dd = String(today.getDate()).padStart(2, '0');
+                    endDateFilter.value = `${yyyy}-${mm}-${dd}`;
+
+                    endDatePicker = flatpickr(endDateFilter, {
+                        altInput: true,
+                        altFormat: "d-m-Y",
+                        dateFormat: "Y-m-d",
+                        maxDate: "today",
                         onChange: function(selectedDates, dateStr, instance) {
-                            endDatePicker.set('minDate', selectedDates[0]);
+                            if (startDatePicker) {
+                                startDatePicker.set('maxDate', selectedDates[0]);
+                            }
                             fetchSalesMetrics();
                         }
                     });
 
-                    const endDatePicker = flatpickr(endDateFilter, {
-                        dateFormat: "d/m/Y",
-                        defaultDate: new Date(),
+                    startDatePicker = flatpickr(startDateFilter, {
+                        altInput: true,
+                        altFormat: "d-m-Y",
+                        dateFormat: "Y-m-d",
+                        defaultDate: firstDayOfMonth,
+                        maxDate: endDatePicker.selectedDates[0] || today, // Set maxDate on init
                         onChange: function(selectedDates, dateStr, instance) {
+                            if (endDatePicker) {
+                                endDatePicker.set('minDate', selectedDates[0]);
+                            }
                             fetchSalesMetrics();
                         }
                     });
