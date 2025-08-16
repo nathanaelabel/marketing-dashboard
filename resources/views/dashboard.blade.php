@@ -424,7 +424,7 @@
                             if (startDatePicker) {
                                 startDatePicker.set('maxDate', selectedDates[0]);
                             }
-                            fetchSalesMetrics();
+                            fetchSalesMetrics('date');
                         }
                     });
 
@@ -438,7 +438,7 @@
                             if (endDatePicker) {
                                 endDatePicker.set('minDate', selectedDates[0]);
                             }
-                            fetchSalesMetrics();
+                            fetchSalesMetrics('date');
                         }
                     });
 
@@ -473,10 +473,10 @@
                     }
 
                     // Fetch and update sales metrics data
-                    function fetchSalesMetrics() {
+                    function fetchSalesMetrics(source = 'initial') {
                         const location = locationFilter.value;
-                        const startDate = startDatePicker.selectedDates[0] ? startDatePicker.selectedDates[0].toISOString().split('T')[0] : '';
-                        const endDate = endDatePicker.selectedDates[0] ? endDatePicker.selectedDates[0].toISOString().split('T')[0] : '';
+                        const startDate = startDateFilter.value;
+                        const endDate = endDateFilter.value;
 
                         const url = new URL(salesMetricsUrl);
                         url.searchParams.append('location', location);
@@ -486,7 +486,10 @@
                         pendingSoValue.textContent = 'Loading...';
                         stockValueValue.textContent = 'Loading...';
                         storeReturnsValue.textContent = 'Loading...';
-                        arPieTotal.textContent = 'Loading...';
+
+                        if (source === 'location' || source === 'initial') {
+                            arPieTotal.textContent = 'Loading...';
+                        }
 
                         fetch(`/sales-metrics?location=${location}&start_date=${startDate}&end_date=${endDate}`)
                             .then(response => {
@@ -501,7 +504,7 @@
                                 if (data.error) {
                                     throw data;
                                 }
-                                updateUI(data);
+                                updateUI(data, source);
                             })
                             .catch(error => {
                                 console.error('Error fetching sales metrics:', error.error || error);
@@ -524,32 +527,37 @@
                         return `Rp ${value}`;
                     }
 
-                    // Update UI with fetched data
-                    function updateUI(data) {
-                        // Update labels
+                    function updateUI(data, source) {
+                        // Update labels and values for metric cards
                         totalSoLabel.textContent = `Total Sales Order ${data.date_range}`;
                         pendingSoLabel.textContent = `Pending Sales Order ${data.date_range}`;
                         stockValueLabel.textContent = `Stock Value ${data.date_range}`;
                         storeReturnsLabel.textContent = `Store Returns ${data.date_range}`;
 
-                        // Update values
                         totalSoValue.textContent = formatCurrency(data.total_so, 2);
                         pendingSoValue.textContent = formatCurrency(data.pending_so, 2);
                         stockValueValue.textContent = formatCurrency(data.stock_value, 2);
                         storeReturnsValue.textContent = formatCurrency(data.store_returns, 2);
 
-                        arPieTotal.textContent = formatCurrency(data.ar_pie_chart.total, 2);
+                        // Update AR Pie Chart only if location changed or initial load
+                        if (source === 'location' || source === 'initial') {
+                            updateArPieChart(data.ar_pie_chart);
+                        }
+                    }
 
-                        // Update Pie Chart
+                    function updateArPieChart(data) {
+                        arPieTotal.textContent = formatCurrency(data.total, 2);
+
                         if (arPieChart) {
                             arPieChart.destroy();
                         }
+
                         arPieChart = new Chart(arPieChartCanvas, {
                             type: 'pie',
                             data: {
-                                labels: data.ar_pie_chart.labels,
+                                labels: ['1 - 30 Days', '31 - 60 Days', '61 - 90 Days', '> 90 Days'],
                                 datasets: [{
-                                    data: data.ar_pie_chart.data,
+                                    data: data.data,
                                     backgroundColor: [
                                         'rgba(22, 220, 160, 0.8)', // 1 - 30 Days
                                         'rgba(139, 92, 246, 0.8)', // 31 - 60 Days
@@ -569,11 +577,7 @@
                                     },
                                     datalabels: {
                                         formatter: (value, ctx) => {
-                                            let sum = 0;
-                                            let dataArr = ctx.chart.data.datasets[0].data;
-                                            dataArr.map(data => {
-                                                sum += data;
-                                            });
+                                            let sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
                                             if (sum === 0) return '0.00%';
                                             let percentage = (value * 100 / sum).toFixed(2) + "%";
                                             return percentage;
@@ -591,11 +595,11 @@
                     }
 
                     // Add event listeners
-                    locationFilter.addEventListener('change', fetchSalesMetrics);
+                    locationFilter.addEventListener('change', () => fetchSalesMetrics('location'));
 
                     // Initial load
                     fetchLocations();
-                    fetchSalesMetrics();
+                    fetchSalesMetrics('initial');
                 });
             </script>
             @endpush

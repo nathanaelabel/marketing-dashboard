@@ -12,8 +12,8 @@ class SalesMetricsController extends Controller
     {
         try {
             $location = $request->input('location', 'National');
-            $startDate = $request->input('start_date', Carbon::now()->subDays(21)->toDateString());
-            $endDate = $request->input('end_date', Carbon::now()->toDateString());
+            $startDate = Carbon::parse($request->input('start_date', Carbon::now()->subDays(21)))->format('Y-m-d');
+            $endDate = Carbon::parse($request->input('end_date', Carbon::now()))->format('Y-m-d');
 
             $locationFilter = ($location === 'National') ? '%' : $location;
 
