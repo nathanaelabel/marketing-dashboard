@@ -31,7 +31,12 @@ class SyncAllAdempiereDataCommand extends Command
         }
 
         $singleSourceTables = ['pgsql_lmp' => ['AdOrg'], 'pgsql_sby' => ['MProductCategory', 'MProductsubcat', 'MProduct']];
-        $mergeOnlyTables = [['model' => 'MLocator'], ['model' => 'MStorage']];
+        $mergeOnlyTables = [
+            ['model' => 'MLocator'],
+            ['model' => 'MStorage'],
+            ['model' => 'MPricelistVersion'],
+            ['model' => 'MProductprice'],
+        ];
         $fastSyncTables = ['CInvoice', 'CInvoiceline', 'COrder', 'COrderline', 'CAllocationhdr', 'CAllocationline'];
 
         if (!$targetConnection && !$skipStep1) {

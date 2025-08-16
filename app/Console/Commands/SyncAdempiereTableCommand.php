@@ -5,18 +5,8 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Models\AdOrg;
-use App\Models\MProduct;
-use App\Models\MProductCategory;
-use App\Models\MProductsubcat;
+use Illuminate\Support\Str;
 use App\Models\MStorage;
-use App\Models\MLocator;
-use App\Models\CInvoice;
-use App\Models\CInvoiceline;
-use App\Models\COrder;
-use App\Models\COrderline;
-use App\Models\CAllocationhdr;
-use App\Models\CAllocationline;
 
 class SyncAdempiereTableCommand extends Command
 {
@@ -72,6 +62,53 @@ class SyncAdempiereTableCommand extends Command
 
     private function runFullSync($model, $connectionName)
     {
+        // Define foreign key dependencies for validation.
+        $dependencies = [
+            'm_product' => [
+                ['parent_table' => 'm_product_category', 'foreign_key' => 'm_product_category_id', 'optional' => true],
+                ['parent_table' => 'm_productsubcat', 'foreign_key' => 'm_product_subcat_id', 'optional' => true],
+            ],
+            'm_locator' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+            ],
+            'm_storage' => [
+                ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
+                ['parent_table' => 'm_locator', 'foreign_key' => 'm_locator_id'],
+            ],
+            'm_pricelist_version' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+            ],
+            'm_productprice' => [
+                ['parent_table' => 'm_pricelist_version', 'foreign_key' => 'm_pricelist_version_id'],
+                ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+            ],
+            'c_invoice' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+            ],
+            'c_invoiceline' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+                ['parent_table' => 'c_invoice', 'foreign_key' => 'c_invoice_id'],
+                ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
+            ],
+            'c_order' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+            ],
+            'c_orderline' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+                ['parent_table' => 'c_order', 'foreign_key' => 'c_order_id'],
+                ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
+            ],
+            'c_allocationhdr' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+            ],
+            'c_allocationline' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+                ['parent_table' => 'c_allocationhdr', 'foreign_key' => 'c_allocationhdr_id'],
+                ['parent_table' => 'c_invoice', 'foreign_key' => 'c_invoice_id'],
+            ],
+        ];
+
         $this->info('Running full sync (merge/upsert mode) using manual chunking...');
         $fillable = $model->getFillable();
         $primaryKey = $model->getKeyName();
@@ -95,69 +132,104 @@ class SyncAdempiereTableCommand extends Command
                 break;
             }
 
-            if ($model instanceof \App\Models\MStorage) {
-                // For MStorage, we cannot do a simple upsert as we need to aggregate quantities.
-                // This logic is complex and requires careful handling of existing data.
-                // The most robust way is to fetch existing records that match the incoming keys,
-                // aggregate in memory, and then perform a final upsert.
+            $currentTable = $model->getTable();
+            $validRecords = $records;
 
-                $keys = $records->map(function ($row) {
-                    return ['m_product_id' => $row->m_product_id, 'm_locator_id' => $row->m_locator_id];
-                })->unique()->all();
+            if (isset($dependencies[$currentTable])) {
+                $allParentKeys = [];
+                foreach ($dependencies[$currentTable] as $dep) {
+                    $parentTable = $dep['parent_table'];
+                    $foreignKey = $dep['foreign_key'];
+                    $fkValues = $records->pluck($foreignKey)->filter()->unique()->all();
 
-                // Fetch all existing storage data for the keys in the current chunk
-                $existingStorage = $model->whereInMultiple(['m_product_id', 'm_locator_id'], $keys)->get()->keyBy(function ($item) {
-                    return $item->m_product_id . '-' . $item->m_locator_id;
-                });
-
-                // Aggregate new data from the source chunk
-                $upsertData = [];
-                foreach ($records as $row) {
-                    $key = $row->m_product_id . '-' . $row->m_locator_id;
-                    $data = collect((array)$row)->only($fillable)->toArray();
-
-                    if (isset($upsertData[$key])) {
-                        // Aggregate within the current chunk
-                        $upsertData[$key]['qtyonhand'] += $data['qtyonhand'];
-                    } else {
-                        // If it's a new entry in the chunk, check against existing DB data
-                        if ($existingStorage->has($key)) {
-                            // It exists in DB, so add source qty to existing qty
-                            $data['qtyonhand'] += $existingStorage->get($key)->qtyonhand;
+                    if (!empty($fkValues)) {
+                        $parentModelClass = "App\\Models\\" . Str::studly(Str::singular($parentTable));
+                        if (class_exists($parentModelClass)) {
+                            $parentModel = new $parentModelClass();
+                            $parentKeyName = $parentModel->getKeyName();
+                            $allParentKeys[$foreignKey] = DB::table($parentTable)->whereIn($parentKeyName, $fkValues)->pluck($parentKeyName);
+                        } else {
+                            $allParentKeys[$foreignKey] = DB::table($parentTable)->whereIn('id', $fkValues)->pluck('id');
                         }
-                        $upsertData[$key] = $data;
                     }
                 }
 
-                // Perform a single, powerful upsert operation
-                $model->upsert(
-                    array_values($upsertData),
-                    ['m_product_id', 'm_locator_id'], // Unique by columns
-                    ['qtyonhand'] // Columns to update if record exists
-                );
-            } else {
-                // Default behavior for all other models
-                DB::transaction(function () use ($model, $records, $keyColumns, $fillable) {
-                    foreach ($records as $row) {
-                        $condition = [];
-                        foreach ($keyColumns as $key) {
-                            if (isset($row->{$key})) {
-                                $condition[$key] = $row->{$key};
-                            }
-                        }
-                        if (empty($condition)) continue;
+                $validRecords = $records->filter(function ($row) use ($dependencies, $currentTable, $allParentKeys) {
+                    foreach ($dependencies[$currentTable] as $dep) {
+                        $foreignKey = $dep['foreign_key'];
+                        $isOptional = $dep['optional'] ?? false;
+                        $fkValue = $row->{$foreignKey} ?? null;
 
-                        $dataToUpdate = collect((array)$row)->only($fillable)->toArray();
-                        $model->updateOrInsert($condition, $dataToUpdate);
+                        if ($fkValue === null) {
+                            if ($isOptional) continue;
+                            return false;
+                        }
+
+                        if (!isset($allParentKeys[$foreignKey]) || !$allParentKeys[$foreignKey]->contains($fkValue)) {
+                            return false;
+                        }
                     }
+                    return true;
                 });
             }
 
+            if ($validRecords->count() < $records->count()) {
+                $skipped = $records->count() - $validRecords->count();
+                $this->warn("{$skipped} records in this chunk were skipped due to invalid foreign keys.");
+            }
+
+            if ($validRecords->isNotEmpty()) {
+                if ($model instanceof MStorage) {
+                    $keys = $validRecords->map(function ($row) {
+                        return ['m_product_id' => $row->m_product_id, 'm_locator_id' => $row->m_locator_id];
+                    })->unique()->all();
+
+                    $existingStorage = $model->whereInMultiple(['m_product_id', 'm_locator_id'], $keys)->get()->keyBy(function ($item) {
+                        return $item->m_product_id . '-' . $item->m_locator_id;
+                    });
+
+                    $upsertData = [];
+                    foreach ($validRecords as $row) {
+                        $key = $row->m_product_id . '-' . $row->m_locator_id;
+                        $data = collect((array)$row)->only($fillable)->toArray();
+
+                        if (isset($upsertData[$key])) {
+                            $upsertData[$key]['qtyonhand'] += $data['qtyonhand'];
+                        } else {
+                            if ($existingStorage->has($key)) {
+                                $data['qtyonhand'] += $existingStorage->get($key)->qtyonhand;
+                            }
+                            $upsertData[$key] = $data;
+                        }
+                    }
+
+                    $model->upsert(
+                        array_values($upsertData),
+                        ['m_product_id', 'm_locator_id'],
+                        ['qtyonhand']
+                    );
+                } else {
+                    DB::transaction(function () use ($model, $validRecords, $keyColumns, $fillable) {
+                        foreach ($validRecords as $row) {
+                            $condition = [];
+                            foreach ($keyColumns as $key) {
+                                if (isset($row->{$key})) {
+                                    $condition[$key] = $row->{$key};
+                                }
+                            }
+                            if (empty($condition)) continue;
+
+                            $dataToUpdate = collect((array)$row)->only($fillable)->toArray();
+                            $model->updateOrInsert($condition, $dataToUpdate);
+                        }
+                    });
+                }
+            }
+
             $processedCount += $records->count();
-            $this->info("Processed {$processedCount} records...");
+            $this->info("Processed {$processedCount} records (including skipped)...");
             $page++;
 
-            // Stop processing if the specified limit has been reached or exceeded.
             if ($limit && is_numeric($limit) && $processedCount >= $limit) {
                 $this->info("Reached the specified limit of {$limit} records. Stopping sync for this table.");
                 break;

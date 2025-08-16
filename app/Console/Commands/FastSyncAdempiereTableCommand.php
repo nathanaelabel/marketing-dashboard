@@ -96,10 +96,30 @@ class FastSyncAdempiereTableCommand extends Command
         // Define foreign key dependencies. A table can have multiple dependencies.
         // 'optional' => true means the foreign key can be null and will be ignored if so.
         $dependencies = [
+            'm_product' => [
+                ['parent_table' => 'm_product_category', 'foreign_key' => 'm_product_category_id', 'optional' => true],
+                ['parent_table' => 'm_productsubcat', 'foreign_key' => 'm_product_subcat_id', 'optional' => true],
+            ],
+            'm_locator' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+            ],
+            'm_storage' => [
+                ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
+                ['parent_table' => 'm_locator', 'foreign_key' => 'm_locator_id'],
+            ],
+            'm_pricelist_version' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+            ],
+            'm_productprice' => [
+                ['parent_table' => 'm_pricelist_version', 'foreign_key' => 'm_pricelist_version_id'],
+                ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+            ],
             'c_invoice' => [
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
             ],
             'c_invoiceline' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
                 ['parent_table' => 'c_invoice', 'foreign_key' => 'c_invoice_id'],
                 ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
             ],
@@ -107,6 +127,7 @@ class FastSyncAdempiereTableCommand extends Command
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
             ],
             'c_orderline' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
                 ['parent_table' => 'c_order', 'foreign_key' => 'c_order_id'],
                 ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
             ],
@@ -114,6 +135,7 @@ class FastSyncAdempiereTableCommand extends Command
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
             ],
             'c_allocationline' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
                 ['parent_table' => 'c_allocationhdr', 'foreign_key' => 'c_allocationhdr_id'],
                 ['parent_table' => 'c_invoice', 'foreign_key' => 'c_invoice_id'],
             ],
@@ -178,7 +200,9 @@ class FastSyncAdempiereTableCommand extends Command
                 return $dep['foreign_key'];
             }, $dependencies[$tableName]);
         }
-        $insertColumns = array_unique(array_merge($keyColumns, $fillable, $timestampColumns, $foreignKeyColumns));
+
+        // Convert all column names to lowercase for case-insensitive matching.
+        $insertColumns = array_map('strtolower', array_unique(array_merge($keyColumns, $fillable, $timestampColumns, $foreignKeyColumns)));
 
         $dataToInsert = $sourceData->map(function ($row) use ($insertColumns) {
             // Standardize source keys to lowercase to ensure case-insensitive matching.
