@@ -17,8 +17,6 @@
                 data-sales-metrics-url="{{ route('sales.metrics.data') }}"></div>
 
             @push('scripts')
-            <script src="https://cdn.jsdelivr.net/npm/chart.js?v=1.1"></script>
-            <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0?v=1.1"></script>
             <script src="https://cdn.jsdelivr.net/npm/flatpickr?v=1.1"></script>
 
             <script src="{{ asset('js/dashboard/chart-helper.js') }}"></script>
@@ -26,8 +24,6 @@
             <script src="{{ asset('js/dashboard/accounts-receivable.js') }}"></script>
             <script src="{{ asset('js/dashboard/sales-metrics.js') }}"></script>
 
-            <!-- Marimekko Chart -->
-            <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-mekko@latest/dist/chartjs-chart-mekko.min.js"></script>
             <script src="{{ asset('js/dashboard/category-item.js') }}"></script>
             @endpush
 
