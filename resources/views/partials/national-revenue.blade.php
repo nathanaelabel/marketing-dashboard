@@ -32,5 +32,5 @@
             </div>
         </form>
     </div>
-    <canvas id="revenueChart" style="max-height: 400px; width: 100%;"></canvas>
+    <canvas id="revenueChart" data-url="{{ route('national-revenue.data') }}" style="max-height: 400px; width: 100%;"></canvas>
 </div>
