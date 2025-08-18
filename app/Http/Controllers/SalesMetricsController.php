@@ -33,13 +33,16 @@ class SalesMetricsController extends Controller
               AND h.docstatus = 'CO'
               AND d.linenetamt > 0
               AND h.isactive = 'Y'
-              AND org.name like ?
               AND DATE(h.dateordered) BETWEEN ? AND ?
             ";
-            $salesOrderData = DB::selectOne($salesOrderQuery, [$locationFilter, $startDate, $endDate]);
+            $soBindings = [$startDate, $endDate];
+            if ($location !== 'National') {
+                $salesOrderQuery .= " AND org.name LIKE ?";
+                $soBindings[] = $locationFilter;
+            }
+            $salesOrderData = DB::selectOne($salesOrderQuery, $soBindings);
 
             // 2. Stock Value Query
-            // AND loc.value = 'Main' dihilangkan sementara perlu konfirmasi P. Loka
             $stockValueQuery = "
             SELECT
               SUM(s.qtyonhand * prc.pricelist * 0.615) as stock_value
@@ -53,9 +56,16 @@ class SalesMetricsController extends Controller
             WHERE
               UPPER(plv.name) LIKE '%PURCHASE%'
               AND plv.isactive = 'Y'
-              AND org.name like ?
             ";
-            $stockValueData = DB::selectOne($stockValueQuery, [$locationFilter]);
+
+            $bindings = [];
+            if ($location !== 'National') {
+                $stockValueQuery .= " AND loc.value = ? AND org.name like ?";
+                $bindings[] = $location;
+                $bindings[] = $locationFilter;
+            }
+
+            $stockValueData = DB::selectOne($stockValueQuery, $bindings);
 
             // 3. Store Returns Query
             $storeReturnsQuery = "
@@ -66,15 +76,20 @@ class SalesMetricsController extends Controller
               INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
               INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
             WHERE
-              org.name LIKE ?
-              AND h.issotrx = 'Y'
+              h.issotrx = 'Y'
+              AND h.ad_client_id = 1000001
               AND d.qtyinvoiced > 0
               AND d.linenetamt > 0
               AND h.docstatus in ('CO', 'CL')
               AND h.documentno LIKE 'CNC%'
               AND DATE(h.dateinvoiced) BETWEEN ? AND ?
-        ";
-            $storeReturnsData = DB::selectOne($storeReturnsQuery, [$locationFilter, $startDate, $endDate]);
+            ";
+            $srBindings = [$startDate, $endDate];
+            if ($location !== 'National') {
+                $storeReturnsQuery .= " AND org.name LIKE ?";
+                $srBindings[] = $locationFilter;
+            }
+            $storeReturnsData = DB::selectOne($storeReturnsQuery, $srBindings);
 
             // 4. Accounts Receivable Pie Chart Query
             $paymentsSubquery = "
@@ -106,10 +121,14 @@ class SalesMetricsController extends Controller
                 FROM ad_org as org
                 JOIN ({$overdueQuery}) as overdue ON org.ad_org_id = overdue.ad_org_id
                 WHERE overdue.age > 0
-                AND org.name LIKE ?
             ";
+            $arBindings = [];
+            if ($location !== 'National') {
+                $arPieQuery .= " AND org.name LIKE ?";
+                $arBindings[] = $locationFilter;
+            }
 
-            $arPieData = DB::selectOne($arPieQuery, [$locationFilter]);
+            $arPieData = DB::selectOne($arPieQuery, $arBindings);
 
             $formattedStartDate = Carbon::parse($startDate)->format('j M Y');
             $formattedEndDate = Carbon::parse($endDate)->format('j M Y');
