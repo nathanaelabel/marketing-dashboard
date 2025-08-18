@@ -40,4 +40,6 @@ Chart.register(
 window.Alpine = Alpine;
 
 
+import './dashboard/category-item.js';
+
 Alpine.start();

@@ -1,8 +1,14 @@
-document.addEventListener('DOMContentLoaded', function () {
-    const chartCanvas = document.getElementById('categoryItemChart');
-    if (!chartCanvas) return;
+import { Chart, registerables } from 'chart.js';
+import { MatrixController, MatrixElement } from 'chartjs-chart-matrix';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 
-    let chartInstance;
+Chart.register(...registerables, MatrixController, MatrixElement, ChartDataLabels);
+
+document.addEventListener('DOMContentLoaded', function () {
+    const ctx = document.getElementById('categoryItemChart');
+    if (!ctx) return;
+
+    let chart;
     let currentPage = 1;
 
     const prevButton = document.getElementById('ci-prev-page');
@@ -21,9 +27,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function fetchAndUpdateChart(page = 1) {
         currentPage = page;
-        const startDate = document.getElementById('ci_start_date').value;
-        const endDate = document.getElementById('ci_end_date').value;
-        const url = new URL(chartCanvas.dataset.url);
+        const startDate = document.getElementById('categoryItemStartDate').value;
+        const endDate = document.getElementById('categoryItemEndDate').value;
+        const url = new URL(ctx.dataset.url);
         url.searchParams.append('start_date', startDate);
         url.searchParams.append('end_date', endDate);
         url.searchParams.append('page', page);
@@ -33,71 +39,73 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!response.ok) throw new Error('Network response was not ok.');
             const data = await response.json();
 
-            if (chartInstance) {
-                chartInstance.destroy();
+            if (chart) {
+                chart.destroy();
             }
 
-            const chartConfig = {
-                type: 'treemap',
-                data: {
-                    datasets: data.datasets.map(ds => ({
-                        ...ds,
-                        key: 'y',
-                        groups: ['x'],
-                        borderWidth: 1,
-                        borderColor: 'white'
-                    }))
-                },
+            chart = new Chart(ctx, {
+                type: 'matrix',
+                data: data.chartData,
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true,
+                            ticks: {
+                                autoSkip: false,
+                                maxRotation: 90,
+                                minRotation: 45
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (value) {
+                                    return (value * 100) + '%';
+                                }
+                            }
+                        }
+                    },
                     plugins: {
-                        title: {
-                            display: false,
+                        tooltip: {
+                            callbacks: {
+                                title: function (context) {
+                                    return context[0].raw.x;
+                                },
+                                label: function (context) {
+                                    const raw = context.raw;
+                                    const total = raw.value;
+                                    const percentage = total > 0 ? ((raw.v / total) * 100).toFixed(2) : 0;
+                                    return `${context.dataset.label}: ${formatCurrency(raw.v)} (${percentage}%)`;
+                                }
+                            }
                         },
                         legend: {
                             position: 'bottom',
                         },
-                        tooltip: {
-                            callbacks: {
-                                label: function (context) {
-                                    const datasetLabel = context.dataset.label || '';
-                                    const value = context.raw.y;
-                                    const total = context.raw.v;
-                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                    return `${datasetLabel}: ${formatCurrency(value)} (${percentage}%)`;
-                                }
-                            }
-                        },
                         datalabels: {
-                            display: true,
-                            color: 'white',
+                            color: '#fff',
+                            anchor: 'center',
+                            align: 'center',
+                            formatter: function (value, context) {
+                                return formatCurrency(value.y);
+                            },
                             font: {
                                 weight: 'bold'
-                            },
-                            formatter: (value, context) => {
-                                const total = context.dataset.tree[context.dataIndex].v;
-                                const percentage = total > 0 ? (value.y / total * 100) : 0;
-                                if (percentage < 5) return '';
-                                return `${percentage.toFixed(0)}%`;
                             }
                         }
-                    },
+                    }
                 }
-            };
+            });
 
-            chartInstance = new Chart(chartCanvas, chartConfig);
-
-            // Update pagination buttons state
             prevButton.disabled = currentPage <= 1;
             nextButton.disabled = !data.pagination.hasMorePages;
 
         } catch (error) {
             console.error('Error fetching or rendering chart:', error);
-            const ctx = chartCanvas.getContext('2d');
-            ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
-            ctx.textAlign = 'center';
-            ctx.fillText('Error loading chart data.', chartCanvas.width / 2, chartCanvas.height / 2);
+            ctx.parentElement.innerHTML = '<div style="text-align: center; padding-top: 50px;">Error loading chart data.</div>';
         }
     }
 
@@ -114,7 +122,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let startDatePicker, endDatePicker;
 
     const triggerUpdate = () => {
-        fetchAndUpdateChart(1); // Always fetch page 1 when date changes
+        fetchAndUpdateChart(1);
     };
 
     const startDateInput = document.getElementById('categoryItemStartDate');
@@ -124,6 +132,7 @@ document.addEventListener('DOMContentLoaded', function () {
         altInput: true,
         altFormat: "d-m-Y",
         dateFormat: "Y-m-d",
+        defaultDate: new Date().setDate(1),
         maxDate: endDateInput.value || "today",
         onChange: function (selectedDates, dateStr, instance) {
             if (endDatePicker) {
@@ -137,6 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
         altInput: true,
         altFormat: "d-m-Y",
         dateFormat: "Y-m-d",
+        defaultDate: "today",
         minDate: startDateInput.value,
         maxDate: "today",
         onChange: function (selectedDates, dateStr, instance) {
