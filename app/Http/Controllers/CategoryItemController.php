@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CAllocationhdr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -16,11 +15,17 @@ class CategoryItemController extends Controller
         $page = (int)$request->input('page', 1);
         $perPage = 8;
 
-        $baseQuery = CAllocationhdr::select('ad_org.name as branch')
-            ->join('ad_org', 'c_allocationhdr.ad_org_id', '=', 'ad_org.ad_org_id')
-            ->whereBetween('c_allocationhdr.datetrx', [$startDate, $endDate])
-            ->groupBy('ad_org.name')
-            ->orderBy('ad_org.name');
+        // Base query to get all branches with invoices in the date range for pagination
+        $baseQuery = DB::table('c_invoice as h')
+            ->join('ad_org as org', 'h.ad_org_id', '=', 'org.ad_org_id')
+            ->where('h.ad_client_id', 1000001)
+            ->where('h.issotrx', 'Y')
+            ->whereIn('h.docstatus', ['CO', 'CL'])
+            ->where('h.isactive', 'Y')
+            ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate])
+            ->select('org.name as branch')
+            ->groupBy('org.name')
+            ->orderBy('org.name');
 
         $allBranches = $baseQuery->get()->pluck('branch');
         $paginatedBranches = $allBranches->slice(($page - 1) * $perPage, $perPage)->values();
@@ -29,20 +34,26 @@ class CategoryItemController extends Controller
             return response()->json(['labels' => [], 'datasets' => [], 'pagination' => ['currentPage' => $page, 'hasMorePages' => false]]);
         }
 
-        $dataQuery = CAllocationhdr::select(
-            'ad_org.name as branch',
-            'm_product_category.name as category',
-            DB::raw('SUM(c_allocationline.amount) as total_revenue')
-        )
-            ->join('c_allocationline', 'c_allocationhdr.c_allocationhdr_id', '=', 'c_allocationline.c_allocationhdr_id')
-            ->join('ad_org', 'c_allocationhdr.ad_org_id', '=', 'ad_org.ad_org_id')
-            ->join('c_invoice', 'c_allocationline.c_invoice_id', '=', 'c_invoice.c_invoice_id')
-            ->join('c_invoiceline', 'c_invoice.c_invoice_id', '=', 'c_invoiceline.c_invoice_id')
-            ->join('m_product', 'c_invoiceline.m_product_id', '=', 'm_product.m_product_id')
-            ->join('m_product_category', 'm_product.m_product_category_id', '=', 'm_product_category.m_product_category_id')
-            ->whereBetween('c_allocationhdr.datetrx', [$startDate, $endDate])
-            ->whereIn('ad_org.name', $paginatedBranches)
-            ->groupBy('ad_org.name', 'm_product_category.name');
+        // Main data query based on the provided SQL
+        $dataQuery = DB::table('c_invoiceline as d')
+            ->join('c_invoice as h', 'd.c_invoice_id', '=', 'h.c_invoice_id')
+            ->join('ad_org as org', 'h.ad_org_id', '=', 'org.ad_org_id')
+            ->join('m_product as prd', 'd.m_product_id', '=', 'prd.m_product_id')
+            ->join('m_product_category as cat', 'prd.m_product_category_id', '=', 'cat.m_product_category_id')
+            ->select(
+                'org.name as branch',
+                'cat.name as category', // Using cat.name to align with previous logic
+                DB::raw('SUM(d.linenetamt) as total_revenue')
+            )
+            ->where('h.ad_client_id', 1000001)
+            ->where('h.issotrx', 'Y')
+            ->where('d.qtyinvoiced', '>', 0)
+            ->where('d.linenetamt', '>', 0)
+            ->whereIn('h.docstatus', ['CO', 'CL'])
+            ->where('h.isactive', 'Y')
+            ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate])
+            ->whereIn('org.name', $paginatedBranches)
+            ->groupBy('org.name', 'cat.name');
 
         $data = $dataQuery->get();
 
