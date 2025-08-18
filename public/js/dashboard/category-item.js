@@ -3,6 +3,10 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!chartCanvas) return;
 
     let chartInstance;
+    let currentPage = 1;
+
+    const prevButton = document.getElementById('ci-prev-page');
+    const nextButton = document.getElementById('ci-next-page');
 
     const formatCurrency = (value) => {
         if (Math.abs(value) >= 1e9) {
@@ -15,12 +19,14 @@ document.addEventListener('DOMContentLoaded', function () {
         return 'Rp ' + value;
     };
 
-    async function fetchAndUpdateChart() {
+    async function fetchAndUpdateChart(page = 1) {
+        currentPage = page;
         const startDate = document.getElementById('ci_start_date').value;
         const endDate = document.getElementById('ci_end_date').value;
         const url = new URL(chartCanvas.dataset.url);
         url.searchParams.append('start_date', startDate);
         url.searchParams.append('end_date', endDate);
+        url.searchParams.append('page', page);
 
         try {
             const response = await fetch(url);
@@ -35,12 +41,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 type: 'treemap',
                 data: {
                     datasets: data.datasets.map(ds => ({
-                        label: ds.label,
-                        tree: ds.data,
+                        ...ds,
                         key: 'y',
                         groups: ['x'],
-                        backgroundColor: ds.backgroundColor,
-                        borderColor: ds.borderColor
+                        borderWidth: 1,
+                        borderColor: 'white'
                     }))
                 },
                 options: {
@@ -71,10 +76,10 @@ document.addEventListener('DOMContentLoaded', function () {
                                 weight: 'bold'
                             },
                             formatter: (value, context) => {
-                                const total = context.dataset.data[context.dataIndex].v;
+                                const total = context.dataset.tree[context.dataIndex].v;
                                 const percentage = total > 0 ? (value.y / total * 100) : 0;
                                 if (percentage < 5) return '';
-                                return `${formatCurrency(value.y)} (${percentage.toFixed(0)}%)`;
+                                return `${percentage.toFixed(0)}%`;
                             }
                         }
                     },
@@ -82,6 +87,10 @@ document.addEventListener('DOMContentLoaded', function () {
             };
 
             chartInstance = new Chart(chartCanvas, chartConfig);
+
+            // Update pagination buttons state
+            prevButton.disabled = currentPage <= 1;
+            nextButton.disabled = !data.pagination.hasMorePages;
 
         } catch (error) {
             console.error('Error fetching or rendering chart:', error);
@@ -92,20 +101,51 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    const startDatePicker = flatpickr("#ci_start_date", {
-        defaultDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-        onChange: function (selectedDates, dateStr, instance) {
-            endDatePicker.set('minDate', selectedDates[0]);
-            fetchAndUpdateChart();
+    prevButton.addEventListener('click', () => {
+        if (currentPage > 1) {
+            fetchAndUpdateChart(currentPage - 1);
         }
     });
 
-    const endDatePicker = flatpickr("#ci_end_date", {
-        defaultDate: new Date(),
+    nextButton.addEventListener('click', () => {
+        fetchAndUpdateChart(currentPage + 1);
+    });
+
+    let startDatePicker, endDatePicker;
+
+    const triggerUpdate = () => {
+        fetchAndUpdateChart(1); // Always fetch page 1 when date changes
+    };
+
+    const startDateInput = document.getElementById('categoryItemStartDate');
+    const endDateInput = document.getElementById('categoryItemEndDate');
+
+    startDatePicker = flatpickr(startDateInput, {
+        altInput: true,
+        altFormat: "d-m-Y",
+        dateFormat: "Y-m-d",
+        maxDate: endDateInput.value || "today",
         onChange: function (selectedDates, dateStr, instance) {
-            fetchAndUpdateChart();
+            if (endDatePicker) {
+                endDatePicker.set('minDate', selectedDates[0]);
+            }
+            triggerUpdate();
         }
     });
 
-    fetchAndUpdateChart();
+    endDatePicker = flatpickr(endDateInput, {
+        altInput: true,
+        altFormat: "d-m-Y",
+        dateFormat: "Y-m-d",
+        minDate: startDateInput.value,
+        maxDate: "today",
+        onChange: function (selectedDates, dateStr, instance) {
+            if (startDatePicker) {
+                startDatePicker.set('maxDate', selectedDates[0]);
+            }
+            triggerUpdate();
+        }
+    });
+
+    fetchAndUpdateChart(1);
 });
