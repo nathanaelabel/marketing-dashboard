@@ -5,6 +5,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SalesMetricsController;
 use App\Http\Controllers\NationalRevenueController;
 use App\Http\Controllers\AccountsReceivableController;
+use App\Http\Controllers\CategoryItemController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -19,6 +20,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/accounts-receivable/data', [AccountsReceivableController::class, 'data'])->name('accounts-receivable.data');
     Route::get('/sales-metrics', [SalesMetricsController::class, 'getData'])->name('sales.metrics.data');
     Route::get('/locations', [SalesMetricsController::class, 'getLocations'])->name('locations');
+    Route::get('/category-item/data', [CategoryItemController::class, 'getData'])->name('category-item.data');
 });
 
 require __DIR__ . '/auth.php';

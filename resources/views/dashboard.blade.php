@@ -7,15 +7,10 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                @include('partials.national-revenue')
-            </div>
-
-            <div class="mt-10 bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                @include('partials.accounts-receivable')
-            </div>
-
+            @include('partials.national-revenue')
+            @include('partials.accounts-receivable')
             @include('partials.sales-metrics')
+            @include('partials.category-item')
 
             <div id="js-data"
                 data-locations-url="{{ route('locations') }}"
@@ -30,6 +25,10 @@
             <script src="{{ asset('js/dashboard/national-revenue.js') }}"></script>
             <script src="{{ asset('js/dashboard/accounts-receivable.js') }}"></script>
             <script src="{{ asset('js/dashboard/sales-metrics.js') }}"></script>
+
+            <!-- Marimekko Chart -->
+            <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-mekko@latest/dist/chartjs-chart-mekko.min.js"></script>
+            <script src="{{ asset('js/dashboard/category-item.js') }}"></script>
             @endpush
 
         </div>
