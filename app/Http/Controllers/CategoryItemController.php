@@ -57,41 +57,46 @@ class CategoryItemController extends Controller
 
         $data = $dataQuery->get();
 
-        $branchTotals = $data->groupBy('branch')->map(fn($group) => $group->sum('total_revenue'));
-
         $categories = $data->pluck('category')->unique()->sort()->values();
+        $dataByBranch = $data->groupBy('branch');
+
+        $branchTotals = $paginatedBranches->mapWithKeys(function ($branch) use ($dataByBranch) {
+            return [$branch => $dataByBranch->get($branch, collect())->sum('total_revenue')];
+        });
 
         $categoryColors = [
-            'MIKA' => 'rgba(107, 187, 139, 0.9)',
-            'SPARE PART' => 'rgba(234, 127, 127, 0.9)',
-            'AKSESORIS' => 'rgba(130, 130, 234, 0.9)',
-            'CAT' => 'rgba(238, 188, 109, 0.9)',
-            'PRODUCT IMPORT' => 'rgba(203, 132, 203, 0.9)',
+            'MIKA' => '#6bbb8b',
+            'SPARE PART' => '#ea7f7f',
+            'AKSESORIS' => '#8282ea',
+            'CAT' => '#eebc6d',
+            'PRODUCT IMPORT' => '#cb84cb',
         ];
 
-        $datasets = [];
-        foreach ($categories as $category) {
-            $treeData = [];
-            foreach ($paginatedBranches as $branch) {
-                if (!isset($branchTotals[$branch]) || $branchTotals[$branch] == 0) continue;
-                $revenue = $data->where('branch', $branch)->where('category', $category)->sum('total_revenue');
-                $treeData[] = [
-                    'x' => $branch, // Branch name
-                    'y' => $revenue, // Revenue for this category
-                    'v' => $branchTotals[$branch] // Total revenue for the branch
+        $datasets = $categories->map(function ($category) use ($paginatedBranches, $dataByBranch, $branchTotals, $categoryColors) {
+            $dataPoints = $paginatedBranches->map(function ($branch) use ($category, $dataByBranch, $branchTotals) {
+                $branchData = $dataByBranch->get($branch, collect());
+                $revenue = $branchData->where('category', $category)->sum('total_revenue');
+                $totalForBranch = $branchTotals->get($branch, 0);
+                return [
+                    'x' => $branch,
+                    'y' => $totalForBranch > 0 ? ($revenue / $totalForBranch) : 0,
+                    'v' => $revenue, // Keep raw value for tooltips
+                    'value' => $totalForBranch
                 ];
-            }
+            });
 
-            $datasets[] = [
+            return [
                 'label' => $category,
-                'tree' => $treeData,
-                'backgroundColor' => $categoryColors[$category] ?? 'rgba(201, 203, 207, 0.8)',
+                'data' => $dataPoints,
+                'backgroundColor' => $categoryColors[$category] ?? '#c9cbcf',
             ];
-        }
+        });
 
         return response()->json([
-            'labels' => $paginatedBranches,
-            'datasets' => $datasets,
+            'chartData' => [
+                'labels' => $paginatedBranches,
+                'datasets' => $datasets,
+            ],
             'pagination' => [
                 'currentPage' => $page,
                 'hasMorePages' => $allBranches->count() > ($page * $perPage)

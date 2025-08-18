@@ -23,7 +23,6 @@
             <script src="{{ asset('js/dashboard/national-revenue.js') }}"></script>
             <script src="{{ asset('js/dashboard/accounts-receivable.js') }}"></script>
             <script src="{{ asset('js/dashboard/sales-metrics.js') }}"></script>
-            <script src="{{ asset('js/dashboard/category-item.js') }}"></script>
             @endpush
 
         </div>
