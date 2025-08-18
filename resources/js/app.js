@@ -4,6 +4,7 @@ import {
     BarController,
     BarElement,
     DoughnutController,
+    PieController,
     ArcElement,
     CategoryScale,
     LinearScale,
@@ -15,13 +16,16 @@ import { TreemapController, TreemapElement } from 'chartjs-chart-treemap';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 window.ChartDataLabels = ChartDataLabels;
 
+
 import Alpine from 'alpinejs';
+
 
 // Register Chart.js components
 Chart.register(
     BarController,
     BarElement,
     DoughnutController,
+    PieController,
     ArcElement,
     CategoryScale,
     LinearScale,
@@ -32,6 +36,8 @@ Chart.register(
     ChartDataLabels
 );
 
+
 window.Alpine = Alpine;
+
 
 Alpine.start();

@@ -31,15 +31,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 chartInstance.destroy();
             }
 
-            const flatData = data.datasets.flatMap(ds =>
-                ds.data.map(d => ({ ...d, category: ds.label }))
-            );
-
             const chartConfig = {
                 type: 'treemap',
                 data: {
-                    labels: data.labels,
-                    datasets: data.datasets
+                    datasets: data.datasets.map(ds => ({
+                        label: ds.label,
+                        tree: ds.data,
+                        key: 'y',
+                        groups: ['x'],
+                        backgroundColor: ds.backgroundColor,
+                        borderColor: ds.borderColor
+                    }))
                 },
                 options: {
                     responsive: true,
