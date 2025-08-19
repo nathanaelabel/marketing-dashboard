@@ -38,26 +38,26 @@
         <div class="lg:col-span-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
             <div class="bg-gray-50 p-4 rounded-lg shadow">
                 <h3 class="text-sm font-medium text-gray-500" id="total-so-label">Total Sales Order</h3>
-                <p class="mt-1 text-3xl font-semibold text-gray-900" id="total-so-value">-</p>
+                <p class="mt-1 text-2xl font-semibold text-gray-900" id="total-so-value">-</p>
             </div>
             <div class="bg-gray-50 p-4 rounded-lg shadow">
                 <h3 class="text-sm font-medium text-gray-500" id="pending-so-label">Pending Sales Order</h3>
-                <p class="mt-1 text-3xl font-semibold text-gray-900" id="pending-so-value">-</p>
+                <p class="mt-1 text-2xl font-semibold text-gray-900" id="pending-so-value">-</p>
             </div>
             <div class="bg-gray-50 p-4 rounded-lg shadow">
                 <h3 class="text-sm font-medium text-gray-500" id="stock-value-label">Stock Value</h3>
-                <p class="mt-1 text-3xl font-semibold text-gray-900" id="stock-value-value">-</p>
+                <p class="mt-1 text-2xl font-semibold text-gray-900" id="stock-value-value">-</p>
             </div>
             <div class="bg-gray-50 p-4 rounded-lg shadow">
                 <h3 class="text-sm font-medium text-gray-500" id="store-returns-label">Store Returns</h3>
-                <p class="mt-1 text-3xl font-semibold text-gray-900" id="store-returns-value">-</p>
+                <p class="mt-1 text-2xl font-semibold text-gray-900" id="store-returns-value">-</p>
             </div>
         </div>
 
         <!-- Pie Chart -->
         <div class="lg:col-span-2 bg-gray-50 p-4 rounded-lg shadow">
-            <h3 class="text-lg font-semibold text-gray-900">Accounts Receivable</h3>
-            <p class="text-3xl font-bold text-gray-900" id="ar-pie-total">-</p>
+            <h3 class="text-lg font-medium text-gray-500">Accounts Receivable</h3>
+            <p class="text-2xl font-bold text-gray-900" id="ar-pie-total">-</p>
             <div class="h-96 mt-4">
                 <canvas id="ar-pie-chart"></canvas>
             </div>
