@@ -21,7 +21,6 @@
 
             <script src="{{ asset('js/dashboard/chart-helper.js') }}"></script>
             <script src="{{ asset('js/dashboard/national-revenue.js') }}"></script>
-            <script src="{{ asset('js/dashboard/accounts-receivable.js') }}"></script>
             <script src="{{ asset('js/dashboard/sales-metrics.js') }}"></script>
             @endpush
 

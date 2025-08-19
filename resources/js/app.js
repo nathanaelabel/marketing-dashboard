@@ -41,5 +41,6 @@ window.Alpine = Alpine;
 
 
 import './dashboard/category-item.js';
+import './dashboard/accounts-receivable.js';
 
 Alpine.start();
