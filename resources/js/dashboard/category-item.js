@@ -52,13 +52,34 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            // Transform data for stacked bar chart
+            // Transform data for stacked bar chart with normalization
             const transformedData = {
                 labels: data.chartData.labels,
                 datasets: data.chartData.datasets.map(dataset => ({
                     ...dataset,
-                    data: dataset.data.map(point => point.y || 0)
+                    data: dataset.data.map(point => point.y || 0),
+                    originalData: dataset.data // Keep original data for tooltips
                 }))
+            };
+
+            // Function to normalize data when datasets are toggled
+            const normalizeData = () => {
+                const visibleDatasets = transformedData.datasets.filter((dataset, index) =>
+                    !chart.isDatasetVisible || chart.isDatasetVisible(index)
+                );
+
+                transformedData.labels.forEach((label, branchIndex) => {
+                    const visibleTotal = visibleDatasets.reduce((sum, dataset) => {
+                        return sum + (dataset.originalData[branchIndex]?.y || 0);
+                    }, 0);
+
+                    if (visibleTotal > 0) {
+                        visibleDatasets.forEach(dataset => {
+                            const originalValue = dataset.originalData[branchIndex]?.y || 0;
+                            dataset.data[branchIndex] = originalValue / visibleTotal;
+                        });
+                    }
+                });
             };
 
             chart = new Chart(ctx, {
@@ -70,6 +91,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     scales: {
                         x: {
                             stacked: true,
+                            grid: {
+                                display: false
+                            },
                             ticks: {
                                 autoSkip: false,
                                 maxRotation: 45,
@@ -80,11 +104,22 @@ document.addEventListener('DOMContentLoaded', function () {
                             stacked: true,
                             beginAtZero: true,
                             max: 1,
+                            grid: {
+                                display: false
+                            },
                             ticks: {
                                 callback: function (value) {
                                     return (value * 100) + '%';
                                 }
                             }
+                        }
+                    },
+                    categoryPercentage: 1.0,
+                    barPercentage: 1.0,
+                    datasets: {
+                        bar: {
+                            borderWidth: 1,
+                            borderColor: 'white'
                         }
                     },
                     plugins: {
@@ -94,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                     return context[0].label;
                                 },
                                 label: function (context) {
-                                    const originalData = data.chartData.datasets[context.datasetIndex].data[context.dataIndex];
+                                    const originalData = transformedData.datasets[context.datasetIndex].originalData[context.dataIndex];
                                     if (!originalData || !originalData.v) return '';
                                     const total = originalData.value;
                                     const percentage = total > 0 ? ((originalData.v / total) * 100).toFixed(2) : 0;
@@ -104,13 +139,45 @@ document.addEventListener('DOMContentLoaded', function () {
                         },
                         legend: {
                             position: 'bottom',
+                            onClick: function (e, legendItem, legend) {
+                                const index = legendItem.datasetIndex;
+                                const chart = legend.chart;
+
+                                if (chart.isDatasetVisible(index)) {
+                                    chart.hide(index);
+                                } else {
+                                    chart.show(index);
+                                }
+
+                                // Normalize data after toggling
+                                const visibleDatasets = transformedData.datasets.filter((dataset, idx) =>
+                                    chart.isDatasetVisible(idx)
+                                );
+
+                                transformedData.labels.forEach((label, branchIndex) => {
+                                    const visibleTotal = visibleDatasets.reduce((sum, dataset) => {
+                                        return sum + (dataset.originalData[branchIndex]?.y || 0);
+                                    }, 0);
+
+                                    if (visibleTotal > 0) {
+                                        transformedData.datasets.forEach((dataset, idx) => {
+                                            if (chart.isDatasetVisible(idx)) {
+                                                const originalValue = dataset.originalData[branchIndex]?.y || 0;
+                                                dataset.data[branchIndex] = originalValue / visibleTotal;
+                                            }
+                                        });
+                                    }
+                                });
+
+                                chart.update();
+                            }
                         },
                         datalabels: {
-                            color: '#fff',
+                            color: '#333',
                             anchor: 'center',
                             align: 'center',
                             formatter: function (value, context) {
-                                const originalData = data.chartData.datasets[context.datasetIndex].data[context.dataIndex];
+                                const originalData = transformedData.datasets[context.datasetIndex].originalData[context.dataIndex];
                                 return originalData && originalData.v && originalData.v > 0 ? formatCurrency(originalData.v) : '';
                             },
                             font: {
@@ -118,8 +185,63 @@ document.addEventListener('DOMContentLoaded', function () {
                                 size: 10
                             },
                             display: function (context) {
-                                const originalData = data.chartData.datasets[context.datasetIndex].data[context.dataIndex];
-                                return originalData && originalData.v > 0;
+                                const chart = context.chart;
+                                const originalData = transformedData.datasets[context.datasetIndex].originalData[context.dataIndex];
+                                const value = originalData ? originalData.v : 0;
+
+                                if (!value || value <= 0) {
+                                    return false;
+                                }
+
+                                const categoryNames = chart.data.datasets.map(d => d.label);
+                                const mikaIdx = categoryNames.indexOf('MIKA');
+                                const sparePartIdx = categoryNames.indexOf('SPARE PART');
+                                const catIdx = categoryNames.indexOf('CAT');
+                                const aksesorisIdx = categoryNames.indexOf('AKSESORIS');
+                                const productImportIdx = categoryNames.indexOf('PRODUCT IMPORT');
+
+                                const isVisible = (idx) => idx !== -1 && chart.isDatasetVisible(idx);
+
+                                const isMikaVis = isVisible(mikaIdx);
+                                const isSparePartVis = isVisible(sparePartIdx);
+                                const isCatVis = isVisible(catIdx);
+                                const isAksesorisVis = isVisible(aksesorisIdx);
+                                const isProductImportVis = isVisible(productImportIdx);
+
+                                const visibleCount = [isMikaVis, isSparePartVis, isCatVis, isAksesorisVis, isProductImportVis].filter(Boolean).length;
+
+                                // When 4 categories are hidden (1 is visible), show all labels.
+                                if (visibleCount <= 1) {
+                                    return true;
+                                }
+
+                                // When Mika, Spare Part, and Cat are hidden
+                                if (!isMikaVis && !isSparePartVis && !isCatVis) {
+                                    return value > 1000;
+                                }
+
+                                // When Mika, Spare Part, and Aksesoris are hidden
+                                if (!isMikaVis && !isSparePartVis && !isAksesorisVis) {
+                                    return value > 90000;
+                                }
+
+                                // When Mika, Spare Part, and Product Import are hidden
+                                if (!isMikaVis && !isSparePartVis && !isProductImportVis) {
+                                    return value > 30000;
+                                }
+
+                                // When Mika and Spare Part are hidden
+                                if (!isMikaVis && !isSparePartVis) {
+                                    return value > 300000;
+                                }
+
+                                // When only Mika is hidden
+                                if (!isMikaVis) {
+                                    return value > 6000000;
+                                }
+
+                                // Default behavior: hide labels under 55M
+                                return value > 55000000;
                             }
                         }
                     },
