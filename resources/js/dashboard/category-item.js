@@ -1,8 +1,7 @@
 import { Chart, registerables } from 'chart.js';
-import { MatrixController, MatrixElement } from 'chartjs-chart-matrix';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 
-Chart.register(...registerables, MatrixController, MatrixElement, ChartDataLabels);
+Chart.register(...registerables, ChartDataLabels);
 
 document.addEventListener('DOMContentLoaded', function () {
     const ctx = document.getElementById('categoryItemChart');
@@ -43,8 +42,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 chart.destroy();
             }
 
+            data.chartData.datasets.forEach(ds => {
+                ds.barPercentage = 1.0;
+                ds.categoryPercentage = 1.0;
+            });
+
             chart = new Chart(ctx, {
-                type: 'matrix',
+                type: 'bar',
                 data: data.chartData,
                 options: {
                     responsive: true,
@@ -61,6 +65,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         y: {
                             stacked: true,
                             beginAtZero: true,
+                            max: 1,
                             ticks: {
                                 callback: function (value) {
                                     return (value * 100) + '%';
@@ -72,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         tooltip: {
                             callbacks: {
                                 title: function (context) {
-                                    return context[0].raw.x;
+                                    return context[0].label;
                                 },
                                 label: function (context) {
                                     const raw = context.raw;
@@ -90,10 +95,13 @@ document.addEventListener('DOMContentLoaded', function () {
                             anchor: 'center',
                             align: 'center',
                             formatter: function (value, context) {
-                                return formatCurrency(value.y);
+                                return formatCurrency(context.raw.v);
                             },
                             font: {
                                 weight: 'bold'
+                            },
+                            display: function(context) {
+                                return context.raw.y > 0.05; // Only show label if segment is large enough
                             }
                         }
                     }

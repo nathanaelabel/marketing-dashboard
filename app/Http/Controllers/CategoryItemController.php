@@ -42,7 +42,7 @@ class CategoryItemController extends Controller
             ->join('m_product_category as cat', 'prd.m_product_category_id', '=', 'cat.m_product_category_id')
             ->select(
                 'org.name as branch',
-                'cat.name as category', // Using cat.name to align with previous logic
+                'cat.name as category',
                 DB::raw('SUM(d.linenetamt) as total_revenue')
             )
             ->where('h.ad_client_id', 1000001)
@@ -64,6 +64,8 @@ class CategoryItemController extends Controller
             return [$branch => $dataByBranch->get($branch, collect())->sum('total_revenue')];
         });
 
+        $totalRevenueForPage = $branchTotals->sum();
+
         $categoryColors = [
             'MIKA' => '#6bbb8b',
             'SPARE PART' => '#ea7f7f',
@@ -72,16 +74,17 @@ class CategoryItemController extends Controller
             'PRODUCT IMPORT' => '#cb84cb',
         ];
 
-        $datasets = $categories->map(function ($category) use ($paginatedBranches, $dataByBranch, $branchTotals, $categoryColors) {
-            $dataPoints = $paginatedBranches->map(function ($branch) use ($category, $dataByBranch, $branchTotals) {
+        $datasets = $categories->map(function ($category) use ($paginatedBranches, $dataByBranch, $branchTotals, $totalRevenueForPage, $categoryColors) {
+            $dataPoints = $paginatedBranches->map(function ($branch) use ($category, $dataByBranch, $branchTotals, $totalRevenueForPage) {
                 $branchData = $dataByBranch->get($branch, collect());
                 $revenue = $branchData->where('category', $category)->sum('total_revenue');
                 $totalForBranch = $branchTotals->get($branch, 0);
                 return [
                     'x' => $branch,
                     'y' => $totalForBranch > 0 ? ($revenue / $totalForBranch) : 0,
-                    'v' => $revenue, // Keep raw value for tooltips
-                    'value' => $totalForBranch
+                    'v' => $revenue,
+                    'value' => $totalForBranch,
+                    'width' => $totalRevenueForPage > 0 ? ($totalForBranch / $totalRevenueForPage) : 0
                 ];
             });
 
