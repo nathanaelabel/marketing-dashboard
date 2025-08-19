@@ -38,18 +38,32 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!response.ok) throw new Error('Network response was not ok.');
             const data = await response.json();
 
+            console.log('Received data:', data);
+
             if (chart) {
                 chart.destroy();
             }
 
-            data.chartData.datasets.forEach(ds => {
-                ds.barPercentage = 1.0;
-                ds.categoryPercentage = 1.0;
-            });
+            // Check if we have valid chart data
+            if (!data.chartData || !data.chartData.labels || !data.chartData.datasets) {
+                ctx.parentElement.innerHTML = '<div style="text-align: center; padding-top: 50px; color: #6b7280;">No data available for the selected date range.</div>';
+                prevButton.disabled = currentPage <= 1;
+                nextButton.disabled = !data.pagination.hasMorePages;
+                return;
+            }
+
+            // Transform data for stacked bar chart
+            const transformedData = {
+                labels: data.chartData.labels,
+                datasets: data.chartData.datasets.map(dataset => ({
+                    ...dataset,
+                    data: dataset.data.map(point => point.y || 0)
+                }))
+            };
 
             chart = new Chart(ctx, {
                 type: 'bar',
-                data: data.chartData,
+                data: transformedData,
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -58,8 +72,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             stacked: true,
                             ticks: {
                                 autoSkip: false,
-                                maxRotation: 90,
-                                minRotation: 45
+                                maxRotation: 45,
+                                minRotation: 0
                             }
                         },
                         y: {
@@ -80,10 +94,11 @@ document.addEventListener('DOMContentLoaded', function () {
                                     return context[0].label;
                                 },
                                 label: function (context) {
-                                    const raw = context.raw;
-                                    const total = raw.value;
-                                    const percentage = total > 0 ? ((raw.v / total) * 100).toFixed(2) : 0;
-                                    return `${context.dataset.label}: ${formatCurrency(raw.v)} (${percentage}%)`;
+                                    const originalData = data.chartData.datasets[context.datasetIndex].data[context.dataIndex];
+                                    if (!originalData || !originalData.v) return '';
+                                    const total = originalData.value;
+                                    const percentage = total > 0 ? ((originalData.v / total) * 100).toFixed(2) : 0;
+                                    return `${context.dataset.label}: ${formatCurrency(originalData.v)} (${percentage}%)`;
                                 }
                             }
                         },
@@ -95,15 +110,21 @@ document.addEventListener('DOMContentLoaded', function () {
                             anchor: 'center',
                             align: 'center',
                             formatter: function (value, context) {
-                                return formatCurrency(context.raw.v);
+                                const originalData = data.chartData.datasets[context.datasetIndex].data[context.dataIndex];
+                                return originalData && originalData.v && originalData.v > 0 ? formatCurrency(originalData.v) : '';
                             },
                             font: {
-                                weight: 'bold'
+                                weight: 'bold',
+                                size: 10
                             },
-                            display: function(context) {
-                                return context.raw.y > 0.05; // Only show label if segment is large enough
+                            display: function (context) {
+                                const originalData = data.chartData.datasets[context.datasetIndex].data[context.dataIndex];
+                                return originalData && originalData.v > 0;
                             }
                         }
+                    },
+                    onHover: (event, activeElements) => {
+                        event.native.target.style.cursor = activeElements.length > 0 ? 'pointer' : 'default';
                     }
                 }
             });

@@ -31,7 +31,16 @@ class CategoryItemController extends Controller
         $paginatedBranches = $allBranches->slice(($page - 1) * $perPage, $perPage)->values();
 
         if ($paginatedBranches->isEmpty()) {
-            return response()->json(['labels' => [], 'datasets' => [], 'pagination' => ['currentPage' => $page, 'hasMorePages' => false]]);
+            return response()->json([
+                'chartData' => [
+                    'labels' => [],
+                    'datasets' => []
+                ],
+                'pagination' => [
+                    'currentPage' => $page,
+                    'hasMorePages' => false
+                ]
+            ]);
         }
 
         // Main data query based on the provided SQL
@@ -67,11 +76,11 @@ class CategoryItemController extends Controller
         $totalRevenueForPage = $branchTotals->sum();
 
         $categoryColors = [
-            'MIKA' => '#6bbb8b',
-            'SPARE PART' => '#ea7f7f',
-            'AKSESORIS' => '#8282ea',
-            'CAT' => '#eebc6d',
-            'PRODUCT IMPORT' => '#cb84cb',
+            'MIKA' => 'rgba(251, 146, 60, 0.8)',
+            'AKSESORIS' => 'rgba(22, 220, 160, 0.8)',
+            'CAT' => 'rgba(139, 92, 246, 0.8)',
+            'SPARE PART' => 'rgba(244, 63, 94, 0.8)',
+            'PRODUCT IMPORT' => 'rgba(241, 92, 246, 0.8)',
         ];
 
         $datasets = $categories->map(function ($category) use ($paginatedBranches, $dataByBranch, $branchTotals, $totalRevenueForPage, $categoryColors) {
