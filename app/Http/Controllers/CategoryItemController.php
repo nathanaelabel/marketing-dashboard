@@ -13,7 +13,7 @@ class CategoryItemController extends Controller
         $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', Carbon::now()->toDateString());
         $page = (int)$request->input('page', 1);
-        $perPage = 8;
+        $perPage = $page === 1 ? 9 : 8;
 
         // Base query to get all branches with invoices in the date range for pagination
         $baseQuery = DB::table('c_invoice as h')
@@ -28,7 +28,10 @@ class CategoryItemController extends Controller
             ->orderBy('org.name');
 
         $allBranches = $baseQuery->get()->pluck('branch');
-        $paginatedBranches = $allBranches->slice(($page - 1) * $perPage, $perPage)->values();
+
+        // Calculate offset for pagination with different page sizes
+        $offset = $page === 1 ? 0 : 9 + (($page - 2) * 8);
+        $paginatedBranches = $allBranches->slice($offset, $perPage)->values();
 
         if ($paginatedBranches->isEmpty()) {
             return response()->json([
@@ -104,14 +107,44 @@ class CategoryItemController extends Controller
             ];
         });
 
+        // Branch name abbreviations mapping
+        $branchAbbreviations = [
+            'MPM Tangerang' => 'TGR',
+            'PWM Bandung' => 'BDG',
+            'PWM Banjarmasin' => 'BJM',
+            'PWM Bekasi' => 'BKS',
+            'PWM Cirebon' => 'CRB',
+            'PWM Denpasar' => 'DPS',
+            'PWM Jakarta' => 'JKT',
+            'PWM Lampung' => 'LMP',
+            'PWM Makassar' => 'MKS',
+            'PWM Medan' => 'MDN',
+            'PWM Padang' => 'PDG',
+            'PWM Palembang' => 'PLB',
+            'PWM Pekanbaru' => 'PKU',
+            'PWM Pontianak' => 'PTK',
+            'PWM Purwokerto' => 'PWT',
+            'PWM Surabaya' => 'SBY',
+            'PWM Semarang' => 'SMG',
+        ];
+
+        // Map branch names to abbreviations
+        $abbreviatedLabels = $paginatedBranches->map(function ($branch) use ($branchAbbreviations) {
+            return $branchAbbreviations[$branch] ?? $branch;
+        })->toArray();
+
+        // Calculate hasMorePages based on new pagination logic
+        $totalProcessed = $page === 1 ? 9 : 9 + (($page - 1) * 8);
+        $hasMorePages = $allBranches->count() > $totalProcessed;
+
         return response()->json([
             'chartData' => [
-                'labels' => $paginatedBranches,
-                'datasets' => $datasets,
+                'labels' => $abbreviatedLabels,
+                'datasets' => $datasets->toArray()
             ],
             'pagination' => [
                 'currentPage' => $page,
-                'hasMorePages' => $allBranches->count() > ($page * $perPage)
+                'hasMorePages' => $hasMorePages
             ]
         ]);
     }
