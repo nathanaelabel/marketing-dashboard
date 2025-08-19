@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             }
                         },
                         legend: {
-                            position: 'bottom',
+                            position: 'top',
                             onClick: function (e, legendItem, legend) {
                                 const index = legendItem.datasetIndex;
                                 const chart = legend.chart;
@@ -187,7 +187,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             },
                             font: {
                                 weight: 'bold',
-                                size: 10
+                                size: 12
                             },
                             display: function (context) {
                                 const chart = context.chart;
