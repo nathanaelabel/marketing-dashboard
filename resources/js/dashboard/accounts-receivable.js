@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         maintainAspectRatio: false,
                         plugins: {
                             legend: {
-                                position: 'top',
+                                position: 'top'
                             },
                             tooltip: {
                                 mode: 'index',
