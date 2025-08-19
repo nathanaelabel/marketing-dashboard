@@ -88,6 +88,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            bottom: 10 // extra space between legend and page button
+                        }
+                    },
                     scales: {
                         x: {
                             stacked: true,

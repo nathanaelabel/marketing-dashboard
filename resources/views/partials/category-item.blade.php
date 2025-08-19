@@ -1,6 +1,6 @@
 <div class="mt-10 bg-white overflow-hidden shadow-sm sm:rounded-lg">
     <div class="p-6 bg-white rounded-lg shadow-md">
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex justify-between items-center mb-8">
             <h3 class="text-2xl font-bold text-gray-900">Category Item Revenue</h3>
             <form id="categoryItemDateFilterForm" class="flex items-end space-x-3">
                 <div>
@@ -30,7 +30,7 @@
                 </div>
             </form>
         </div>
-        <div id="category-item-chart-container" style="position: relative; height: 500px; width: 100%;">
+        <div id="category-item-chart-container" class="mt-4" style="position: relative; height: 500px; width: 100%;">
             <canvas id="categoryItemChart" data-url="{{ route('category-item.data') }}"></canvas>
         </div>
         <div class="flex justify-center items-center mt-4 space-x-2">
