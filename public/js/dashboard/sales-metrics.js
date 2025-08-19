@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Set initial values before initializing flatpickr
     const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
     endDateFilter.value = `${yyyy}-${mm}-${dd}`;
 
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', function () {
         altFormat: "d-m-Y",
         dateFormat: "Y-m-d",
         defaultDate: firstDayOfMonth,
-        maxDate: endDatePicker.selectedDates[0] || today, // Set maxDate on init
+        maxDate: endDatePicker.selectedDates[0] || today,
         onChange: function (selectedDates, dateStr, instance) {
             if (endDatePicker) {
                 endDatePicker.set('minDate', selectedDates[0]);
