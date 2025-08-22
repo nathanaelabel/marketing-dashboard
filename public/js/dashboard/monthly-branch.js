@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (datasets.length === 2) {
                 const currentValue = datasets[1].data[context.dataIndex];
                 const previousValue = datasets[0].data[context.dataIndex];
-                
+
                 // Only show growth on the higher bar
                 const isHigherBar = (context.datasetIndex === 1 && currentValue >= previousValue) ||
                     (context.datasetIndex === 0 && previousValue > currentValue);
@@ -179,20 +179,21 @@ document.addEventListener('DOMContentLoaded', function () {
     function loadBranches() {
         fetch('/api/monthly-branch-branches')
             .then(response => response.json())
-            .then(branches => {
+            .then(branchOptions => {
                 branchSelect.innerHTML = '';
-                branches.forEach(branch => {
+                branchOptions.forEach(branchOption => {
                     const option = document.createElement('option');
-                    option.value = branch;
-                    option.textContent = branch;
+                    option.value = branchOption.value;
+                    option.textContent = branchOption.display;
                     branchSelect.appendChild(option);
                 });
-                
+
                 // Set default to PWM Jakarta if available
-                if (branches.includes('PWM Jakarta')) {
+                const jakartaOption = branchOptions.find(option => option.value === 'PWM Jakarta');
+                if (jakartaOption) {
                     branchSelect.value = 'PWM Jakarta';
                 }
-                
+
                 // Trigger initial chart load
                 triggerUpdate();
             })
@@ -206,7 +207,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const year = yearSelect.value;
         const branch = branchSelect.value;
         const category = categorySelect.value;
-        
+
         if (year && branch && category) {
             fetchAndUpdateMonthlyChart(year, branch, category);
         }

@@ -44,7 +44,16 @@ class MonthlyBranchController extends Controller
     {
         try {
             $branches = ChartHelper::getLocations();
-            return response()->json($branches);
+            
+            // Map branches to include both value (full name) and display name
+            $branchOptions = $branches->map(function ($branch) {
+                return [
+                    'value' => $branch,
+                    'display' => ChartHelper::getBranchDisplayName($branch)
+                ];
+            });
+            
+            return response()->json($branchOptions);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }

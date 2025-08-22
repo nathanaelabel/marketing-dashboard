@@ -360,4 +360,29 @@ class ChartHelper
             ]
         ];
     }
+
+    public static function getBranchDisplayName(string $branchName): string
+    {
+        $displayNames = [
+            'PWM Medan' => 'Medan',
+            'PWM Makassar' => 'Makassar',
+            'PWM Palembang' => 'Palembang',
+            'PWM Denpasar' => 'Denpasar',
+            'PWM Surabaya' => 'Surabaya',
+            'PWM Pekanbaru' => 'Pekanbaru',
+            'PWM Cirebon' => 'Cirebon',
+            'MPM Tangerang' => 'Tangerang',
+            'PWM Bekasi' => 'Bekasi',
+            'PWM Semarang' => 'Semarang',
+            'PWM Banjarmasin' => 'Banjarmasin',
+            'PWM Bandung' => 'Bandung',
+            'PWM Lampung' => 'Lampung',
+            'PWM Jakarta' => 'Jakarta',
+            'PWM Pontianak' => 'Pontianak',
+            'PWM Purwokerto' => 'Purwokerto',
+            'PWM Padang' => 'Padang',
+        ];
+
+        return $displayNames[$branchName] ?? $branchName;
+    }
 }
