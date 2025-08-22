@@ -178,7 +178,7 @@ class ChartHelper
         ];
     }
 
-    private static function getBranchAbbreviation(string $branchName): string
+    public static function getBranchAbbreviation(string $branchName): string
     {
         $abbreviations = [
             'PWM Medan' => 'MDN',

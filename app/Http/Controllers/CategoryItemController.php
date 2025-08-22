@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ChartHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -115,30 +116,10 @@ class CategoryItemController extends Controller
             ];
         });
 
-        // Branch name abbreviations mapping
-        $branchAbbreviations = [
-            'MPM Tangerang' => 'TGR',
-            'PWM Bandung' => 'BDG',
-            'PWM Banjarmasin' => 'BJM',
-            'PWM Bekasi' => 'BKS',
-            'PWM Cirebon' => 'CRB',
-            'PWM Denpasar' => 'DPS',
-            'PWM Jakarta' => 'JKT',
-            'PWM Lampung' => 'LMP',
-            'PWM Makassar' => 'MKS',
-            'PWM Medan' => 'MDN',
-            'PWM Padang' => 'PDG',
-            'PWM Palembang' => 'PLB',
-            'PWM Pekanbaru' => 'PKU',
-            'PWM Pontianak' => 'PTK',
-            'PWM Purwokerto' => 'PWT',
-            'PWM Surabaya' => 'SBY',
-            'PWM Semarang' => 'SMG',
-        ];
 
         // Map branch names to abbreviations
-        $abbreviatedLabels = $paginatedBranches->map(function ($branch) use ($branchAbbreviations) {
-            return $branchAbbreviations[$branch] ?? $branch;
+        $abbreviatedLabels = $paginatedBranches->map(function ($branch) {
+            return ChartHelper::getBranchAbbreviation($branch);
         })->toArray();
 
         // Calculate hasMorePages based on new pagination logic

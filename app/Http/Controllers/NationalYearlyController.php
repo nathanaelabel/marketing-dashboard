@@ -117,7 +117,7 @@ class NationalYearlyController extends Controller
 
         // Get branch abbreviations
         $labels = $allBranches->map(function ($name) {
-            return $this->getBranchAbbreviation($name);
+            return ChartHelper::getBranchAbbreviation($name);
         });
 
         return [
@@ -149,28 +149,4 @@ class NationalYearlyController extends Controller
         ];
     }
 
-    private function getBranchAbbreviation(string $branchName): string
-    {
-        $abbreviations = [
-            'PWM Medan' => 'MDN',
-            'PWM Makassar' => 'MKS',
-            'PWM Palembang' => 'PLB',
-            'PWM Denpasar' => 'DPS',
-            'PWM Surabaya' => 'SBY',
-            'PWM Pekanbaru' => 'PKU',
-            'PWM Cirebon' => 'CRB',
-            'MPM Tangerang' => 'TRG',
-            'PWM Bekasi' => 'BKS',
-            'PWM Semarang' => 'SMG',
-            'PWM Banjarmasin' => 'BJM',
-            'PWM Bandung' => 'BDG',
-            'PWM Lampung' => 'LMP',
-            'PWM Jakarta' => 'JKT',
-            'PWM Pontianak' => 'PTK',
-            'PWM Purwokerto' => 'PWT',
-            'PWM Padang' => 'PDG',
-        ];
-
-        return $abbreviations[$branchName] ?? $branchName;
-    }
 }
