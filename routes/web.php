@@ -7,6 +7,7 @@ use App\Http\Controllers\NationalRevenueController;
 use App\Http\Controllers\AccountsReceivableController;
 use App\Http\Controllers\CategoryItemController;
 use App\Http\Controllers\NationalYearlyController;
+use App\Http\Controllers\MonthlyBranchController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -24,6 +25,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/category-item/data', [CategoryItemController::class, 'getData'])->name('category-item.data');
     Route::get('/api/national-yearly-data', [NationalYearlyController::class, 'getData'])->name('national-yearly.data');
     Route::get('/api/national-yearly-categories', [NationalYearlyController::class, 'getCategories'])->name('national-yearly.categories');
+    Route::get('/api/monthly-branch-data', [MonthlyBranchController::class, 'getData'])->name('monthly-branch.data');
+    Route::get('/api/monthly-branch-branches', [MonthlyBranchController::class, 'getBranches'])->name('monthly-branch.branches');
+    Route::get('/api/monthly-branch-categories', [MonthlyBranchController::class, 'getCategories'])->name('monthly-branch.categories');
 });
 
 require __DIR__ . '/auth.php';

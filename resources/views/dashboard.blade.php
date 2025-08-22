@@ -12,6 +12,7 @@
             @include('partials.sales-metrics')
             @include('partials.category-item')
             @include('partials.national-yearly')
+            @include('partials.monthly-branch')
 
             <div id="js-data"
                 data-locations-url="{{ route('locations') }}"
@@ -24,6 +25,7 @@
             <script src="{{ asset('js/dashboard/national-revenue.js') }}"></script>
             <script src="{{ asset('js/dashboard/sales-metrics.js') }}"></script>
             <script src="{{ asset('js/dashboard/national-yearly.js') }}"></script>
+            <script src="{{ asset('js/dashboard/monthly-branch.js') }}"></script>
             @endpush
 
         </div>
