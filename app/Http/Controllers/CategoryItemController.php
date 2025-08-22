@@ -69,7 +69,15 @@ class CategoryItemController extends Controller
 
         $data = $dataQuery->get();
 
-        $categories = $data->pluck('category')->unique()->sort()->values();
+        // Enforce legend order
+        $desiredOrder = ['MIKA', 'SPARE PART', 'CAT', 'PRODUCT IMPORT', 'AKSESORIS'];
+        $foundCategories = $data->pluck('category')->unique()->values();
+        // Keep only categories present in data, in the desired order
+        $categories = collect($desiredOrder)
+            ->filter(function ($c) use ($foundCategories) {
+                return $foundCategories->contains($c);
+            })
+            ->values();
         $dataByBranch = $data->groupBy('branch');
 
         $branchTotals = $paginatedBranches->mapWithKeys(function ($branch) use ($dataByBranch) {
@@ -79,7 +87,7 @@ class CategoryItemController extends Controller
         $totalRevenueForPage = $branchTotals->sum();
 
         $categoryColors = [
-            'MIKA' => 'rgba(251, 146, 60, 0.8)',
+            'MIKA' => 'rgb(81, 178, 243)',
             'AKSESORIS' => 'rgba(22, 220, 160, 0.8)',
             'CAT' => 'rgba(139, 92, 246, 0.8)',
             'SPARE PART' => 'rgba(244, 63, 94, 0.8)',
