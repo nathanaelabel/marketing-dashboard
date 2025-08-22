@@ -3,7 +3,7 @@
         <div class="flex justify-between items-start mb-4">
             <div>
                 <h3 class="text-2xl font-bold text-gray-900">National Revenue</h3>
-                <p id="nationalTotalRevenueDisplay" class="mt-2 mb-2 text-1xl font-medium text-gray-700">Rp 0</p> <!-- Updated by JS -->
+                <p id="nationalTotalRevenueDisplay" class="mt-2 mb-2 text-1xl font-bold text-gray-700">Loading...</p>
             </div>
             <form id="dateFilterForm" class="flex items-end space-x-3">
                 <div>
