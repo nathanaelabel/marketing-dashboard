@@ -74,16 +74,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 return response.json();
             })
-            .then(locations => {
-                if (locations.error) {
-                    throw locations;
+            .then(locationOptions => {
+                if (locationOptions.error) {
+                    throw locationOptions;
                 }
-                locations.forEach(location => {
+
+                // Clear existing options first
+                locationFilter.innerHTML = '';
+
+                locationOptions.forEach(locationOption => {
                     const option = document.createElement('option');
-                    option.value = location;
-                    option.textContent = location;
+                    option.value = locationOption.value;
+                    option.textContent = locationOption.display;
                     locationFilter.appendChild(option);
                 });
+
+                // Set default to National (%) if available
+                const nationalOption = locationOptions.find(option => option.value === '%');
+                if (nationalOption) {
+                    locationFilter.value = '%';
+                }
             })
             .catch(error => {
                 console.error('Error fetching locations:', error.error || error);

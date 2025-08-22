@@ -167,7 +167,27 @@ class SalesMetricsController extends Controller
     {
         try {
             $locations = ChartHelper::getLocations();
-            return response()->json($locations);
+            
+            // Add National option at the beginning
+            $locationOptions = collect([
+                [
+                    'value' => '%',
+                    'display' => 'National'
+                ]
+            ]);
+            
+            // Map locations to include both value (full name) and display name
+            $branchOptions = $locations->map(function ($location) {
+                return [
+                    'value' => $location,
+                    'display' => ChartHelper::getBranchDisplayName($location)
+                ];
+            });
+            
+            // Merge National option with branch options
+            $allOptions = $locationOptions->merge($branchOptions);
+            
+            return response()->json($allOptions);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
