@@ -2,6 +2,8 @@
 
 namespace App\Helpers;
 
+use Illuminate\Support\Facades\DB;
+
 class ChartHelper
 {
     /**
@@ -317,6 +319,45 @@ class ChartHelper
             'yAxisDivisor' => $yAxisConfig['divisor'],
             'yAxisUnit' => $yAxisConfig['unit'],
             'suggestedMax' => $suggestedMax,
+        ];
+    }
+
+    public static function getLocations()
+    {
+        try {
+            $rawLocations = DB::table('ad_org')
+                ->where('isactive', 'Y')
+                ->whereNotIn('name', ['*', 'HQ', 'Store', 'PWM Pusat'])
+                ->orderBy('name')
+                ->pluck('name');
+
+            return $rawLocations;
+        } catch (\Exception $e) {
+            throw new \Exception('Error fetching locations: ' . $e->getMessage());
+        }
+    }
+
+    public static function getYearlyComparisonDatasets($year, $previousYear, $currentYearValues, $previousYearValues)
+    {
+        return [
+            [
+                'label' => $previousYear,
+                'data' => $previousYearValues,
+                // Blue 500 (lighter) for previous year
+                'backgroundColor' => 'rgba(59, 130, 246, 0.7)',
+                'borderColor' => 'rgba(59, 130, 246, 1)',
+                'borderWidth' => 1,
+                'borderRadius' => 6,
+            ],
+            [
+                'label' => $year,
+                'data' => $currentYearValues,
+                // Blue 600 (darker) for current year
+                'backgroundColor' => 'rgba(38, 102, 241, 0.9)',
+                'borderColor' => 'rgba(37, 99, 235, 1)',
+                'borderWidth' => 1,
+                'borderRadius' => 6,
+            ]
         ];
     }
 }

@@ -166,17 +166,8 @@ class SalesMetricsController extends Controller
     public function getLocations()
     {
         try {
-            $rawLocations = DB::table('ad_org')
-                ->where('isactive', 'Y')
-                ->whereNotIn('name', ['*', 'HQ', 'Store', 'PWM Pusat'])
-                ->orderBy('name')
-                ->pluck('name');
-
-            // $locations = $rawLocations->map(function ($name) {
-            //     return str_replace(['MPM ', 'PWM '], '', $name);
-            // });
-
-            return response()->json($rawLocations);
+            $locations = ChartHelper::getLocations();
+            return response()->json($locations);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
