@@ -1,8 +1,8 @@
 <div class="mt-10 bg-white overflow-hidden shadow-sm sm:rounded-lg">
-    <div class="p-6 bg-white rounded-lg shadow-md">
+    <div class="px-6 pt-2 pb-6 bg-white rounded-lg shadow-md">
         <div class="flex justify-between items-center mb-8">
             <h3 class="text-2xl font-bold text-gray-900">Category Item Revenue</h3>
-            <form id="categoryItemDateFilterForm" class="flex items-end space-x-3">
+            <form id="categoryItemDateFilterForm" class="flex items-end space-x-3 pt-2">
                 <div>
                     <label for="categoryItemStartDate" class="block text-xs font-medium text-gray-500 mb-1">Start Date</label>
                     <div class="relative">

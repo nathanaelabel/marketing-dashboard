@@ -1,20 +1,10 @@
 <div class="mt-10 bg-white overflow-hidden shadow-sm sm:rounded-lg">
     <div class="p-6 text-gray-900">
-        <div class="flex justify-between items-start mb-4">
-            <div>
+        <div class="grid grid-cols-1 md:grid-cols-2 items-start mb-4">
+            <div class="md:justify-self-start">
                 <h3 class="text-2xl font-bold text-gray-900">National Yearly Revenue</h3>
-                <div class="mt-2 flex space-x-6">
-                    <div class="flex items-center">
-                        <div class="w-4 h-4 bg-yellow-300 rounded mr-2"></div>
-                        <span id="previous-year-label" class="text-sm text-gray-600">2023</span>
-                    </div>
-                    <div class="flex items-center">
-                        <div class="w-4 h-4 bg-yellow-500 rounded mr-2"></div>
-                        <span id="current-year-label" class="text-sm text-gray-600">2024</span>
-                    </div>
-                </div>
             </div>
-            <div class="flex items-end space-x-3">
+            <div class="flex items-end space-x-3 md:justify-self-end justify-center mt-3 md:mt-0">
                 <!-- Year Range Selector -->
                 <div>
                     <label for="yearly-year-select" class="block text-xs font-medium text-gray-500 mb-1">Year Range</label>

@@ -14,19 +14,19 @@ class NationalYearlyController extends Controller
         $year = $request->get('year', date('Y'));
         $previousYear = $year - 1;
         $category = $request->get('category', 'MIKA');
-        
+
         // Get current year data
         $currentYearData = $this->getRevenueData($year, $category);
-        
+
         // Get previous year data
         $previousYearData = $this->getRevenueData($previousYear, $category);
-        
+
         // Combine and format data using ChartHelper
         $formattedData = $this->formatYearlyComparisonData($currentYearData, $previousYearData, $year, $previousYear);
-        
+
         return response()->json($formattedData);
     }
-    
+
     public function getCategories()
     {
         $categories = MProductCategory::where('isactive', 'Y')
@@ -35,10 +35,10 @@ class NationalYearlyController extends Controller
             ->distinct()
             ->orderBy('name')
             ->get();
-            
+
         return response()->json($categories);
     }
-    
+
     private function getRevenueData($year, $category)
     {
         // First get the category filter condition
@@ -51,7 +51,7 @@ class NationalYearlyController extends Controller
                 AND pc.name = :category
             )";
         }
-        
+
         $query = "
             SELECT
                 org.name AS branch_name, 
@@ -76,15 +76,15 @@ class NationalYearlyController extends Controller
             ORDER BY
                 org.name
         ";
-        
+
         $params = ['year' => $year];
         if ($category) {
             $params['category'] = $category;
         }
-        
+
         return DB::select($query, $params);
     }
-    
+
     private function formatYearlyComparisonData($currentYearData, $previousYearData, $year, $previousYear)
     {
         // Get all unique branches from both datasets
@@ -92,50 +92,52 @@ class NationalYearlyController extends Controller
             ->merge(collect($previousYearData)->pluck('branch_name'))
             ->unique()
             ->values();
-        
+
         // Map data for each year
         $currentYearMap = collect($currentYearData)->keyBy('branch_name');
         $previousYearMap = collect($previousYearData)->keyBy('branch_name');
-        
+
         $currentYearValues = [];
         $previousYearValues = [];
-        
+
         foreach ($allBranches as $branch) {
             $currentRevenue = $currentYearMap->get($branch);
             $previousRevenue = $previousYearMap->get($branch);
-            
+
             $currentYearValues[] = $currentRevenue ? $currentRevenue->total_revenue : 0;
             $previousYearValues[] = $previousRevenue ? $previousRevenue->total_revenue : 0;
         }
-        
+
         // Get max value for Y-axis scaling
         $maxValue = max(max($currentYearValues), max($previousYearValues));
-        
+
         // Use ChartHelper for Y-axis configuration
         $yAxisConfig = ChartHelper::getYAxisConfig($maxValue, null, array_merge($currentYearValues, $previousYearValues));
         $suggestedMax = ChartHelper::calculateSuggestedMax($maxValue, $yAxisConfig['divisor']);
-        
+
         // Get branch abbreviations
-        $labels = $allBranches->map(function($name) {
+        $labels = $allBranches->map(function ($name) {
             return $this->getBranchAbbreviation($name);
         });
-        
+
         return [
             'labels' => $labels,
             'datasets' => [
                 [
                     'label' => $previousYear,
                     'data' => $previousYearValues,
-                    'backgroundColor' => 'rgba(251, 191, 36, 0.7)',
-                    'borderColor' => 'rgba(251, 191, 36, 1)',
+                    // Blue 500 (lighter) for previous year
+                    'backgroundColor' => 'rgba(59, 130, 246, 0.7)',
+                    'borderColor' => 'rgba(59, 130, 246, 1)',
                     'borderWidth' => 1,
                     'borderRadius' => 6,
                 ],
                 [
                     'label' => $year,
                     'data' => $currentYearValues,
-                    'backgroundColor' => 'rgba(245, 158, 11, 0.9)',
-                    'borderColor' => 'rgba(245, 158, 11, 1)',
+                    // Blue 600 (darker) for current year
+                    'backgroundColor' => 'rgba(38, 102, 241, 0.9)',
+                    'borderColor' => 'rgba(37, 99, 235, 1)',
                     'borderWidth' => 1,
                     'borderRadius' => 6,
                 ]
@@ -146,7 +148,7 @@ class NationalYearlyController extends Controller
             'suggestedMax' => $suggestedMax,
         ];
     }
-    
+
     private function getBranchAbbreviation(string $branchName): string
     {
         $abbreviations = [
@@ -168,7 +170,7 @@ class NationalYearlyController extends Controller
             'PWM Purwokerto' => 'PWT',
             'PWM Padang' => 'PDG',
         ];
-        
+
         return $abbreviations[$branchName] ?? $branchName;
     }
 }

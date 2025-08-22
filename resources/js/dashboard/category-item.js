@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 }
 
                                 // Default behavior: hide labels under 55M
-                                return value > 55000000;
+                                return value > 60000000;
                             }
                         }
                     },
