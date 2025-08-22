@@ -17,7 +17,6 @@
             <div id="js-data"
                 data-locations-url="{{ route('sales-metrics.locations') }}"
                 data-sales-metrics-url="{{ route('sales-metrics.data') }}"></div>
-
             @push('scripts')
             <script src="https://cdn.jsdelivr.net/npm/flatpickr?v=1.1"></script>
 
