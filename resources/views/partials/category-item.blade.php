@@ -30,7 +30,7 @@
                 </div>
             </form>
         </div>
-        <div id="category-item-chart-container" class="mt-4" style="position: relative; height: 500px; width: 100%;">
+        <div id="category-item-chart-container" class="mt-4" style="position: relative; height: 450px; width: 100%;">
             <canvas id="categoryItemChart" data-url="{{ route('category-item.data') }}"></canvas>
         </div>
         <div class="flex justify-center items-center mt-4 space-x-2">

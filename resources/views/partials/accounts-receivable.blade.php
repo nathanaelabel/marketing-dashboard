@@ -9,8 +9,8 @@
                 <p id="arDate" class="text-sm text-gray-500"></p>
             </div>
         </div>
-        <div style="height: 400px;">
-            <canvas id="accountsReceivableChart" data-url="{{ route('accounts-receivable.data') }}"></canvas>
+        <div>
+            <canvas id="accountsReceivableChart" data-url="{{ route('accounts-receivable.data') }}" style="max-height: 450px; width: 100%;"></canvas>
         </div>
     </div>
 </div>
