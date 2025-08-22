@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     let nationalYearlyChart = null;
     const ctx = document.getElementById('national-yearly-chart');
     const yearSelect = document.getElementById('yearly-year-select');
@@ -35,11 +35,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (datasets.length === 2) {
                 const currentValue = datasets[1].data[context.dataIndex];
                 const previousValue = datasets[0].data[context.dataIndex];
-                
+
                 // Only show growth on the higher bar
-                const isHigherBar = (context.datasetIndex === 1 && currentValue >= previousValue) || 
-                                   (context.datasetIndex === 0 && previousValue > currentValue);
-                
+                const isHigherBar = (context.datasetIndex === 1 && currentValue >= previousValue) ||
+                    (context.datasetIndex === 0 && previousValue > currentValue);
+
                 if (isHigherBar && currentValue > 0 && previousValue > 0) {
                     const growth = ((currentValue - previousValue) / previousValue) * 100;
                     return (growth >= 0 ? 'Rp ' : '') + growth.toFixed(1) + '%';
@@ -65,7 +65,20 @@ document.addEventListener('DOMContentLoaded', function() {
             nationalYearlyChart.options.plugins.datalabels.formatter = formatGrowthLabel;
             nationalYearlyChart.update();
         } else {
-            Chart.register(ChartDataLabels);
+            // Register datalabels + custom legend margin plugin
+            const LegendMargin = {
+                id: 'legendMargin',
+                beforeInit(chart, _args, opts) {
+                    const fit = chart.legend && chart.legend.fit;
+                    if (!fit) return;
+                    chart.legend.fit = function fitWithMargin() {
+                        fit.bind(this)();
+                        this.height += (opts && opts.margin) ? opts.margin : 0;
+                    };
+                }
+            };
+
+            Chart.register(ChartDataLabels, LegendMargin);
             nationalYearlyChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -79,7 +92,15 @@ document.addEventListener('DOMContentLoaded', function() {
                             display: false
                         },
                         legend: {
-                            display: false
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                padding: 12
+                            }
+                        },
+                        // extra spacing below legend (to separate from plot area)
+                        legendMargin: {
+                            margin: 10
                         },
                         tooltip: {
                             callbacks: {
@@ -170,11 +191,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const triggerUpdate = () => {
         const year = yearSelect.value;
         const category = categorySelect.value;
-        
-        // Update year labels
-        previousYearLabel.textContent = (year - 1);
-        currentYearLabel.textContent = year;
-        
+
+        // Update year labels (if elements exist; header legend was removed)
+        if (previousYearLabel) previousYearLabel.textContent = (year - 1);
+        if (currentYearLabel) currentYearLabel.textContent = year;
+
         fetchAndUpdateYearlyChart(year, category);
     };
 
