@@ -11,6 +11,7 @@
             @include('partials.accounts-receivable')
             @include('partials.sales-metrics')
             @include('partials.category-item')
+            @include('partials.national-yearly')
 
             <div id="js-data"
                 data-locations-url="{{ route('locations') }}"
@@ -22,6 +23,7 @@
             <script src="{{ asset('js/dashboard/chart-helper.js') }}"></script>
             <script src="{{ asset('js/dashboard/national-revenue.js') }}"></script>
             <script src="{{ asset('js/dashboard/sales-metrics.js') }}"></script>
+            <script src="{{ asset('js/dashboard/national-yearly.js') }}"></script>
             @endpush
 
         </div>
