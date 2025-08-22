@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function fetchAndUpdateYearlyChart(year, category) {
-        const url = `/api/national-yearly-data?year=${year}&category=${encodeURIComponent(category)}`;
+        const url = `/national-yearly/data?year=${year}&category=${encodeURIComponent(category)}`;
 
         fetch(url)
             .then(response => {

@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function fetchAndUpdateMonthlyChart(year, branch, category) {
-        const url = `/api/monthly-branch-data?year=${year}&branch=${encodeURIComponent(branch)}&category=${encodeURIComponent(category)}`;
+        const url = `/monthly-branch/data?year=${year}&branch=${encodeURIComponent(branch)}&category=${encodeURIComponent(category)}`;
 
         fetch(url)
             .then(response => {
@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function loadBranches() {
-        fetch('/api/monthly-branch-branches')
+        fetch('/monthly-branch/branches')
             .then(response => response.json())
             .then(branchOptions => {
                 branchSelect.innerHTML = '';

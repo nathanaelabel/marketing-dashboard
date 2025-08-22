@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Fetch locations
     function fetchLocations() {
-        fetch('/locations')
+        fetch('/sales-metrics/locations')
             .then(response => {
                 if (!response.ok) {
                     return response.json().then(err => {
