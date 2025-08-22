@@ -4,7 +4,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (!arChartCanvas) return;
 
-    Chart.register(ChartDataLabels);
+    // Custom plugin to add extra margin under the legend
+    const LegendMargin = {
+        id: 'legendMargin',
+        beforeInit(chart, _args, opts) {
+            const fit = chart.legend && chart.legend.fit;
+            if (!fit) return;
+            chart.legend.fit = function fitWithMargin() {
+                fit.bind(this)();
+                this.height += (opts && opts.margin) ? opts.margin : 0;
+            };
+        }
+    };
+
+    Chart.register(ChartDataLabels, LegendMargin);
 
     function fetchAndUpdateAccountsReceivableChart() {
         const arTotalEl = document.getElementById('arTotal');
@@ -40,7 +53,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         maintainAspectRatio: false,
                         plugins: {
                             legend: {
-                                position: 'top'
+                                position: 'top',
+                                labels: {
+                                    padding: 12
+                                }
+                            },
+                            // extra space under legend
+                            legendMargin: {
+                                margin: 10
                             },
                             tooltip: {
                                 mode: 'index',
@@ -69,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                     weight: 'bold'
                                 },
                                 formatter: function (value, context) {
-                                    if (value < 1500000000) { // Hide labels for values less than 1.5B
+                                    if (value < 1800000000) { // Hide labels for values less than 1.5B
                                         return null;
                                     }
                                     const billions = value / 1000000000;

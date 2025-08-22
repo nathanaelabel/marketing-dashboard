@@ -1,7 +1,21 @@
 import { Chart, registerables } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 
-Chart.register(...registerables, ChartDataLabels);
+// Custom plugin to add extra margin under the legend
+const LegendMargin = {
+    id: 'legendMargin',
+    beforeInit(chart, _args, opts) {
+        const fit = chart.legend && chart.legend.fit;
+        if (!fit) return;
+        chart.legend.fit = function fitWithMargin() {
+            fit.bind(this)();
+            // increase legend height by configured margin
+            this.height += (opts && opts.margin) ? opts.margin : 0;
+        };
+    }
+};
+
+Chart.register(...registerables, ChartDataLabels, LegendMargin);
 
 document.addEventListener('DOMContentLoaded', function () {
     const ctx = document.getElementById('categoryItemChart');
@@ -90,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     maintainAspectRatio: false,
                     layout: {
                         padding: {
-                            bottom: 10 // extra space between legend and page button
+                            bottom: 10 // space between chart and page buttons
                         }
                     },
                     scales: {
@@ -144,6 +158,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         },
                         legend: {
                             position: 'top',
+                            labels: {
+                                padding: 12 // spacing between legend items
+                            },
                             onClick: function (e, legendItem, legend) {
                                 const index = legendItem.datasetIndex;
                                 const chart = legend.chart;
@@ -176,6 +193,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                                 chart.update();
                             }
+                        },
+                        // apply extra space under legend (in addition to labels padding)
+                        legendMargin: {
+                            margin: 10
                         },
                         datalabels: {
                             color: '#333',
