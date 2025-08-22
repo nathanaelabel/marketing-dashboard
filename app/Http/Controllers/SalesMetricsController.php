@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ChartHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -130,8 +131,7 @@ class SalesMetricsController extends Controller
 
             $arPieData = DB::selectOne($arPieQuery, $arBindings);
 
-            $formattedStartDate = Carbon::parse($startDate)->format('j M Y');
-            $formattedEndDate = Carbon::parse($endDate)->format('j M Y');
+            $dateRange = ChartHelper::formatDateRange($startDate, $endDate);
 
             $arPieChartData = [
                 'labels' => ['1 - 30 Days', '31 - 60 Days', '61 - 90 Days', '> 90 Days'],
@@ -156,7 +156,7 @@ class SalesMetricsController extends Controller
                 'stock_value' => (float)($stockValueData->stock_value ?? 0),
                 'store_returns' => (float)($storeReturnsData->store_returns ?? 0),
                 'ar_pie_chart' => $arPieChartData,
-                'date_range' => $formattedStartDate . ' - ' . $formattedEndDate,
+                'date_range' => $dateRange,
             ]);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);

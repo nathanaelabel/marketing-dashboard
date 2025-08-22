@@ -204,6 +204,94 @@ class ChartHelper
         return $abbreviations[$branchName] ?? $branchName;
     }
 
+    /**
+     * Get category color mapping for consistent chart colors
+     */
+    public static function getCategoryColors(): array
+    {
+        return [
+            'MIKA' => 'rgb(81, 178, 243)',
+            'AKSESORIS' => 'rgba(22, 220, 160, 0.8)',
+            'CAT' => 'rgba(139, 92, 246, 0.8)',
+            'SPARE PART' => 'rgba(244, 63, 94, 0.8)',
+            'PRODUCT IMPORT' => 'rgba(241, 92, 246, 0.8)',
+        ];
+    }
+
+    /**
+     * Format date range for display
+     */
+    public static function formatDateRange(string $startDate, string $endDate): string
+    {
+        $formattedStart = \Carbon\Carbon::parse($startDate)->format('j M Y');
+        $formattedEnd = \Carbon\Carbon::parse($endDate)->format('j M Y');
+        return $formattedStart . ' - ' . $formattedEnd;
+    }
+
+    /**
+     * Get standard invoice query filters
+     */
+    public static function getStandardInvoiceFilters(): array
+    {
+        return [
+            'h.ad_client_id' => 1000001,
+            'h.issotrx' => 'Y',
+            'h.isactive' => 'Y'
+        ];
+    }
+
+    /**
+     * Build accounts receivable aging query with subqueries
+     */
+    public static function buildAccountsReceivableQuery(string $locationFilter = null): array
+    {
+        $paymentsSubquery = "
+            SELECT
+                c_invoice_id,
+                SUM(amount + discountamt + writeoffamt) as paidamt
+            FROM c_allocationline
+            GROUP BY c_invoice_id
+        ";
+
+        $overdueQuery = "
+            SELECT
+                inv.ad_org_id,
+                inv.grandtotal - COALESCE(p.paidamt, 0) as open_amount,
+                DATE_PART('day', NOW() - inv.dateinvoiced::date) as age
+            FROM c_invoice as inv
+            LEFT JOIN ({$paymentsSubquery}) as p ON inv.c_invoice_id = p.c_invoice_id
+            WHERE inv.issotrx = 'Y'
+            AND inv.docstatus = 'CO'
+            AND (inv.grandtotal - COALESCE(p.paidamt, 0)) > 0.01
+        ";
+
+        $mainQuery = "
+            SELECT
+                org.name as branch_name,
+                SUM(CASE WHEN overdue.age BETWEEN 1 AND 30 THEN overdue.open_amount ELSE 0 END) as overdue_1_30,
+                SUM(CASE WHEN overdue.age BETWEEN 31 AND 60 THEN overdue.open_amount ELSE 0 END) as overdue_31_60,
+                SUM(CASE WHEN overdue.age BETWEEN 61 AND 90 THEN overdue.open_amount ELSE 0 END) as overdue_61_90,
+                SUM(CASE WHEN overdue.age > 90 THEN overdue.open_amount ELSE 0 END) as overdue_90_plus,
+                SUM(overdue.open_amount) as total_overdue
+            FROM ad_org as org
+            JOIN ({$overdueQuery}) as overdue ON org.ad_org_id = overdue.ad_org_id
+            WHERE overdue.age > 0
+        ";
+
+        $bindings = [];
+        if ($locationFilter && $locationFilter !== 'National') {
+            $mainQuery .= " AND org.name LIKE ?";
+            $bindings[] = $locationFilter;
+        }
+
+        $mainQuery .= " GROUP BY org.name ORDER BY total_overdue DESC";
+
+        return [
+            'query' => $mainQuery,
+            'bindings' => $bindings
+        ];
+    }
+
     public static function formatNationalRevenueData($queryResult)
     {
         $totalRevenue = $queryResult->sum('total_revenue');

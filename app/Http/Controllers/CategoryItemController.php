@@ -87,13 +87,7 @@ class CategoryItemController extends Controller
 
         $totalRevenueForPage = $branchTotals->sum();
 
-        $categoryColors = [
-            'MIKA' => 'rgb(81, 178, 243)',
-            'AKSESORIS' => 'rgba(22, 220, 160, 0.8)',
-            'CAT' => 'rgba(139, 92, 246, 0.8)',
-            'SPARE PART' => 'rgba(244, 63, 94, 0.8)',
-            'PRODUCT IMPORT' => 'rgba(241, 92, 246, 0.8)',
-        ];
+        $categoryColors = ChartHelper::getCategoryColors();
 
         $datasets = $categories->map(function ($category) use ($paginatedBranches, $dataByBranch, $branchTotals, $totalRevenueForPage, $categoryColors) {
             $dataPoints = $paginatedBranches->map(function ($branch) use ($category, $dataByBranch, $branchTotals, $totalRevenueForPage) {
