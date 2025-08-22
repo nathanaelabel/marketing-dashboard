@@ -188,10 +188,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     branchSelect.appendChild(option);
                 });
 
-                // Set default to PWM Jakarta if available
-                const jakartaOption = branchOptions.find(option => option.value === 'PWM Jakarta');
-                if (jakartaOption) {
-                    branchSelect.value = 'PWM Jakarta';
+                // Set default to National if available
+                const nationalOption = branchOptions.find(option => option.value === 'National');
+                if (nationalOption) {
+                    branchSelect.value = 'National';
                 }
 
                 // Trigger initial chart load

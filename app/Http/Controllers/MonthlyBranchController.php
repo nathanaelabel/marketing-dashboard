@@ -44,16 +44,27 @@ class MonthlyBranchController extends Controller
     {
         try {
             $branches = ChartHelper::getLocations();
-            
+
+            // Add National option at the beginning
+            $branchOptions = collect([
+                [
+                    'value' => 'National',
+                    'display' => 'National'
+                ]
+            ]);
+
             // Map branches to include both value (full name) and display name
-            $branchOptions = $branches->map(function ($branch) {
+            $individualBranches = $branches->map(function ($branch) {
                 return [
                     'value' => $branch,
                     'display' => ChartHelper::getBranchDisplayName($branch)
                 ];
             });
-            
-            return response()->json($branchOptions);
+
+            // Merge National option with branch options
+            $allOptions = $branchOptions->merge($individualBranches);
+
+            return response()->json($allOptions);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
@@ -72,6 +83,12 @@ class MonthlyBranchController extends Controller
             )";
         }
 
+        // Branch condition - if National, sum all branches, otherwise filter by specific branch
+        $branchCondition = '';
+        if ($branch !== 'National') {
+            $branchCondition = 'AND org.name = :branch';
+        }
+
         $query = "
             SELECT
                 EXTRACT(month FROM inv.dateinvoiced) AS month_number,
@@ -87,7 +104,7 @@ class MonthlyBranchController extends Controller
                 AND invl.linenetamt > 0
                 AND inv.docstatus IN ('CO', 'CL')
                 AND inv.isactive = 'Y'
-                AND org.name = :branch
+                {$branchCondition}
                 AND EXTRACT(year FROM inv.dateinvoiced) = :year
                 AND inv.documentno LIKE 'INC%'
                 {$categoryCondition}
@@ -97,7 +114,10 @@ class MonthlyBranchController extends Controller
                 month_number
         ";
 
-        $params = ['year' => $year, 'branch' => $branch];
+        $params = ['year' => $year];
+        if ($branch !== 'National') {
+            $params['branch'] = $branch;
+        }
         if ($category) {
             $params['category'] = $category;
         }
