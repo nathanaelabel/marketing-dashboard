@@ -14,7 +14,7 @@ class MonthlyBranchController extends Controller
         $year = $request->get('year', date('Y'));
         $previousYear = $year - 1;
         $category = $request->get('category', 'MIKA');
-        $branch = $request->get('branch', 'PWM Jakarta');
+        $branch = $request->get('branch');
 
         // Get current year data for all 12 months
         $currentYearData = $this->getMonthlyRevenueData($year, $category, $branch);
