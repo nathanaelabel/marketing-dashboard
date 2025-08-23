@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             };
 
-            Chart.register(LegendMargin);
+            Chart.register(LegendMargin, ChartDataLabels);
             branchGrowthChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -73,6 +73,29 @@ document.addEventListener('DOMContentLoaded', function () {
                         legendMargin: {
                             margin: 10
                         },
+                        datalabels: {
+                            display: function (context) {
+                                // Only show labels for non-zero values
+                                return context.dataset.data[context.dataIndex] > 0;
+                            },
+                            anchor: 'end',
+                            align: 'top',
+                            offset: 4,
+                            color: function (context) {
+                                return context.dataset.borderColor;
+                            },
+                            font: {
+                                size: 11,
+                                weight: 'bold'
+                            },
+                            formatter: function (value, context) {
+                                // Use formatted data from dataset
+                                if (context.dataset.formattedData && context.dataset.formattedData[context.dataIndex]) {
+                                    return context.dataset.formattedData[context.dataIndex];
+                                }
+                                return value;
+                            }
+                        },
                         tooltip: {
                             mode: 'index',
                             intersect: false,
@@ -83,6 +106,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                         label += ': ';
                                     }
                                     if (context.parsed.y !== null) {
+                                        // Show raw values in tooltips
                                         label += new Intl.NumberFormat('id-ID', {
                                             minimumFractionDigits: 0
                                         }).format(context.parsed.y);

@@ -111,17 +111,36 @@ class BranchGrowthController extends Controller
         $result = DB::select($query, $bindings);
 
         return $result[0] ?? (object)[
-            'b01' => 0, 'b02' => 0, 'b03' => 0, 'b04' => 0,
-            'b05' => 0, 'b06' => 0, 'b07' => 0, 'b08' => 0,
-            'b09' => 0, 'b10' => 0, 'b11' => 0, 'b12' => 0
+            'b01' => 0,
+            'b02' => 0,
+            'b03' => 0,
+            'b04' => 0,
+            'b05' => 0,
+            'b06' => 0,
+            'b07' => 0,
+            'b08' => 0,
+            'b09' => 0,
+            'b10' => 0,
+            'b11' => 0,
+            'b12' => 0
         ];
     }
 
     private function formatGrowthData($data, $startYear, $endYear)
     {
         $monthLabels = [
-            'January', 'February', 'March', 'April', 'May', 'June',
-            'July', 'August', 'September', 'October', 'November', 'December'
+            'January',
+            'February',
+            'March',
+            'April',
+            'May',
+            'June',
+            'July',
+            'August',
+            'September',
+            'October',
+            'November',
+            'December'
         ];
 
         $datasets = [];
@@ -139,24 +158,40 @@ class BranchGrowthController extends Controller
         for ($year = $startYear; $year <= $endYear; $year++) {
             $yearData = $data[$year];
             $monthlyValues = [
-                $yearData->b01 ?? 0, $yearData->b02 ?? 0, $yearData->b03 ?? 0, $yearData->b04 ?? 0,
-                $yearData->b05 ?? 0, $yearData->b06 ?? 0, $yearData->b07 ?? 0, $yearData->b08 ?? 0,
-                $yearData->b09 ?? 0, $yearData->b10 ?? 0, $yearData->b11 ?? 0, $yearData->b12 ?? 0
+                $yearData->b01 ?? 0,
+                $yearData->b02 ?? 0,
+                $yearData->b03 ?? 0,
+                $yearData->b04 ?? 0,
+                $yearData->b05 ?? 0,
+                $yearData->b06 ?? 0,
+                $yearData->b07 ?? 0,
+                $yearData->b08 ?? 0,
+                $yearData->b09 ?? 0,
+                $yearData->b10 ?? 0,
+                $yearData->b11 ?? 0,
+                $yearData->b12 ?? 0
             ];
 
             // Use default colors cycling through them
             $color = $defaultColors[$colorIndex % count($defaultColors)];
-            
+
+            // Create formatted values for chart display
+            $formattedValues = [];
+            foreach ($monthlyValues as $value) {
+                $formattedValues[] = ChartHelper::formatNumberForDisplay($value, 1);
+            }
+
             $datasets[] = [
                 'label' => (string)$year,
-                'data' => $monthlyValues,
+                'data' => $monthlyValues, // Use raw values for plotting the line
+                'formattedData' => $formattedValues, // Use formatted values for display labels
                 'borderColor' => $color,
-                'backgroundColor' => str_replace('0.8)', '0.1)', $color), // More transparent background
+                'backgroundColor' => str_replace('0.8)', '0.1)', $color),
                 'borderWidth' => 2,
                 'fill' => false,
                 'tension' => 0.1
             ];
-            
+
             $colorIndex++;
         }
 
