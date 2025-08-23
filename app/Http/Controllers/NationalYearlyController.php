@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\MProductCategory;
 use App\Helpers\ChartHelper;
 
 class NationalYearlyController extends Controller
@@ -29,13 +28,8 @@ class NationalYearlyController extends Controller
 
     public function getCategories()
     {
-        $categories = MProductCategory::where('isactive', 'Y')
-            ->whereIn('name', ['MIKA', 'SPARE PART'])
-            ->select('name')
-            ->distinct()
-            ->orderBy('name')
-            ->get();
-
+        // Delegate to shared helper to avoid duplication and keep logic centralized
+        $categories = ChartHelper::getCategories();
         return response()->json($categories);
     }
 
