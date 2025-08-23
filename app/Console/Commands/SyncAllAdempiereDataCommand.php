@@ -35,9 +35,8 @@ class SyncAllAdempiereDataCommand extends Command
             ['model' => 'MLocator'],
             ['model' => 'MStorage'],
             ['model' => 'MPricelistVersion'],
-            ['model' => 'MProductprice'],
         ];
-        $fastSyncTables = ['CInvoice', 'CInvoiceline', 'COrder', 'COrderline', 'CAllocationhdr', 'CAllocationline'];
+        $fastSyncTables = ['MProductprice', 'CInvoice', 'CInvoiceline', 'COrder', 'COrderline', 'CAllocationhdr', 'CAllocationline'];
 
         if (!$targetConnection && !$skipStep1) {
             $this->line("====================================================================");
