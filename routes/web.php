@@ -8,6 +8,7 @@ use App\Http\Controllers\AccountsReceivableController;
 use App\Http\Controllers\CategoryItemController;
 use App\Http\Controllers\NationalYearlyController;
 use App\Http\Controllers\MonthlyBranchController;
+use App\Http\Controllers\BranchGrowthController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -28,6 +29,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/monthly-branch/data', [MonthlyBranchController::class, 'getData'])->name('monthly-branch.data');
     Route::get('/monthly-branch/branches', [MonthlyBranchController::class, 'getBranches'])->name('monthly-branch.branches');
     Route::get('/monthly-branch/categories', [MonthlyBranchController::class, 'getCategories'])->name('monthly-branch.categories');
+    Route::get('/branch-growth/data', [BranchGrowthController::class, 'getData'])->name('branch-growth.data');
+    Route::get('/branch-growth/branches', [BranchGrowthController::class, 'getBranches'])->name('branch-growth.branches');
+    Route::get('/branch-growth/categories', [BranchGrowthController::class, 'getCategories'])->name('branch-growth.categories');
 });
 
 require __DIR__ . '/auth.php';
