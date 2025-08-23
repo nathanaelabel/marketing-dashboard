@@ -5,14 +5,6 @@
                 <h3 class="text-2xl font-bold text-gray-900">Branch Revenue Growth</h3>
             </div>
             <div class="flex items-end space-x-3 md:justify-self-end justify-center mt-3 md:mt-0">
-                <!-- Branch Selector -->
-                <div>
-                    <label for="growth-branch-select" class="block text-xs font-medium text-gray-500 mb-1">Branch</label>
-                    <select id="growth-branch-select" class="pl-3 pr-8 py-1.5 w-32 text-sm rounded-md border border-gray-300 shadow-sm focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 focus:ring-opacity-50">
-                        <option value="">Loading...</option>
-                    </select>
-                </div>
-
                 <!-- Start Year Selector -->
                 <div>
                     <label for="growth-start-year-select" class="block text-xs font-medium text-gray-500 mb-1">Start year</label>
@@ -32,6 +24,14 @@
                         <option value="2023">2023</option>
                         <option value="2024">2024</option>
                         <option value="2025" selected>2025</option>
+                    </select>
+                </div>
+
+                <!-- Branch Selector -->
+                <div>
+                    <label for="growth-branch-select" class="block text-xs font-medium text-gray-500 mb-1">Branch</label>
+                    <select id="growth-branch-select" class="pl-3 pr-8 py-1.5 w-32 text-sm rounded-md border border-gray-300 shadow-sm focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 focus:ring-opacity-50">
+                        <option value="">Loading...</option>
                     </select>
                 </div>
 

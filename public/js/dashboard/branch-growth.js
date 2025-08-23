@@ -181,39 +181,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     branchSelect.value = 'National';
                 }
 
-                // Load categories after branches are loaded
-                loadCategories();
-            })
-            .catch(error => {
-                console.error('Error loading branches:', error);
-                branchSelect.innerHTML = '<option value="">Error loading branches</option>';
-            });
-    }
-
-    function loadCategories() {
-        fetch('/branch-growth/categories')
-            .then(response => response.json())
-            .then(categories => {
-                categorySelect.innerHTML = '';
-                categories.forEach(category => {
-                    const option = document.createElement('option');
-                    option.value = category.name;
-                    option.textContent = category.name;
-                    categorySelect.appendChild(option);
-                });
-
-                // Set default to MIKA if available
-                const mikaOption = categories.find(cat => cat.name === 'MIKA');
-                if (mikaOption) {
-                    categorySelect.value = 'MIKA';
-                }
-
                 // Trigger initial chart load
                 triggerUpdate();
             })
             .catch(error => {
-                console.error('Error loading categories:', error);
-                categorySelect.innerHTML = '<option value="">Error loading categories</option>';
+                console.error('Error loading branches:', error);
+                branchSelect.innerHTML = '<option value="">Error loading branches</option>';
             });
     }
 

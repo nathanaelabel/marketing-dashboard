@@ -25,13 +25,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales-metrics/locations', [SalesMetricsController::class, 'getLocations'])->name('sales-metrics.locations');
     Route::get('/category-item/data', [CategoryItemController::class, 'getData'])->name('category-item.data');
     Route::get('/national-yearly/data', [NationalYearlyController::class, 'getData'])->name('national-yearly.data');
-    Route::get('/national-yearly/categories', [NationalYearlyController::class, 'getCategories'])->name('national-yearly.categories');
     Route::get('/monthly-branch/data', [MonthlyBranchController::class, 'getData'])->name('monthly-branch.data');
     Route::get('/monthly-branch/branches', [MonthlyBranchController::class, 'getBranches'])->name('monthly-branch.branches');
-    Route::get('/monthly-branch/categories', [MonthlyBranchController::class, 'getCategories'])->name('monthly-branch.categories');
     Route::get('/branch-growth/data', [BranchGrowthController::class, 'getData'])->name('branch-growth.data');
     Route::get('/branch-growth/branches', [BranchGrowthController::class, 'getBranches'])->name('branch-growth.branches');
-    Route::get('/branch-growth/categories', [BranchGrowthController::class, 'getCategories'])->name('branch-growth.categories');
 });
 
 require __DIR__ . '/auth.php';
