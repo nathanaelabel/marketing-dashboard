@@ -385,4 +385,18 @@ class ChartHelper
 
         return $displayNames[$branchName] ?? $branchName;
     }
+
+    /**
+     * Get available product categories
+     */
+    public static function getCategories()
+    {
+        return DB::table('m_product_category')
+            ->where('isactive', 'Y')
+            ->whereIn('name', ['MIKA', 'SPARE PART'])
+            ->select('name')
+            ->distinct()
+            ->orderBy('name')
+            ->get();
+    }
 }

@@ -14,7 +14,7 @@ class MonthlyBranchController extends Controller
         $year = $request->get('year', date('Y'));
         $previousYear = $year - 1;
         $category = $request->get('category', 'MIKA');
-        $branch = $request->get('branch');
+        $branch = $request->get('branch', 'National');
 
         // Get current year data for all 12 months
         $currentYearData = $this->getMonthlyRevenueData($year, $category, $branch);
@@ -30,13 +30,7 @@ class MonthlyBranchController extends Controller
 
     public function getCategories()
     {
-        $categories = MProductCategory::where('isactive', 'Y')
-            ->whereIn('name', ['MIKA', 'SPARE PART'])
-            ->select('name')
-            ->distinct()
-            ->orderBy('name')
-            ->get();
-
+        $categories = ChartHelper::getCategories();
         return response()->json($categories);
     }
 
