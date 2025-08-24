@@ -28,6 +28,7 @@ class COrderline extends Model
         'qtydelivered',
         'qtyinvoiced',
         'priceactual',
+        'linenetamt',
     ];
 
     public function order()

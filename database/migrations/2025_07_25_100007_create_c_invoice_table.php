@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('docstatus', 2);
             $table->timestamp('dateinvoiced')->nullable();
             $table->decimal('grandtotal', 16, 2);
+            $table->char('ispaid', 1)->default('N');
             $table->timestamp('created')->nullable();
             $table->timestamp('updated')->nullable();
 
