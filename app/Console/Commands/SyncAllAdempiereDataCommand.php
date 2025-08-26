@@ -30,13 +30,29 @@ class SyncAllAdempiereDataCommand extends Command
             return Command::FAILURE;
         }
 
-        $singleSourceTables = ['pgsql_lmp' => ['AdOrg'], 'pgsql_sby' => ['MProductCategory', 'MProductsubcat', 'MProduct']];
-        $mergeOnlyTables = [
-            ['model' => 'MLocator'],
-            ['model' => 'MStorage'],
-            ['model' => 'MPricelistVersion'],
+        // Tables with specific source connections
+        $singleSourceTables = [
+            'pgsql_lmp' => ['AdOrg'], 
+            'pgsql_sby' => ['MProductCategory', 'MProductsubcat', 'MProduct']
         ];
-        $fastSyncTables = ['MProductprice', 'CInvoice', 'CInvoiceline', 'COrder', 'COrderline', 'CAllocationhdr', 'CAllocationline'];
+        
+        // Tables that should be synced from all branches (full sync)
+        $fullSyncTables = [
+            ['model' => 'MLocator'],
+            ['model' => 'MStorage'], 
+            ['model' => 'MPricelistVersion']
+        ];
+        
+        // Tables using fast sync with various filtering strategies
+        $fastSyncTables = [
+            'MProductprice',    // Full records with m_product_id relationship
+            'CInvoice',         // Date filtered (2024-01-01 to 2025-08-23)
+            'CInvoiceline',     // Full records with c_invoice_id relationship
+            'COrder',           // Date filtered (2024-01-01 to 2025-08-23)
+            'COrderline',       // Full records with c_order_id relationship
+            'CAllocationhdr',   // Date filtered (2024-01-01 to 2025-08-23)
+            'CAllocationline'   // Full records with c_allocationhdr_id relationship
+        ];
 
         if (!$targetConnection && !$skipStep1) {
             $this->line("====================================================================");
@@ -76,15 +92,13 @@ class SyncAllAdempiereDataCommand extends Command
                 }
             }
 
-            $this->info("--- Syncing merge-only tables for {$connection} ---");
-            foreach ($mergeOnlyTables as $tableInfo) {
+            $this->info("--- Syncing full-sync tables for {$connection} ---");
+            foreach ($fullSyncTables as $tableInfo) {
                 if (!empty($specificTables) && !in_array($tableInfo['model'], $specificTables)) {
                     continue;
                 }
+                // Use full sync without limits for these tables
                 $params = ['model' => $tableInfo['model'], '--connection' => $connection, '--type' => 'full'];
-                if ($tableInfo['model'] === 'MStorage') {
-                    $params['--limit'] = 50000;
-                }
                 if (!$this->callWithRetries('app:sync-adempiere-table', $params)) {
                     continue 2; // Skip to the next connection in the outer loop
                 }
@@ -105,8 +119,8 @@ class SyncAllAdempiereDataCommand extends Command
         }
 
         if (!$targetConnection) {
-            $this->info('--- Pruning records for merge-only tables after all connections are synced ---');
-            foreach ($mergeOnlyTables as $tableInfo) {
+            $this->info('--- Pruning records for full-sync tables after all connections are synced ---');
+            foreach ($fullSyncTables as $tableInfo) {
                 $this->call('app:prune-records', ['model' => $tableInfo['model']]);
             }
         }
