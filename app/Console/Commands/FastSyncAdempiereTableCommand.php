@@ -51,39 +51,69 @@ class FastSyncAdempiereTableCommand extends Command
 
     private function runFastSync(Model $model, string $connectionName, string $tableName, string $modelName)
     {
-        // Define a map for table-specific ordering columns to get the 'latest' records.
-        $orderColumnMap = [
-            'c_invoice' => 'dateinvoiced',
-            'c_order' => 'dateordered',
-            'c_allocationhdr' => 'datetrx',
-            'c_invoiceline' => 'c_invoiceline_id',
-            'c_orderline' => 'c_orderline_id',
-            'c_allocationline' => 'c_allocationline_id',
-        ];
-
         // Get the table name in lowercase, as it's returned by getTable()
         $lowerTableName = strtolower($tableName);
-        $orderColumn = $orderColumnMap[$lowerTableName] ?? null;
+        
+        // Define tables that should fetch all records
+        $fullSyncTables = [
+            'ad_org', 'm_product_category', 'm_productsubcat', 'm_product',
+            'm_locator', 'm_storage', 'm_pricelist_version', 'm_productprice',
+            'c_invoiceline', 'c_orderline', 'c_allocationline'
+        ];
+        
+        // Define tables with date filtering
+        $dateFilterTables = [
+            'c_invoice' => 'dateinvoiced',
+            'c_order' => 'dateordered', 
+            'c_allocationhdr' => 'datetrx'
+        ];
+        
+        // Define tables with relationship filtering
+        $relationshipFilterTables = [
+            'm_productprice' => ['m_product_id'],
+            'c_invoiceline' => ['c_invoice_id'],
+            'c_orderline' => ['c_order_id'],
+            'c_allocationline' => ['c_allocationhdr_id']
+        ];
 
-        if (!$orderColumn) {
-            // Fallback to primary key if no specific column is mapped.
-            $primaryKey = $model->getKeyName();
-            if (is_array($primaryKey)) {
-                $this->warn("Model [{$tableName}] is not mapped and has a composite key. Using the first key: {$primaryKey[0]}");
-                $orderColumn = $primaryKey[0];
-            } else {
-                $this->warn("Model [{$tableName}] is not mapped. Falling back to primary key: {$primaryKey}");
-                $orderColumn = $primaryKey;
+        $query = DB::connection($connectionName)->table($tableName);
+        
+        // Apply date filtering for specific tables
+        if (isset($dateFilterTables[$lowerTableName])) {
+            $dateColumn = $dateFilterTables[$lowerTableName];
+            $startDate = '2024-01-01 00:00:00';
+            $endDate = '2025-08-23 00:00:00';
+            
+            $this->comment("Fetching records from {$tableName} with {$dateColumn} between {$startDate} and {$endDate}...");
+            $query->whereBetween($dateColumn, [$startDate, $endDate]);
+        }
+        // Apply relationship filtering for specific tables
+        elseif (isset($relationshipFilterTables[$lowerTableName])) {
+            $foreignKeys = $relationshipFilterTables[$lowerTableName];
+            $this->comment("Fetching records from {$tableName} with valid relationships...");
+            
+            foreach ($foreignKeys as $foreignKey) {
+                // Get the parent table name from foreign key
+                $parentTable = $this->getParentTableFromForeignKey($foreignKey);
+                if ($parentTable) {
+                    $existingIds = DB::table($parentTable)->pluck($foreignKey);
+                    $query->whereIn($foreignKey, $existingIds);
+                }
             }
         }
+        // For full sync tables, fetch all records
+        elseif (in_array($lowerTableName, $fullSyncTables)) {
+            $this->comment("Fetching all records from {$tableName}...");
+        }
+        // Fallback for unmapped tables (keep original logic)
+        else {
+            $primaryKey = $model->getKeyName();
+            $orderColumn = is_array($primaryKey) ? $primaryKey[0] : $primaryKey;
+            $this->comment("Fetching the latest 10,000 records from {$tableName} ordered by {$orderColumn} DESC...");
+            $query->orderBy($orderColumn, 'desc')->limit(10000);
+        }
 
-        $this->comment("Fetching the latest 10,000 records from {$tableName} ordered by {$orderColumn} DESC...");
-
-        $sourceData = DB::connection($connectionName)
-            ->table($tableName)
-            ->orderBy($orderColumn, 'desc')
-            ->limit(10000)
-            ->get();
+        $sourceData = $query->get();
 
         if ($sourceData->isEmpty()) {
             $this->info("No records found in {$tableName} from {$connectionName}. Skipping.");
@@ -224,6 +254,21 @@ class FastSyncAdempiereTableCommand extends Command
 
         $this->line(''); // Add spacing
         $this->info("Insertion attempt complete for {$tableName} from {$connectionName}.");
+    }
+    
+    /**
+     * Get parent table name from foreign key
+     */
+    private function getParentTableFromForeignKey(string $foreignKey): ?string
+    {
+        $parentTableMap = [
+            'm_product_id' => 'm_product',
+            'c_invoice_id' => 'c_invoice',
+            'c_order_id' => 'c_order',
+            'c_allocationhdr_id' => 'c_allocationhdr'
+        ];
+        
+        return $parentTableMap[$foreignKey] ?? null;
     }
 
     private function getTimestampColumns(Model $model): array
