@@ -53,21 +53,29 @@ class FastSyncAdempiereTableCommand extends Command
     {
         // Get the table name in lowercase, as it's returned by getTable()
         $lowerTableName = strtolower($tableName);
-        
+
         // Define tables that should fetch all records
         $fullSyncTables = [
-            'ad_org', 'm_product_category', 'm_productsubcat', 'm_product',
-            'm_locator', 'm_storage', 'm_pricelist_version', 'm_productprice',
-            'c_invoiceline', 'c_orderline', 'c_allocationline'
+            'ad_org',
+            'm_product_category',
+            'm_productsubcat',
+            'm_product',
+            'm_locator',
+            'm_storage',
+            'm_pricelist_version',
+            'm_productprice',
+            'c_invoiceline',
+            'c_orderline',
+            'c_allocationline'
         ];
-        
+
         // Define tables with date filtering
         $dateFilterTables = [
             'c_invoice' => 'dateinvoiced',
-            'c_order' => 'dateordered', 
+            'c_order' => 'dateordered',
             'c_allocationhdr' => 'datetrx'
         ];
-        
+
         // Define tables with relationship filtering
         $relationshipFilterTables = [
             'm_productprice' => ['m_product_id'],
@@ -77,13 +85,13 @@ class FastSyncAdempiereTableCommand extends Command
         ];
 
         $query = DB::connection($connectionName)->table($tableName);
-        
+
         // Apply date filtering for specific tables
         if (isset($dateFilterTables[$lowerTableName])) {
             $dateColumn = $dateFilterTables[$lowerTableName];
             $startDate = '2024-01-01 00:00:00';
             $endDate = '2025-08-23 00:00:00';
-            
+
             $this->comment("Fetching records from {$tableName} with {$dateColumn} between {$startDate} and {$endDate}...");
             $query->whereBetween($dateColumn, [$startDate, $endDate]);
         }
@@ -91,7 +99,7 @@ class FastSyncAdempiereTableCommand extends Command
         elseif (isset($relationshipFilterTables[$lowerTableName])) {
             $foreignKeys = $relationshipFilterTables[$lowerTableName];
             $this->comment("Fetching records from {$tableName} with valid relationships...");
-            
+
             foreach ($foreignKeys as $foreignKey) {
                 // Get the parent table name from foreign key
                 $parentTable = $this->getParentTableFromForeignKey($foreignKey);
@@ -255,7 +263,7 @@ class FastSyncAdempiereTableCommand extends Command
         $this->line(''); // Add spacing
         $this->info("Insertion attempt complete for {$tableName} from {$connectionName}.");
     }
-    
+
     /**
      * Get parent table name from foreign key
      */
@@ -267,7 +275,7 @@ class FastSyncAdempiereTableCommand extends Command
             'c_order_id' => 'c_order',
             'c_allocationhdr_id' => 'c_allocationhdr'
         ];
-        
+
         return $parentTableMap[$foreignKey] ?? null;
     }
 

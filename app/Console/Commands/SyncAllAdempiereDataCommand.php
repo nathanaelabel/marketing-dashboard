@@ -32,17 +32,17 @@ class SyncAllAdempiereDataCommand extends Command
 
         // Tables with specific source connections
         $singleSourceTables = [
-            'pgsql_lmp' => ['AdOrg'], 
+            'pgsql_lmp' => ['AdOrg'],
             'pgsql_sby' => ['MProductCategory', 'MProductsubcat', 'MProduct']
         ];
-        
+
         // Tables that should be synced from all branches (full sync)
         $fullSyncTables = [
             ['model' => 'MLocator'],
-            ['model' => 'MStorage'], 
+            ['model' => 'MStorage'],
             ['model' => 'MPricelistVersion']
         ];
-        
+
         // Tables using fast sync with various filtering strategies
         $fastSyncTables = [
             'MProductprice',    // Full records with m_product_id relationship
