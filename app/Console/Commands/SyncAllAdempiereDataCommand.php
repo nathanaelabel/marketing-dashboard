@@ -142,8 +142,8 @@ class SyncAllAdempiereDataCommand extends Command
 
                 if (str_contains($e->getMessage(), 'could not connect to server') || str_contains($e->getMessage(), 'Connection timed out')) {
                     if ($attempts < $retries) {
-                        $this->warn("Connection to [{$connectionName}] failed. Retrying in 5 seconds... ({$attempts}/{$retries})");
-                        sleep(5);
+                        $this->warn("Connection to [{$connectionName}] failed. Retrying in 10 seconds... ({$attempts}/{$retries})");
+                        sleep(10);
                         continue;
                     }
                     $this->error("Connection to [{$connectionName}] failed after {$retries} attempts. Skipping this connection.");
