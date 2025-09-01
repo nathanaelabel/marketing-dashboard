@@ -90,7 +90,7 @@ class FastSyncAdempiereTableCommand extends Command
         if (isset($dateFilterTables[$lowerTableName])) {
             $dateColumn = $dateFilterTables[$lowerTableName];
             $startDate = '2024-01-01 00:00:00';
-            $endDate = '2025-08-23 00:00:00';
+            $endDate = '2025-08-30 00:00:00';
 
             $this->comment("Fetching records from {$tableName} with {$dateColumn} between {$startDate} and {$endDate}...");
             $query->whereBetween($dateColumn, [$startDate, $endDate]);
@@ -104,8 +104,47 @@ class FastSyncAdempiereTableCommand extends Command
                 // Get the parent table name from foreign key
                 $parentTable = $this->getParentTableFromForeignKey($foreignKey);
                 if ($parentTable) {
-                    $existingIds = DB::table($parentTable)->pluck($foreignKey);
-                    $query->whereIn($foreignKey, $existingIds);
+                    $existingIds = DB::table($parentTable)->pluck($foreignKey)->toArray();
+
+                    // Check if we have IDs to filter by
+                    if (empty($existingIds)) {
+                        $this->warn("No parent records found in {$parentTable} for {$foreignKey}. Skipping {$tableName}.");
+                        return; // Skip this table if no parent records exist
+                    }
+
+                    // Chunk the IDs to avoid PostgreSQL parameter limit (65535)
+                    // Use much smaller chunks to be safe, accounting for other query parameters
+                    $chunkSize = 5000; // Very conservative chunk size
+                    $idChunks = array_chunk($existingIds, $chunkSize);
+
+                    $this->comment("Filtering {$tableName} with " . count($existingIds) . " {$foreignKey} values in " . count($idChunks) . " chunks...");
+
+                    // Use a different approach: execute multiple queries and combine results
+                    $allResults = collect();
+                    foreach ($idChunks as $index => $chunk) {
+                        $this->comment("Processing chunk " . ($index + 1) . " of " . count($idChunks) . " for {$tableName}...");
+
+                        $chunkQuery = DB::connection($connectionName)
+                            ->table($tableName)
+                            ->whereIn($foreignKey, $chunk);
+
+                        $chunkResults = $chunkQuery->get();
+                        $allResults = $allResults->concat($chunkResults);
+                    }
+
+                    // Override the main query result with our chunked results
+                    $sourceData = $allResults;
+
+                    if ($sourceData->isEmpty()) {
+                        $this->info("No records found in {$tableName} from {$connectionName} with valid {$foreignKey}. Skipping.");
+                        return;
+                    }
+
+                    $this->comment("Found {" . $sourceData->count() . "} records from chunked queries. Preparing for insertion...");
+                    $this->line('');
+
+                    // Skip to insertion since we already have our data
+                    $skipNormalQuery = true;
                 }
             }
         }
@@ -121,15 +160,32 @@ class FastSyncAdempiereTableCommand extends Command
             $query->orderBy($orderColumn, 'desc')->limit(10000);
         }
 
-        $sourceData = $query->get();
+        // Execute the query only if we haven't already processed chunked results
+        if (!isset($skipNormalQuery)) {
+            // Execute the query with progress indication for large datasets
+            if (isset($relationshipFilterTables[$lowerTableName]) || isset($dateFilterTables[$lowerTableName])) {
+                $this->comment("Executing filtered query for {$tableName}...");
+            }
 
-        if ($sourceData->isEmpty()) {
-            $this->info("No records found in {$tableName} from {$connectionName}. Skipping.");
-            return;
+            try {
+                $sourceData = $query->get();
+            } catch (\Exception $e) {
+                Log::error("Query execution failed for {$tableName} from {$connectionName}: " . $e->getMessage());
+                $this->error("Failed to fetch data from {$tableName}: " . $e->getMessage());
+                throw $e;
+            }
         }
 
-        $this->comment("Found {" . $sourceData->count() . "} records. Preparing for insertion...");
-        $this->line('');
+        // Only check if sourceData is empty if we haven't already processed chunked results
+        if (!isset($skipNormalQuery)) {
+            if ($sourceData->isEmpty()) {
+                $this->info("No records found in {$tableName} from {$connectionName}. Skipping.");
+                return;
+            }
+
+            $this->comment("Found {" . $sourceData->count() . "} records. Preparing for insertion...");
+            $this->line('');
+        }
 
         // Define foreign key dependencies. A table can have multiple dependencies.
         // 'optional' => true means the foreign key can be null and will be ignored if so.

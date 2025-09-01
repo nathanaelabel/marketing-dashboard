@@ -46,11 +46,11 @@ class SyncAllAdempiereDataCommand extends Command
         // Tables using fast sync with various filtering strategies
         $fastSyncTables = [
             'MProductprice',    // Full records with m_product_id relationship
-            'CInvoice',         // Date filtered (2024-01-01 to 2025-08-23)
+            'CInvoice',         // Date filtered (2024-01-01 to 2025-08-30)
             'CInvoiceline',     // Full records with c_invoice_id relationship
-            'COrder',           // Date filtered (2024-01-01 to 2025-08-23)
+            'COrder',           // Date filtered (2024-01-01 to 2025-08-30)
             'COrderline',       // Full records with c_order_id relationship
-            'CAllocationhdr',   // Date filtered (2024-01-01 to 2025-08-23)
+            'CAllocationhdr',   // Date filtered (2024-01-01 to 2025-08-30)
             'CAllocationline'   // Full records with c_allocationhdr_id relationship
         ];
 
