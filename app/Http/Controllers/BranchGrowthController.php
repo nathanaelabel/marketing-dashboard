@@ -45,7 +45,7 @@ class BranchGrowthController extends Controller
                 'branch' => $request->get('branch'),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json(['error' => 'Failed to fetch branch growth data'], 500);
         }
     }
@@ -135,9 +135,18 @@ class BranchGrowthController extends Controller
 
             // Ensure we always return a valid object with all months initialized to 0
             $defaultData = (object)[
-                'b01' => 0, 'b02' => 0, 'b03' => 0, 'b04' => 0,
-                'b05' => 0, 'b06' => 0, 'b07' => 0, 'b08' => 0,
-                'b09' => 0, 'b10' => 0, 'b11' => 0, 'b12' => 0
+                'b01' => 0,
+                'b02' => 0,
+                'b03' => 0,
+                'b04' => 0,
+                'b05' => 0,
+                'b06' => 0,
+                'b07' => 0,
+                'b08' => 0,
+                'b09' => 0,
+                'b10' => 0,
+                'b11' => 0,
+                'b12' => 0
             ];
 
             if (empty($result) || !isset($result[0])) {
@@ -145,7 +154,7 @@ class BranchGrowthController extends Controller
             }
 
             $data = $result[0];
-            
+
             // Convert null values to 0 and ensure all months are present
             foreach ($defaultData as $month => $defaultValue) {
                 if (!isset($data->$month) || $data->$month === null) {
@@ -157,7 +166,6 @@ class BranchGrowthController extends Controller
             }
 
             return $data;
-            
         } catch (\Exception $e) {
             Log::error('Error fetching yearly revenue data', [
                 'year' => $year,
@@ -165,12 +173,21 @@ class BranchGrowthController extends Controller
                 'branch' => $branch,
                 'error' => $e->getMessage()
             ]);
-            
+
             // Return default zero data on error
             return (object)[
-                'b01' => 0, 'b02' => 0, 'b03' => 0, 'b04' => 0,
-                'b05' => 0, 'b06' => 0, 'b07' => 0, 'b08' => 0,
-                'b09' => 0, 'b10' => 0, 'b11' => 0, 'b12' => 0
+                'b01' => 0,
+                'b02' => 0,
+                'b03' => 0,
+                'b04' => 0,
+                'b05' => 0,
+                'b06' => 0,
+                'b07' => 0,
+                'b08' => 0,
+                'b09' => 0,
+                'b10' => 0,
+                'b11' => 0,
+                'b12' => 0
             ];
         }
     }
@@ -179,8 +196,18 @@ class BranchGrowthController extends Controller
     {
         try {
             $monthLabels = [
-                'January', 'February', 'March', 'April', 'May', 'June',
-                'July', 'August', 'September', 'October', 'November', 'December'
+                'January',
+                'February',
+                'March',
+                'April',
+                'May',
+                'June',
+                'July',
+                'August',
+                'September',
+                'October',
+                'November',
+                'December'
             ];
 
             $datasets = [];
@@ -198,7 +225,7 @@ class BranchGrowthController extends Controller
             // Create dataset for each year
             for ($year = $startYear; $year <= $endYear; $year++) {
                 $yearData = $data[$year] ?? null;
-                
+
                 if (!$yearData) {
                     continue; // Skip if no data for this year
                 }
@@ -259,7 +286,7 @@ class BranchGrowthController extends Controller
 
             // Calculate max value for Y-axis scaling
             $maxValue = empty($allValues) ? 0 : max($allValues);
-            
+
             // Use ChartHelper for Y-axis configuration
             $yAxisConfig = ChartHelper::getYAxisConfig($maxValue, null, $allValues);
             $suggestedMax = ChartHelper::calculateSuggestedMax($maxValue, $yAxisConfig['divisor']);
@@ -272,14 +299,13 @@ class BranchGrowthController extends Controller
                 'yAxisUnit' => $yAxisConfig['unit'],
                 'suggestedMax' => $suggestedMax,
             ];
-            
         } catch (\Exception $e) {
             Log::error('Error formatting growth data', [
                 'start_year' => $startYear,
                 'end_year' => $endYear,
                 'error' => $e->getMessage()
             ]);
-            
+
             // Return minimal valid structure on error
             return [
                 'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
