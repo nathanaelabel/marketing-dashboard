@@ -18,23 +18,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const yAxisDivisor = dataFromServer.yAxisDivisor;
         const suggestedMax = dataFromServer.suggestedMax;
 
-        const formatGrowthLabel = (value, context) => {
-            const datasets = context.chart.data.datasets;
-            if (datasets.length === 2) {
-                const currentValue = datasets[1].data[context.dataIndex];
-                const previousValue = datasets[0].data[context.dataIndex];
-
-                // Only show growth on the higher bar
-                const isHigherBar = (context.datasetIndex === 1 && currentValue >= previousValue) ||
-                    (context.datasetIndex === 0 && previousValue > currentValue);
-
-                if (isHigherBar && currentValue > 0 && previousValue > 0) {
-                    const growth = ((currentValue - previousValue) / previousValue) * 100;
-                    return (growth >= 0 ? 'Rp ' : '') + growth.toFixed(0) + '%';
-                }
-            }
-            return null;
-        };
+        // Use reusable growth label formatter with decimal precision (1 decimal place)
+        const formatGrowthLabel = ChartHelper.createGrowthLabelFormatter(1);
 
         if (monthlyBranchChart) {
             monthlyBranchChart.data.labels = chartLabels;

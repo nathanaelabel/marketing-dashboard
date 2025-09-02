@@ -164,6 +164,55 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function showErrorMessage(message) {
+        if (branchGrowthChart) {
+            branchGrowthChart.data.labels = [];
+            branchGrowthChart.data.datasets = [];
+            branchGrowthChart.update();
+        }
+        
+        // Show error message in the chart container
+        const chartContainer = ctx.parentElement;
+        const existingError = chartContainer.querySelector('.error-message');
+        if (existingError) {
+            existingError.remove();
+        }
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-message text-center p-4 text-red-600';
+        errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i>${message}`;
+        chartContainer.appendChild(errorDiv);
+    }
+
+    function showNoDataMessage(message) {
+        if (branchGrowthChart) {
+            branchGrowthChart.data.labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            branchGrowthChart.data.datasets = [];
+            branchGrowthChart.update();
+        }
+        
+        // Show no data message in the chart container
+        const chartContainer = ctx.parentElement;
+        const existingMessage = chartContainer.querySelector('.no-data-message');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'no-data-message text-center p-4 text-gray-600';
+        messageDiv.innerHTML = `<i class="fas fa-info-circle mr-2"></i>${message}`;
+        chartContainer.appendChild(messageDiv);
+    }
+
+    function clearMessages() {
+        const chartContainer = ctx.parentElement;
+        const errorMessage = chartContainer.querySelector('.error-message');
+        const noDataMessage = chartContainer.querySelector('.no-data-message');
+        
+        if (errorMessage) errorMessage.remove();
+        if (noDataMessage) noDataMessage.remove();
+    }
+
     function fetchAndUpdateGrowthChart(branch, startYear, endYear, category) {
         const url = `/branch-growth/data?branch=${encodeURIComponent(branch)}&start_year=${startYear}&end_year=${endYear}&category=${encodeURIComponent(category)}`;
 
@@ -175,15 +224,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 return response.json();
             })
             .then(data => {
+                // Check if the response contains an error
+                if (data.error) {
+                    console.error('Server error:', data.error);
+                    showErrorMessage(data.error);
+                    return;
+                }
+                
+                // Check if there's a message indicating no data
+                if (data.message) {
+                    console.log('Server message:', data.message);
+                    showNoDataMessage(data.message);
+                    return;
+                }
+                
+                clearMessages();
                 updateBranchGrowthChart(data);
             })
             .catch(error => {
                 console.error('Error fetching Branch Growth data:', error);
-                if (branchGrowthChart) {
-                    branchGrowthChart.data.labels = [];
-                    branchGrowthChart.data.datasets = [];
-                    branchGrowthChart.update();
-                }
+                showErrorMessage('Failed to load chart data. Please try again.');
             });
     }
 
