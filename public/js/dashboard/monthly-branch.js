@@ -18,23 +18,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const yAxisDivisor = dataFromServer.yAxisDivisor;
         const suggestedMax = dataFromServer.suggestedMax;
 
-        const formatGrowthLabel = (value, context) => {
-            const datasets = context.chart.data.datasets;
-            if (datasets.length === 2) {
-                const currentValue = datasets[1].data[context.dataIndex];
-                const previousValue = datasets[0].data[context.dataIndex];
-
-                // Only show growth on the higher bar
-                const isHigherBar = (context.datasetIndex === 1 && currentValue >= previousValue) ||
-                    (context.datasetIndex === 0 && previousValue > currentValue);
-
-                if (isHigherBar && currentValue > 0 && previousValue > 0) {
-                    const growth = ((currentValue - previousValue) / previousValue) * 100;
-                    return (growth >= 0 ? 'Rp ' : '') + growth.toFixed(0) + '%';
-                }
-            }
-            return null;
-        };
+        // Use reusable growth label formatter with decimal precision (1 decimal place)
+        const formatGrowthLabel = ChartHelper.createGrowthLabelFormatter(1);
 
         if (monthlyBranchChart) {
             monthlyBranchChart.data.labels = chartLabels;
@@ -155,6 +140,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function fetchAndUpdateMonthlyChart(year, branch, category) {
         const url = `/monthly-branch/data?year=${year}&branch=${encodeURIComponent(branch)}&category=${encodeURIComponent(category)}`;
+        const chartContainer = ctx.parentElement;
+
+        ChartHelper.showLoadingIndicator(chartContainer);
 
         fetch(url)
             .then(response => {
@@ -164,15 +152,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 return response.json();
             })
             .then(data => {
+                ChartHelper.hideLoadingIndicator(chartContainer);
                 updateMonthlyBranchChart(data);
             })
             .catch(error => {
                 console.error('Error fetching Monthly Branch data:', error);
-                if (monthlyBranchChart) {
-                    monthlyBranchChart.data.labels = [];
-                    monthlyBranchChart.data.datasets = [];
-                    monthlyBranchChart.update();
-                }
+                ChartHelper.hideLoadingIndicator(chartContainer);
+                ChartHelper.showErrorMessage(monthlyBranchChart, ctx, 'Failed to load chart data. Please try again.');
             });
     }
 

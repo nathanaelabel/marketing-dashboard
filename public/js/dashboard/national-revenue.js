@@ -4,8 +4,29 @@ document.addEventListener('DOMContentLoaded', function () {
     const startDateInput = document.getElementById('start_date');
     const endDateInput = document.getElementById('end_date');
     const revenueChartCanvas = document.getElementById('revenueChart');
+    const messageContainer = document.getElementById('national-revenue-message');
 
     if (!revenueChartCanvas) return;
+
+    function showNoDataMessage(message) {
+        if (messageContainer) {
+            messageContainer.innerHTML = `
+                <div class="flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>${message}</span>
+                </div>`;
+            messageContainer.style.display = 'block';
+        }
+    }
+
+    function clearMessages() {
+        if (messageContainer) {
+            messageContainer.innerHTML = '';
+            messageContainer.style.display = 'none';
+        }
+    }
 
     function updateNationalRevenueDisplayAndChart(dataFromServer) {
         if (!dataFromServer) {
@@ -14,6 +35,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         nationalTotalRevenueDisplay.textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(dataFromServer.totalRevenue);
+
+        if (dataFromServer.totalRevenue === 0) {
+            showNoDataMessage('No data available for the selected date range. Please try another date range.');
+        } else {
+            clearMessages();
+        }
 
         const chartLabels = dataFromServer.labels;
         const chartDataValues = dataFromServer.datasets[0].data;
@@ -141,6 +168,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function fetchAndUpdateNationalRevenueChart(startDate, endDate) {
         if (!nationalTotalRevenueDisplay) return;
         nationalTotalRevenueDisplay.textContent = 'Loading...';
+        clearMessages();
         const url = `${revenueChartCanvas.dataset.url}?start_date=${startDate}&end_date=${endDate}`;
 
         fetch(url)
@@ -156,11 +184,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => {
                 console.error('Error fetching National Revenue data:', error);
                 nationalTotalRevenueDisplay.textContent = 'Error loading data';
-                if (nationalRevenueChartInstance) {
-                    nationalRevenueChartInstance.data.labels = [];
-                    nationalRevenueChartInstance.data.datasets[0].data = [];
-                    nationalRevenueChartInstance.update();
-                }
+                ChartHelper.showErrorMessage(nationalRevenueChartInstance, revenueChartCanvas, 'Failed to load chart data. Please try again.');
             });
     }
 

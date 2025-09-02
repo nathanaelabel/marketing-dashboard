@@ -33,6 +33,7 @@
         <div id="category-item-chart-container" class="mt-4" style="position: relative; height: 450px; width: 100%;">
             <canvas id="categoryItemChart" data-url="{{ route('category-item.data') }}"></canvas>
         </div>
+        <div id="category-item-message" class="text-center text-gray-500 py-4"></div>
         <div class="flex justify-center items-center mt-4 space-x-2">
             <button id="ci-prev-page" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
                 Previous

@@ -51,47 +51,141 @@ class FastSyncAdempiereTableCommand extends Command
 
     private function runFastSync(Model $model, string $connectionName, string $tableName, string $modelName)
     {
-        // Define a map for table-specific ordering columns to get the 'latest' records.
-        $orderColumnMap = [
-            'c_invoice' => 'dateinvoiced',
-            'c_order' => 'dateordered',
-            'c_allocationhdr' => 'datetrx',
-            'c_invoiceline' => 'c_invoiceline_id',
-            'c_orderline' => 'c_orderline_id',
-            'c_allocationline' => 'c_allocationline_id',
-        ];
-
         // Get the table name in lowercase, as it's returned by getTable()
         $lowerTableName = strtolower($tableName);
-        $orderColumn = $orderColumnMap[$lowerTableName] ?? null;
 
-        if (!$orderColumn) {
-            // Fallback to primary key if no specific column is mapped.
+        // Define tables that should fetch all records
+        $fullSyncTables = [
+            'ad_org',
+            'm_product_category',
+            'm_productsubcat',
+            'm_product',
+            'm_locator',
+            'm_storage',
+            'm_pricelist_version',
+            'm_productprice',
+            'c_invoiceline',
+            'c_orderline',
+            'c_allocationline'
+        ];
+
+        // Define tables with date filtering
+        $dateFilterTables = [
+            'c_invoice' => 'dateinvoiced',
+            'c_order' => 'dateordered',
+            'c_allocationhdr' => 'datetrx'
+        ];
+
+        // Define tables with relationship filtering
+        $relationshipFilterTables = [
+            'm_productprice' => ['m_product_id'],
+            'c_invoiceline' => ['c_invoice_id'],
+            'c_orderline' => ['c_order_id'],
+            'c_allocationline' => ['c_allocationhdr_id']
+        ];
+
+        $query = DB::connection($connectionName)->table($tableName);
+
+        // Apply date filtering for specific tables
+        if (isset($dateFilterTables[$lowerTableName])) {
+            $dateColumn = $dateFilterTables[$lowerTableName];
+            $startDate = '2024-01-01 00:00:00';
+            $endDate = '2025-08-30 00:00:00';
+
+            $this->comment("Fetching records from {$tableName} with {$dateColumn} between {$startDate} and {$endDate}...");
+            $query->whereBetween($dateColumn, [$startDate, $endDate]);
+        }
+        // Apply relationship filtering for specific tables
+        elseif (isset($relationshipFilterTables[$lowerTableName])) {
+            $foreignKeys = $relationshipFilterTables[$lowerTableName];
+            $this->comment("Fetching records from {$tableName} with valid relationships...");
+
+            foreach ($foreignKeys as $foreignKey) {
+                // Get the parent table name from foreign key
+                $parentTable = $this->getParentTableFromForeignKey($foreignKey);
+                if ($parentTable) {
+                    $existingIds = DB::table($parentTable)->pluck($foreignKey)->toArray();
+
+                    // Check if we have IDs to filter by
+                    if (empty($existingIds)) {
+                        $this->warn("No parent records found in {$parentTable} for {$foreignKey}. Skipping {$tableName}.");
+                        return; // Skip this table if no parent records exist
+                    }
+
+                    // Chunk the IDs to avoid PostgreSQL parameter limit (65535)
+                    // Use much smaller chunks to be safe, accounting for other query parameters
+                    $chunkSize = 5000; // Very conservative chunk size
+                    $idChunks = array_chunk($existingIds, $chunkSize);
+
+                    $this->comment("Filtering {$tableName} with " . count($existingIds) . " {$foreignKey} values in " . count($idChunks) . " chunks...");
+
+                    // Use a different approach: execute multiple queries and combine results
+                    $allResults = collect();
+                    foreach ($idChunks as $index => $chunk) {
+                        $this->comment("Processing chunk " . ($index + 1) . " of " . count($idChunks) . " for {$tableName}...");
+
+                        $chunkQuery = DB::connection($connectionName)
+                            ->table($tableName)
+                            ->whereIn($foreignKey, $chunk);
+
+                        $chunkResults = $chunkQuery->get();
+                        $allResults = $allResults->concat($chunkResults);
+                    }
+
+                    // Override the main query result with our chunked results
+                    $sourceData = $allResults;
+
+                    if ($sourceData->isEmpty()) {
+                        $this->info("No records found in {$tableName} from {$connectionName} with valid {$foreignKey}. Skipping.");
+                        return;
+                    }
+
+                    $this->comment("Found {" . $sourceData->count() . "} records from chunked queries. Preparing for insertion...");
+                    $this->line('');
+
+                    // Skip to insertion since we already have our data
+                    $skipNormalQuery = true;
+                }
+            }
+        }
+        // For full sync tables, fetch all records
+        elseif (in_array($lowerTableName, $fullSyncTables)) {
+            $this->comment("Fetching all records from {$tableName}...");
+        }
+        // Fallback for unmapped tables (keep original logic)
+        else {
             $primaryKey = $model->getKeyName();
-            if (is_array($primaryKey)) {
-                $this->warn("Model [{$tableName}] is not mapped and has a composite key. Using the first key: {$primaryKey[0]}");
-                $orderColumn = $primaryKey[0];
-            } else {
-                $this->warn("Model [{$tableName}] is not mapped. Falling back to primary key: {$primaryKey}");
-                $orderColumn = $primaryKey;
+            $orderColumn = is_array($primaryKey) ? $primaryKey[0] : $primaryKey;
+            $this->comment("Fetching the latest 10,000 records from {$tableName} ordered by {$orderColumn} DESC...");
+            $query->orderBy($orderColumn, 'desc')->limit(10000);
+        }
+
+        // Execute the query only if we haven't already processed chunked results
+        if (!isset($skipNormalQuery)) {
+            // Execute the query with progress indication for large datasets
+            if (isset($relationshipFilterTables[$lowerTableName]) || isset($dateFilterTables[$lowerTableName])) {
+                $this->comment("Executing filtered query for {$tableName}...");
+            }
+
+            try {
+                $sourceData = $query->get();
+            } catch (\Exception $e) {
+                Log::error("Query execution failed for {$tableName} from {$connectionName}: " . $e->getMessage());
+                $this->error("Failed to fetch data from {$tableName}: " . $e->getMessage());
+                throw $e;
             }
         }
 
-        $this->comment("Fetching the latest 10,000 records from {$tableName} ordered by {$orderColumn} DESC...");
+        // Only check if sourceData is empty if we haven't already processed chunked results
+        if (!isset($skipNormalQuery)) {
+            if ($sourceData->isEmpty()) {
+                $this->info("No records found in {$tableName} from {$connectionName}. Skipping.");
+                return;
+            }
 
-        $sourceData = DB::connection($connectionName)
-            ->table($tableName)
-            ->orderBy($orderColumn, 'desc')
-            ->limit(10000)
-            ->get();
-
-        if ($sourceData->isEmpty()) {
-            $this->info("No records found in {$tableName} from {$connectionName}. Skipping.");
-            return;
+            $this->comment("Found {" . $sourceData->count() . "} records. Preparing for insertion...");
+            $this->line('');
         }
-
-        $this->comment("Found {" . $sourceData->count() . "} records. Preparing for insertion...");
-        $this->line('');
 
         // Define foreign key dependencies. A table can have multiple dependencies.
         // 'optional' => true means the foreign key can be null and will be ignored if so.
@@ -224,6 +318,21 @@ class FastSyncAdempiereTableCommand extends Command
 
         $this->line(''); // Add spacing
         $this->info("Insertion attempt complete for {$tableName} from {$connectionName}.");
+    }
+
+    /**
+     * Get parent table name from foreign key
+     */
+    private function getParentTableFromForeignKey(string $foreignKey): ?string
+    {
+        $parentTableMap = [
+            'm_product_id' => 'm_product',
+            'c_invoice_id' => 'c_invoice',
+            'c_order_id' => 'c_order',
+            'c_allocationhdr_id' => 'c_allocationhdr'
+        ];
+
+        return $parentTableMap[$foreignKey] ?? null;
     }
 
     private function getTimestampColumns(Model $model): array

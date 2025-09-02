@@ -146,6 +146,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 stockValueValue.textContent = 'Error';
                 storeReturnsValue.textContent = 'Error';
                 arPieTotal.textContent = 'Error';
+
+                // Also display a proper error message in the chart area
+                ChartHelper.showErrorMessage(arPieChart, arPieChartCanvas, 'Failed to load chart data. Please try again.');
             });
     }
 

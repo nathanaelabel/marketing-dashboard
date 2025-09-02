@@ -126,6 +126,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => {
                 console.error('Error fetching Accounts Receivable data:', error);
                 if (arTotalEl) arTotalEl.textContent = 'Error loading data.';
+                ChartHelper.showErrorMessage(arChart, arChartCanvas, 'Failed to load chart data. Please try again.');
             });
     }
 

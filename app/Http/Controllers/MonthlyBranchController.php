@@ -66,23 +66,13 @@ class MonthlyBranchController extends Controller
 
     private function getMonthlyRevenueData($year, $category, $branch)
     {
-        // Category filter condition
-        $categoryCondition = '';
-        if ($category) {
-            $categoryCondition = "AND EXISTS (
-                SELECT 1 FROM m_product p 
-                INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id 
-                WHERE p.m_product_id = invl.m_product_id 
-                AND pc.name = :category
-            )";
-        }
-
         // Branch condition - if National, sum all branches, otherwise filter by specific branch
         $branchCondition = '';
         if ($branch !== 'National') {
             $branchCondition = 'AND org.name = :branch';
         }
 
+        // Optimized query with direct JOIN instead of EXISTS subquery for better performance
         $query = "
             SELECT
                 EXTRACT(month FROM inv.dateinvoiced) AS month_number,
@@ -91,6 +81,8 @@ class MonthlyBranchController extends Controller
                 c_invoice inv
                 INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
                 INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+                INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
+                INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
             WHERE
                 inv.ad_client_id = 1000001
                 AND inv.issotrx = 'Y'
@@ -101,19 +93,16 @@ class MonthlyBranchController extends Controller
                 {$branchCondition}
                 AND EXTRACT(year FROM inv.dateinvoiced) = :year
                 AND inv.documentno LIKE 'INC%'
-                {$categoryCondition}
+                AND pc.name = :category
             GROUP BY
                 EXTRACT(month FROM inv.dateinvoiced)
             ORDER BY
                 month_number
         ";
 
-        $params = ['year' => $year];
+        $params = ['year' => $year, 'category' => $category];
         if ($branch !== 'National') {
             $params['branch'] = $branch;
-        }
-        if ($category) {
-            $params['category'] = $category;
         }
 
         return DB::select($query, $params);

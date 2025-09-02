@@ -387,6 +387,52 @@ class ChartHelper
     }
 
     /**
+     * Calculate percentage growth between two values with decimal precision
+     * 
+     * @param float $currentValue Current period value
+     * @param float $previousValue Previous period value
+     * @param int $decimalPlaces Number of decimal places (default: 1)
+     * @return string|null Formatted percentage string or null if calculation not possible
+     */
+    public static function calculatePercentageGrowth(float $currentValue, float $previousValue, int $decimalPlaces = 1): ?string
+    {
+        if ($currentValue <= 0 || $previousValue <= 0) {
+            return null;
+        }
+
+        $growth = (($currentValue - $previousValue) / $previousValue) * 100;
+        $prefix = $growth >= 0 ? '' : '';
+
+        return $prefix . number_format($growth, $decimalPlaces, '.', '') . '%';
+    }
+
+    /**
+     * Format value with appropriate unit (M/B) and decimal precision
+     * 
+     * @param float $value Raw value
+     * @param float $divisor Divisor (1e6 for millions, 1e9 for billions)
+     * @param string $unit Unit string ('M' or 'B')
+     * @param int $decimalPlaces Number of decimal places
+     * @return string|null Formatted value string or null for zero values
+     */
+    public static function formatValueWithUnit(float $value, float $divisor, string $unit, int $decimalPlaces = 1): ?string
+    {
+        if ($value === 0) {
+            return null;
+        }
+
+        $scaledValue = $value / $divisor;
+
+        if ($unit === 'B') {
+            $rounded = round($scaledValue, $decimalPlaces);
+            $display = ($rounded % 1 === 0) ? number_format($rounded, 0) : number_format($rounded, $decimalPlaces, '.', '');
+            return $display . 'B';
+        }
+
+        return number_format(round($scaledValue), 0) . 'M';
+    }
+
+    /**
      * Get available product categories
      */
     public static function getCategories()
