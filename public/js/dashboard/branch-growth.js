@@ -164,25 +164,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function showErrorMessage(message) {
-        if (branchGrowthChart) {
-            branchGrowthChart.data.labels = [];
-            branchGrowthChart.data.datasets = [];
-            branchGrowthChart.update();
-        }
-        
-        // Show error message in the chart container
-        const chartContainer = ctx.parentElement;
-        const existingError = chartContainer.querySelector('.error-message');
-        if (existingError) {
-            existingError.remove();
-        }
-        
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'error-message text-center p-4 text-red-600';
-        errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i>${message}`;
-        chartContainer.appendChild(errorDiv);
-    }
 
     function showNoDataMessage(message) {
         if (branchGrowthChart) {
@@ -250,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => {
                 console.error('Error fetching Branch Growth data:', error);
                 ChartHelper.hideLoadingIndicator(chartContainer);
-                showErrorMessage('Failed to load chart data. Please try again.');
+                ChartHelper.showErrorMessage(branchGrowthChart, ctx, 'Failed to load chart data. Please try again.');
             });
     }
 

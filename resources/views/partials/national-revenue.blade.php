@@ -34,5 +34,6 @@
             </form>
         </div>
         <canvas id="revenueChart" data-url="{{ route('national-revenue.data') }}" style="max-height: 400px; width: 100%;"></canvas>
+        <div id="national-revenue-message" class="text-center text-gray-500 py-4"></div>
     </div>
 </div>

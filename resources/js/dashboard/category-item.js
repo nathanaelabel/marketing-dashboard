@@ -21,6 +21,28 @@ document.addEventListener('DOMContentLoaded', function () {
     const ctx = document.getElementById('categoryItemChart');
     if (!ctx) return;
 
+    const messageContainer = document.getElementById('category-item-message');
+
+    function showNoDataMessage(message) {
+        if (messageContainer) {
+            messageContainer.innerHTML = `
+                <div class="flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>${message}</span>
+                </div>`;
+            messageContainer.style.display = 'block';
+        }
+    }
+
+    function clearMessages() {
+        if (messageContainer) {
+            messageContainer.innerHTML = '';
+            messageContainer.style.display = 'none';
+        }
+    }
+
     let chart;
     let currentPage = 1;
 
@@ -40,6 +62,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function fetchAndUpdateChart(page = 1) {
         currentPage = page;
+        clearMessages();
         const startDate = document.getElementById('categoryItemStartDate').value;
         const endDate = document.getElementById('categoryItemEndDate').value;
         const url = new URL(ctx.dataset.url);
@@ -56,11 +79,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (chart) {
                 chart.destroy();
+                chart = null; 
             }
 
             // Check if we have valid chart data
-            if (!data.chartData || !data.chartData.labels || !data.chartData.datasets) {
-                ctx.parentElement.innerHTML = '<div style="text-align: center; padding-top: 50px; color: #6b7280;">No data available for the selected date range.</div>';
+            if (!data.chartData || !data.chartData.labels || data.chartData.labels.length === 0 || !data.chartData.datasets || data.chartData.datasets.length === 0) {
+                showNoDataMessage('No data available for the selected date range. Please try another date range.');
                 prevButton.disabled = currentPage <= 1;
                 nextButton.disabled = !data.pagination.hasMorePages;
                 return;
@@ -282,7 +306,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error('Error fetching or rendering chart:', error);
-            ctx.parentElement.innerHTML = '<div style="text-align: center; padding-top: 50px;">Error loading chart data.</div>';
+            ChartHelper.showErrorMessage(chart, ctx, 'Failed to load chart data. Please try again.');
         }
     }
 

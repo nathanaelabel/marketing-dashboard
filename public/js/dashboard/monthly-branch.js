@@ -158,11 +158,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => {
                 console.error('Error fetching Monthly Branch data:', error);
                 ChartHelper.hideLoadingIndicator(chartContainer);
-                if (monthlyBranchChart) {
-                    monthlyBranchChart.data.labels = [];
-                    monthlyBranchChart.data.datasets = [];
-                    monthlyBranchChart.update();
-                }
+                ChartHelper.showErrorMessage(monthlyBranchChart, ctx, 'Failed to load chart data. Please try again.');
             });
     }
 

@@ -185,11 +185,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => {
                 console.error('Error fetching National Yearly data:', error);
                 ChartHelper.hideLoadingIndicator(chartContainer);
-                if (nationalYearlyChart) {
-                    nationalYearlyChart.data.labels = [];
-                    nationalYearlyChart.data.datasets = [];
-                    nationalYearlyChart.update();
-                }
+                ChartHelper.showErrorMessage(nationalYearlyChart, ctx, 'Failed to load chart data. Please try again.');
             });
     }
 
