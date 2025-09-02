@@ -140,6 +140,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function fetchAndUpdateMonthlyChart(year, branch, category) {
         const url = `/monthly-branch/data?year=${year}&branch=${encodeURIComponent(branch)}&category=${encodeURIComponent(category)}`;
+        const chartContainer = ctx.parentElement;
+
+        ChartHelper.showLoadingIndicator(chartContainer);
 
         fetch(url)
             .then(response => {
@@ -149,10 +152,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 return response.json();
             })
             .then(data => {
+                ChartHelper.hideLoadingIndicator(chartContainer);
                 updateMonthlyBranchChart(data);
             })
             .catch(error => {
                 console.error('Error fetching Monthly Branch data:', error);
+                ChartHelper.hideLoadingIndicator(chartContainer);
                 if (monthlyBranchChart) {
                     monthlyBranchChart.data.labels = [];
                     monthlyBranchChart.data.datasets = [];

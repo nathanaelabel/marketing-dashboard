@@ -399,13 +399,13 @@ class ChartHelper
         if ($currentValue <= 0 || $previousValue <= 0) {
             return null;
         }
-        
+
         $growth = (($currentValue - $previousValue) / $previousValue) * 100;
         $prefix = $growth >= 0 ? '' : '';
-        
+
         return $prefix . number_format($growth, $decimalPlaces, '.', '') . '%';
     }
-    
+
     /**
      * Format value with appropriate unit (M/B) and decimal precision
      * 
@@ -420,15 +420,15 @@ class ChartHelper
         if ($value === 0) {
             return null;
         }
-        
+
         $scaledValue = $value / $divisor;
-        
+
         if ($unit === 'B') {
             $rounded = round($scaledValue, $decimalPlaces);
             $display = ($rounded % 1 === 0) ? number_format($rounded, 0) : number_format($rounded, $decimalPlaces, '.', '');
             return $display . 'B';
         }
-        
+
         return number_format(round($scaledValue), 0) . 'M';
     }
 

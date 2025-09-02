@@ -215,6 +215,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function fetchAndUpdateGrowthChart(branch, startYear, endYear, category) {
         const url = `/branch-growth/data?branch=${encodeURIComponent(branch)}&start_year=${startYear}&end_year=${endYear}&category=${encodeURIComponent(category)}`;
+        const chartContainer = ctx.parentElement;
+
+        ChartHelper.showLoadingIndicator(chartContainer);
 
         fetch(url)
             .then(response => {
@@ -227,6 +230,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Check if the response contains an error
                 if (data.error) {
                     console.error('Server error:', data.error);
+                    ChartHelper.hideLoadingIndicator(chartContainer);
                     showErrorMessage(data.error);
                     return;
                 }
@@ -234,15 +238,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Check if there's a message indicating no data
                 if (data.message) {
                     console.log('Server message:', data.message);
+                    ChartHelper.hideLoadingIndicator(chartContainer);
                     showNoDataMessage(data.message);
                     return;
                 }
                 
                 clearMessages();
+                ChartHelper.hideLoadingIndicator(chartContainer);
                 updateBranchGrowthChart(data);
             })
             .catch(error => {
                 console.error('Error fetching Branch Growth data:', error);
+                ChartHelper.hideLoadingIndicator(chartContainer);
                 showErrorMessage('Failed to load chart data. Please try again.');
             });
     }

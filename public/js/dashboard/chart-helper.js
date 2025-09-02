@@ -27,6 +27,34 @@ const ChartHelper = {
         }
     },
 
+    formatYAxisLabel(value) {
+        if (value >= 1000000) {
+            return (value / 1000000) + 'M';
+        } else if (value >= 1000) {
+            return (value / 1000) + 'K';
+        }
+        return value;
+    },
+
+    showLoadingIndicator(chartContainer) {
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'absolute inset-0 bg-white bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-10 loading-overlay';
+        loadingOverlay.innerHTML = `
+            <div class="text-center">
+                <p class="text-lg font-semibold text-gray-700">Loading chart data...</p>
+            </div>
+        `;
+        chartContainer.style.position = 'relative';
+        chartContainer.appendChild(loadingOverlay);
+    },
+
+    hideLoadingIndicator(chartContainer) {
+        const loadingOverlay = chartContainer.querySelector('.loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.remove();
+        }
+    },
+
     /**
      * Calculate percentage growth between two values with decimal precision
      * @param {number} currentValue - Current period value

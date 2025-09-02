@@ -167,6 +167,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function fetchAndUpdateYearlyChart(year, category) {
         const url = `/national-yearly/data?year=${year}&category=${encodeURIComponent(category)}`;
+        const chartContainer = ctx.parentElement;
+
+        ChartHelper.showLoadingIndicator(chartContainer);
 
         fetch(url)
             .then(response => {
@@ -176,10 +179,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 return response.json();
             })
             .then(data => {
+                ChartHelper.hideLoadingIndicator(chartContainer);
                 updateNationalYearlyChart(data);
             })
             .catch(error => {
                 console.error('Error fetching National Yearly data:', error);
+                ChartHelper.hideLoadingIndicator(chartContainer);
                 if (nationalYearlyChart) {
                     nationalYearlyChart.data.labels = [];
                     nationalYearlyChart.data.datasets = [];
