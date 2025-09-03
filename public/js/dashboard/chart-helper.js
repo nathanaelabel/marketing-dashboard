@@ -144,5 +144,57 @@ const ChartHelper = {
             }
             return null;
         };
+    },
+
+    /**
+     * Format number for display with appropriate scaling
+     * @param {number} value - Raw value to format
+     * @param {number} divisor - Divisor for scaling (1, 1000000, 1000000000)
+     * @returns {string} Formatted display string
+     */
+    formatNumberForDisplay(value, divisor) {
+        if (value === 0) return '0';
+        
+        const scaledValue = value / divisor;
+        
+        if (divisor === 1000000000) { // Billions
+            if (scaledValue % 1 === 0) return scaledValue.toFixed(0) + 'B';
+            return scaledValue.toFixed(1) + 'B';
+        } else if (divisor === 1000000) { // Millions
+            return Math.round(scaledValue) + 'M';
+        } else {
+            // For raw values or thousands
+            return new Intl.NumberFormat('id-ID', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(scaledValue);
+        }
+    },
+
+    /**
+     * Show no data message in chart container
+     * @param {object} chartInstance - Chart.js instance
+     * @param {HTMLElement} chartContext - Canvas element
+     * @param {string} message - Message to display
+     */
+    showNoDataMessage(chartInstance, chartContext, message) {
+        if (chartInstance) {
+            chartInstance.data.labels = [];
+            chartInstance.data.datasets = [];
+            chartInstance.update();
+        }
+
+        const chartContainer = chartContext.parentElement;
+        
+        // Clear previous messages
+        const existingMessage = chartContainer.querySelector('.no-data-message');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'no-data-message text-center p-4 text-gray-600';
+        messageDiv.innerHTML = `<i class="fas fa-info-circle mr-2"></i>${message}`;
+        chartContainer.appendChild(messageDiv);
     }
 };

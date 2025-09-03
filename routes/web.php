@@ -9,6 +9,8 @@ use App\Http\Controllers\CategoryItemController;
 use App\Http\Controllers\NationalYearlyController;
 use App\Http\Controllers\MonthlyBranchController;
 use App\Http\Controllers\BranchGrowthController;
+use App\Http\Controllers\TargetRevenueController;
+use App\Http\Controllers\BranchTargetController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -29,6 +31,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/monthly-branch/branches', [MonthlyBranchController::class, 'getBranches'])->name('monthly-branch.branches');
     Route::get('/branch-growth/data', [BranchGrowthController::class, 'getData'])->name('branch-growth.data');
     Route::get('/branch-growth/branches', [BranchGrowthController::class, 'getBranches'])->name('branch-growth.branches');
+    Route::get('/target-revenue/data', [TargetRevenueController::class, 'getData'])->name('target-revenue.data');
+    Route::get('/target-revenue/categories', [TargetRevenueController::class, 'getCategories'])->name('target-revenue.categories');
+    Route::get('/branch-target/input', [BranchTargetController::class, 'showInputForm'])->name('branch-target.input');
+    Route::post('/branch-target/save', [BranchTargetController::class, 'saveTargets'])->name('branch-target.save');
 });
 
 require __DIR__ . '/auth.php';

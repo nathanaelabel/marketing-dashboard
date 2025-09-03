@@ -1,0 +1,272 @@
+document.addEventListener('DOMContentLoaded', function () {
+    let targetRevenueChart = null;
+    const ctx = document.getElementById('target-revenue-chart');
+    const monthSelect = document.getElementById('target-month-select');
+    const yearSelect = document.getElementById('target-year-select');
+    const categorySelect = document.getElementById('target-category-select');
+    const noTargetsMessage = document.getElementById('no-targets-message');
+    const inputTargetBtn = document.getElementById('input-target-btn');
+    const periodText = document.getElementById('period-text');
+    const chartContainer = document.getElementById('target-chart-container');
+
+    if (!ctx) return;
+
+    function updateTargetRevenueChart(dataFromServer) {
+        if (!dataFromServer) {
+            console.error('No data received from server');
+            return;
+        }
+
+        const chartLabels = dataFromServer.labels;
+        const yAxisLabel = dataFromServer.yAxisLabel;
+        const yAxisDivisor = dataFromServer.yAxisDivisor;
+        const suggestedMax = dataFromServer.suggestedMax;
+        const percentages = dataFromServer.percentages;
+
+        if (targetRevenueChart) {
+            targetRevenueChart.destroy();
+            targetRevenueChart = null;
+        }
+        
+        // Register custom legend margin plugin
+        const LegendMargin = {
+            id: 'legendMargin',
+            beforeInit(chart, _args, opts) {
+                const fit = chart.legend && chart.legend.fit;
+                if (!fit) return;
+                chart.legend.fit = function fitWithMargin() {
+                    fit.bind(this)();
+                    this.height += (opts && opts.margin) ? opts.margin : 0;
+                };
+            }
+        };
+
+        Chart.register(LegendMargin, ChartDataLabels);
+        targetRevenueChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: chartLabels,
+                datasets: dataFromServer.datasets
+            },
+            options: {
+                indexAxis: 'y', // Horizontal bar chart
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: false
+                    },
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            padding: 12
+                        }
+                    },
+                    legendMargin: {
+                        margin: 10
+                    },
+                    datalabels: {
+                        display: function (context) {
+                            return context.dataset.data[context.dataIndex] > 0;
+                        },
+                        anchor: 'end',
+                        align: function (context) {
+                            return context.dataset.label === 'Realization' ? 'right' : 'left';
+                        },
+                        offset: function (context) {
+                            return context.dataset.label === 'Realization' ? 4 : -4;
+                        },
+                        color: function (context) {
+                            return context.dataset.label === 'Realization' ? '#000' : '#666';
+                        },
+                        font: {
+                            size: 10,
+                            weight: 'bold'
+                        },
+                        formatter: function (value, context) {
+                            if (context.dataset.label === 'Realization' && percentages[context.dataIndex] !== undefined) {
+                                return percentages[context.dataIndex] + '%';
+                            }
+                            return ChartHelper.formatNumberForDisplay(value, yAxisDivisor);
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function (context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.x !== null) {
+                                    label += new Intl.NumberFormat('id-ID', {
+                                        minimumFractionDigits: 0
+                                    }).format(context.parsed.x);
+                                    
+                                    if (context.dataset.label === 'Realization' && percentages[context.dataIndex] !== undefined) {
+                                        label += ` (${percentages[context.dataIndex]}%)`;
+                                    }
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'y',
+                    intersect: false
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        suggestedMax: suggestedMax,
+                        title: {
+                            display: true,
+                            text: yAxisLabel,
+                            padding: {
+                                top: 20,
+                                left: 0,
+                                right: 0,
+                                bottom: 0
+                            }
+                        },
+                        ticks: {
+                            callback: function (value) {
+                                const scaledValue = value / yAxisDivisor;
+                                if (dataFromServer.yAxisUnit === 'B') {
+                                    if (scaledValue % 1 === 0) return scaledValue.toFixed(0);
+                                    return scaledValue.toFixed(1);
+                                } else {
+                                    return Math.round(scaledValue);
+                                }
+                            }
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: false
+                        }
+                    }
+                },
+                elements: {
+                    bar: {
+                        borderWidth: 1
+                    }
+                }
+            }
+        });
+    }
+
+    function showNoTargetsMessage(data) {
+        // Hide chart
+        ctx.style.display = 'none';
+        
+        // Show no targets message
+        noTargetsMessage.classList.remove('hidden');
+        
+        // Update period text
+        const months = [
+            '', 'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        const monthName = months[data.month] || 'Unknown';
+        periodText.textContent = `${monthName} ${data.year} - ${data.category}`;
+    }
+
+    function hideNoTargetsMessage() {
+        // Show chart
+        ctx.style.display = 'block';
+        
+        // Hide no targets message
+        noTargetsMessage.classList.add('hidden');
+    }
+
+    function clearMessages() {
+        const errorMessage = chartContainer.querySelector('.error-message');
+        const noDataMessage = chartContainer.querySelector('.no-data-message');
+        
+        if (errorMessage) errorMessage.remove();
+        if (noDataMessage) noDataMessage.remove();
+    }
+
+    function fetchAndUpdateTargetChart(month, year, category) {
+        const url = `/target-revenue/data?month=${month}&year=${year}&category=${encodeURIComponent(category)}`;
+
+        ChartHelper.showLoadingIndicator(chartContainer);
+
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                ChartHelper.hideLoadingIndicator(chartContainer);
+                
+                // Check if targets don't exist
+                if (data.no_targets) {
+                    showNoTargetsMessage(data);
+                    return;
+                }
+                
+                // Check if the response contains an error
+                if (data.error) {
+                    console.error('Server error:', data.error);
+                    ChartHelper.showErrorMessage(targetRevenueChart, ctx, data.error);
+                    return;
+                }
+                
+                // Check if there's a message indicating no data
+                if (data.message) {
+                    console.log('Server message:', data.message);
+                    ChartHelper.showNoDataMessage(targetRevenueChart, ctx, data.message);
+                    return;
+                }
+                
+                clearMessages();
+                hideNoTargetsMessage();
+                updateTargetRevenueChart(data);
+            })
+            .catch(error => {
+                console.error('Error fetching Target Revenue data:', error);
+                ChartHelper.hideLoadingIndicator(chartContainer);
+                ChartHelper.showErrorMessage(targetRevenueChart, ctx, 'Failed to load chart data. Please try again.');
+            });
+    }
+
+    const triggerUpdate = () => {
+        const month = monthSelect.value;
+        const year = yearSelect.value;
+        const category = categorySelect.value;
+
+        if (month && year && category) {
+            fetchAndUpdateTargetChart(month, year, category);
+        }
+    };
+
+    // Event listeners
+    monthSelect.addEventListener('change', triggerUpdate);
+    yearSelect.addEventListener('change', triggerUpdate);
+    categorySelect.addEventListener('change', triggerUpdate);
+
+    // Input Target button click handler
+    inputTargetBtn.addEventListener('click', function() {
+        const month = monthSelect.value;
+        const year = yearSelect.value;
+        const category = categorySelect.value;
+        
+        const url = `/branch-target/input?month=${month}&year=${year}&category=${encodeURIComponent(category)}`;
+        window.location.href = url;
+    });
+
+    // Set current month as default
+    const currentMonth = new Date().getMonth() + 1;
+    monthSelect.value = currentMonth;
+
+    // Initialize
+    triggerUpdate();
+});
