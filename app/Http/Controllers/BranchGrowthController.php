@@ -26,12 +26,8 @@ class BranchGrowthController extends Controller
                 return response()->json(['error' => 'End year cannot be greater than 2025'], 400);
             }
 
-            // Get data for all years in the range
-            $data = [];
-            for ($year = $startYear; $year <= $endYear; $year++) {
-                $yearData = $this->getYearlyRevenueData($year, $category, $branch);
-                $data[$year] = $yearData;
-            }
+            // Get multi-year data using optimized single query
+            $data = $this->getMultiYearRevenueData($startYear, $endYear, $category, $branch);
 
             // Format data for line chart
             $formattedData = $this->formatGrowthData($data, $startYear, $endYear);
@@ -83,6 +79,182 @@ class BranchGrowthController extends Controller
             return response()->json($allOptions);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    private function getMultiYearRevenueData($startYear, $endYear, $category, $branch)
+    {
+        try {
+            // Branch condition - if National, sum all branches, otherwise filter by specific branch
+            $branchCondition = '';
+            $branchBinding = [];
+            if ($branch !== 'National') {
+                $branchCondition = 'AND org.name = ?';
+                $branchBinding[] = $branch;
+            }
+
+            // Build conditional aggregation for all years and months (BRUTO - RETUR)
+            $yearSelects = [];
+            for ($year = $startYear; $year <= $endYear; $year++) {
+                for ($month = 1; $month <= 12; $month++) {
+                    $yearSelects[] = "SUM(CASE WHEN EXTRACT(year FROM revenue_data.dateinvoiced) = $year AND EXTRACT(month FROM revenue_data.dateinvoiced) = $month THEN (revenue_data.total_bruto - revenue_data.total_retur) ELSE 0 END) AS y{$year}_b" . str_pad($month, 2, '0', STR_PAD_LEFT);
+                }
+            }
+
+            $selectClause = implode(",\n                    ", $yearSelects);
+
+            $query = "
+                SELECT 
+                    $selectClause
+                FROM (
+                    -- BRUTO
+                    SELECT
+                        org.name AS cabang,
+                        h.dateinvoiced,
+                        SUM(d.linenetamt) AS total_bruto,
+                        0 AS total_retur
+                    FROM
+                        c_invoiceline d
+                        INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+                        INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                        INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
+                        INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                    WHERE
+                        h.issotrx = 'Y'
+                        AND h.ad_client_id = 1000001
+                        AND d.qtyinvoiced > 0 
+                        AND d.linenetamt > 0
+                        AND h.docstatus IN ('CO', 'CL')
+                        AND h.documentno LIKE 'INC%'
+                        AND cat.name = ?
+                        AND EXTRACT(year FROM h.dateinvoiced) BETWEEN ? AND ?
+                        {$branchCondition}
+                    GROUP BY
+                        org.name, h.dateinvoiced
+
+                    UNION ALL 
+
+                    -- RETUR
+                    SELECT
+                        org.name AS cabang,
+                        h.dateinvoiced,
+                        0 AS total_bruto,
+                        SUM(d.linenetamt) AS total_retur
+                    FROM
+                        c_invoiceline d
+                        INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+                        INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                        INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
+                        INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                    WHERE
+                        h.issotrx = 'Y'
+                        AND h.ad_client_id = 1000001
+                        AND d.qtyinvoiced > 0 
+                        AND d.linenetamt > 0
+                        AND h.docstatus IN ('CO', 'CL')
+                        AND h.documentno LIKE 'CNC%'
+                        AND cat.name = ?
+                        AND EXTRACT(year FROM h.dateinvoiced) BETWEEN ? AND ?
+                        {$branchCondition}
+                    GROUP BY
+                        org.name, h.dateinvoiced
+                ) AS revenue_data
+            ";
+
+            // Need to duplicate bindings for both BRUTO and RETUR queries
+            $bindings = array_merge(
+                [$category, $startYear, $endYear],
+                $branchBinding,  // BRUTO query
+                [$category, $startYear, $endYear],
+                $branchBinding   // RETUR query
+            );
+
+            Log::info('BranchGrowthController query debug', [
+                'query' => $query,
+                'bindings' => $bindings,
+                'start_year' => $startYear,
+                'end_year' => $endYear,
+                'category' => $category,
+                'branch' => $branch
+            ]);
+
+            $result = DB::select($query, $bindings);
+
+            Log::info('BranchGrowthController query result', [
+                'result_count' => count($result),
+                'result' => $result
+            ]);
+
+            // Convert result to year-based structure
+            $data = [];
+            if (!empty($result) && isset($result[0])) {
+                $row = $result[0];
+                for ($year = $startYear; $year <= $endYear; $year++) {
+                    $yearData = (object)[
+                        'b01' => (float)($row->{"y{$year}_b01"} ?? 0),
+                        'b02' => (float)($row->{"y{$year}_b02"} ?? 0),
+                        'b03' => (float)($row->{"y{$year}_b03"} ?? 0),
+                        'b04' => (float)($row->{"y{$year}_b04"} ?? 0),
+                        'b05' => (float)($row->{"y{$year}_b05"} ?? 0),
+                        'b06' => (float)($row->{"y{$year}_b06"} ?? 0),
+                        'b07' => (float)($row->{"y{$year}_b07"} ?? 0),
+                        'b08' => (float)($row->{"y{$year}_b08"} ?? 0),
+                        'b09' => (float)($row->{"y{$year}_b09"} ?? 0),
+                        'b10' => (float)($row->{"y{$year}_b10"} ?? 0),
+                        'b11' => (float)($row->{"y{$year}_b11"} ?? 0),
+                        'b12' => (float)($row->{"y{$year}_b12"} ?? 0)
+                    ];
+                    $data[$year] = $yearData;
+                }
+            } else {
+                // Return default zero data for all years
+                for ($year = $startYear; $year <= $endYear; $year++) {
+                    $data[$year] = (object)[
+                        'b01' => 0,
+                        'b02' => 0,
+                        'b03' => 0,
+                        'b04' => 0,
+                        'b05' => 0,
+                        'b06' => 0,
+                        'b07' => 0,
+                        'b08' => 0,
+                        'b09' => 0,
+                        'b10' => 0,
+                        'b11' => 0,
+                        'b12' => 0
+                    ];
+                }
+            }
+
+            return $data;
+        } catch (\Exception $e) {
+            Log::error('Error fetching multi-year revenue data', [
+                'start_year' => $startYear,
+                'end_year' => $endYear,
+                'category' => $category,
+                'branch' => $branch,
+                'error' => $e->getMessage()
+            ]);
+
+            // Return default zero data for all years on error
+            $data = [];
+            for ($year = $startYear; $year <= $endYear; $year++) {
+                $data[$year] = (object)[
+                    'b01' => 0,
+                    'b02' => 0,
+                    'b03' => 0,
+                    'b04' => 0,
+                    'b05' => 0,
+                    'b06' => 0,
+                    'b07' => 0,
+                    'b08' => 0,
+                    'b09' => 0,
+                    'b10' => 0,
+                    'b11' => 0,
+                    'b12' => 0
+                ];
+            }
+            return $data;
         }
     }
 
