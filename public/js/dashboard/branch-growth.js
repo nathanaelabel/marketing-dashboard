@@ -171,14 +171,14 @@ document.addEventListener('DOMContentLoaded', function () {
             branchGrowthChart.data.datasets = [];
             branchGrowthChart.update();
         }
-        
+
         // Show no data message in the chart container
         const chartContainer = ctx.parentElement;
         const existingMessage = chartContainer.querySelector('.no-data-message');
         if (existingMessage) {
             existingMessage.remove();
         }
-        
+
         const messageDiv = document.createElement('div');
         messageDiv.className = 'no-data-message text-center p-4 text-gray-600';
         messageDiv.innerHTML = `<i class="fas fa-info-circle mr-2"></i>${message}`;
@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const chartContainer = ctx.parentElement;
         const errorMessage = chartContainer.querySelector('.error-message');
         const noDataMessage = chartContainer.querySelector('.no-data-message');
-        
+
         if (errorMessage) errorMessage.remove();
         if (noDataMessage) noDataMessage.remove();
     }
@@ -215,7 +215,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     showErrorMessage(data.error);
                     return;
                 }
-                
+
                 // Check if there's a message indicating no data
                 if (data.message) {
                     console.log('Server message:', data.message);
@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     showNoDataMessage(data.message);
                     return;
                 }
-                
+
                 clearMessages();
                 ChartHelper.hideLoadingIndicator(chartContainer);
                 updateBranchGrowthChart(data);
