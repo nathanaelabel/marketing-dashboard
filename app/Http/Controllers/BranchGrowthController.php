@@ -132,21 +132,7 @@ class BranchGrowthController extends Controller
 
             $bindings = array_merge([$category, $startDate, $endDate], $branchBinding);
 
-            Log::info('BranchGrowthController query debug', [
-                'query' => $query,
-                'bindings' => $bindings,
-                'start_date' => $startDate,
-                'end_date' => $endDate,
-                'category' => $category,
-                'branch' => $branch
-            ]);
-
             $result = DB::select($query, $bindings);
-
-            Log::info('BranchGrowthController query result', [
-                'result_count' => count($result),
-                'result' => $result
-            ]);
 
             return $result;
         } catch (\Exception $e) {
