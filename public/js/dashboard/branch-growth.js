@@ -1,12 +1,13 @@
 document.addEventListener('DOMContentLoaded', function () {
-    let branchGrowthChart = null;
-    const ctx = document.getElementById('branch-growth-chart');
-    const branchSelect = document.getElementById('growth-branch-select');
+    let branchGrowthChart;
+    const chartContainer = document.getElementById('branch-growth-chart');
+    const ctx = chartContainer.getContext('2d');
     const startYearSelect = document.getElementById('growth-start-year-select');
     const endYearSelect = document.getElementById('growth-end-year-select');
+    const branchSelect = document.getElementById('growth-branch-select');
     const categorySelect = document.getElementById('growth-category-select');
 
-    if (!ctx) return;
+    if (!chartContainer) return;
 
     function updateBranchGrowthChart(dataFromServer) {
         if (!dataFromServer) {
@@ -173,8 +174,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Show no data message in the chart container
-        const chartContainer = ctx.parentElement;
-        const existingMessage = chartContainer.querySelector('.no-data-message');
+        const chartContainerElement = chartContainer.parentElement;
+        const existingMessage = chartContainerElement.querySelector('.no-data-message');
         if (existingMessage) {
             existingMessage.remove();
         }
@@ -182,13 +183,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'no-data-message text-center p-4 text-gray-600';
         messageDiv.innerHTML = `<i class="fas fa-info-circle mr-2"></i>${message}`;
-        chartContainer.appendChild(messageDiv);
+        chartContainerElement.appendChild(messageDiv);
     }
 
     function clearMessages() {
-        const chartContainer = ctx.parentElement;
-        const errorMessage = chartContainer.querySelector('.error-message');
-        const noDataMessage = chartContainer.querySelector('.no-data-message');
+        const chartContainerElement = chartContainer.parentElement;
+        const errorMessage = chartContainerElement.querySelector('.error-message');
+        const noDataMessage = chartContainerElement.querySelector('.no-data-message');
 
         if (errorMessage) errorMessage.remove();
         if (noDataMessage) noDataMessage.remove();
@@ -196,9 +197,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function fetchAndUpdateGrowthChart(branch, startYear, endYear, category) {
         const url = `/branch-growth/data?branch=${encodeURIComponent(branch)}&start_year=${startYear}&end_year=${endYear}&category=${encodeURIComponent(category)}`;
-        const chartContainer = ctx.parentElement;
+        const chartContainerElement = chartContainer.parentElement;
 
-        ChartHelper.showLoadingIndicator(chartContainer);
+        ChartHelper.showLoadingIndicator(chartContainerElement);
 
         fetch(url)
             .then(response => {
@@ -211,7 +212,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Check if the response contains an error
                 if (data.error) {
                     console.error('Server error:', data.error);
-                    ChartHelper.hideLoadingIndicator(chartContainer);
+                    ChartHelper.hideLoadingIndicator(chartContainerElement);
                     showErrorMessage(data.error);
                     return;
                 }
@@ -219,18 +220,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Check if there's a message indicating no data
                 if (data.message) {
                     console.log('Server message:', data.message);
-                    ChartHelper.hideLoadingIndicator(chartContainer);
+                    ChartHelper.hideLoadingIndicator(chartContainerElement);
                     showNoDataMessage(data.message);
                     return;
                 }
 
                 clearMessages();
-                ChartHelper.hideLoadingIndicator(chartContainer);
+                ChartHelper.hideLoadingIndicator(chartContainerElement);
                 updateBranchGrowthChart(data);
             })
             .catch(error => {
                 console.error('Error fetching Branch Growth data:', error);
-                ChartHelper.hideLoadingIndicator(chartContainer);
+                ChartHelper.hideLoadingIndicator(chartContainerElement);
                 ChartHelper.showErrorMessage(branchGrowthChart, ctx, 'Failed to load chart data. Please try again.');
             });
     }
