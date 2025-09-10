@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => {
                 console.error('Error fetching Branch Growth data:', error);
                 ChartHelper.hideLoadingIndicator(chartContainerElement);
-                ChartHelper.showErrorMessage(branchGrowthChart, ctx, 'Failed to load chart data. Please try again.');
+                ChartHelper.showErrorMessage(branchGrowthChart, ctx, 'Connection timed out. Try refreshing the page.');
             });
     }
 

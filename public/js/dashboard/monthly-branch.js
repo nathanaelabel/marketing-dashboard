@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => {
                 console.error('Error fetching Monthly Branch data:', error);
                 ChartHelper.hideLoadingIndicator(chartContainer);
-                ChartHelper.showErrorMessage(monthlyBranchChart, ctx, 'Failed to load chart data. Please try again.');
+                ChartHelper.showErrorMessage(monthlyBranchChart, ctx, 'Connection timed out. Try refreshing the page.');
             });
     }
 

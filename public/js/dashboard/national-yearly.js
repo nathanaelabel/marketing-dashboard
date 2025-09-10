@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => {
                 console.error('Error fetching National Yearly data:', error);
                 ChartHelper.hideLoadingIndicator(chartContainer);
-                ChartHelper.showErrorMessage(nationalYearlyChart, ctx, 'Failed to load chart data. Please try again.');
+                ChartHelper.showErrorMessage(nationalYearlyChart, ctx, 'Connection timed out. Try refreshing the page.');
             });
     }
 
