@@ -63,7 +63,7 @@ const ChartHelper = {
         }
 
         const chartContainer = chartContext.parentElement;
-        
+
         // Clear previous messages
         const existingError = chartContainer.querySelector('.error-message');
         if (existingError) {
@@ -91,10 +91,10 @@ const ChartHelper = {
         if (currentValue <= 0 || previousValue <= 0) {
             return null;
         }
-        
+
         const growth = ((currentValue - previousValue) / previousValue) * 100;
         const prefix = growth >= 0 ? '' : '';
-        
+
         return prefix + growth.toFixed(decimalPlaces) + '%';
     },
 
@@ -110,15 +110,15 @@ const ChartHelper = {
         if (value === 0) {
             return null;
         }
-        
+
         const scaledValue = value / divisor;
-        
+
         if (unit === 'B') {
             const rounded = Math.round(scaledValue * Math.pow(10, decimalPlaces)) / Math.pow(10, decimalPlaces);
             const display = (rounded % 1 === 0) ? rounded.toFixed(0) : rounded.toFixed(decimalPlaces);
             return display + 'B';
         }
-        
+
         return Math.round(scaledValue).toFixed(0) + 'M';
     },
 
@@ -154,9 +154,9 @@ const ChartHelper = {
      */
     formatNumberForDisplay(value, divisor) {
         if (value === 0) return '0';
-        
+
         const scaledValue = value / divisor;
-        
+
         if (divisor === 1000000000) { // Billions
             if (scaledValue % 1 === 0) return scaledValue.toFixed(0) + 'B';
             return scaledValue.toFixed(1) + 'B';
@@ -185,7 +185,7 @@ const ChartHelper = {
         }
 
         const chartContainer = chartContext.parentElement;
-        
+
         // Clear previous messages
         const existingMessage = chartContainer.querySelector('.no-data-message');
         if (existingMessage) {

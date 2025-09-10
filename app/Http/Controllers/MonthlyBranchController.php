@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\MProductCategory;
 use App\Helpers\ChartHelper;
 
@@ -11,21 +12,58 @@ class MonthlyBranchController extends Controller
 {
     public function getData(Request $request)
     {
-        $year = $request->get('year', date('Y'));
-        $previousYear = $year - 1;
-        $category = $request->get('category', 'MIKA');
-        $branch = $request->get('branch', 'National');
+        try {
+            // Handle both year parameters (from frontend) and date parameters (legacy)
+            $year = $request->input('year');
+            $startDate = $request->input('start_date');
+            $endDate = $request->input('end_date');
 
-        // Get current year data for all 12 months
-        $currentYearData = $this->getMonthlyRevenueData($year, $category, $branch);
+            // Convert year to date range if year parameter is provided
+            if ($year) {
+                $startDate = $year . '-01-01';
+                $endDate = $year . '-12-31';
 
-        // Get previous year data for all 12 months
-        $previousYearData = $this->getMonthlyRevenueData($previousYear, $category, $branch);
+                // If it's the current year, limit end date to today to avoid querying future dates
+                $currentYear = date('Y');
+                if ($year == $currentYear) {
+                    $today = date('Y-m-d');
+                    $endDate = min($endDate, $today);
+                }
+            } else {
+                // Fallback to date parameters or defaults
+                $startDate = $startDate ?: date('Y') . '-01-01';
+                $endDate = $endDate ?: date('Y-m-d'); // Use today instead of end of year
+                $year = date('Y', strtotime($startDate));
+            }
 
-        // Format data for chart
-        $formattedData = $this->formatMonthlyComparisonData($currentYearData, $previousYearData, $year, $previousYear);
+            $previousYear = $year - 1;
+            $category = $request->get('category', 'MIKA');
+            $branch = $request->get('branch', 'National');
 
-        return response()->json($formattedData);
+            // Get current year data using date range
+            $currentYearData = $this->getMonthlyRevenueData($startDate, $endDate, $category, $branch);
+
+            // Get previous year data using date range
+            $previousStartDate = $previousYear . '-01-01';
+            $previousEndDate = $previousYear . '-12-31';
+            $previousYearData = $this->getMonthlyRevenueData($previousStartDate, $previousEndDate, $category, $branch);
+
+            // Format data for chart
+            $formattedData = $this->formatMonthlyComparisonData($currentYearData, $previousYearData, $year, $previousYear);
+
+            return response()->json($formattedData);
+        } catch (\Exception $e) {
+            Log::error('MonthlyBranchController getData error: ' . $e->getMessage(), [
+                'year' => $request->get('year'),
+                'start_date' => $startDate ?? null,
+                'end_date' => $endDate ?? null,
+                'category' => $request->get('category'),
+                'branch' => $request->get('branch'),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json(['error' => 'Failed to fetch monthly branch data'], 500);
+        }
     }
 
     public function getCategories()
@@ -64,12 +102,17 @@ class MonthlyBranchController extends Controller
         }
     }
 
-    private function getMonthlyRevenueData($year, $category, $branch)
+    private function getMonthlyRevenueData($startDate, $endDate, $category, $branch)
     {
         // Branch condition - if National, sum all branches, otherwise filter by specific branch
         $branchCondition = '';
+        $bindings = [];
+
         if ($branch !== 'National') {
-            $branchCondition = 'AND org.name = :branch';
+            $branchCondition = 'AND org.name = ?';
+            $bindings = [$branch, $startDate, $endDate, $category];
+        } else {
+            $bindings = [$startDate, $endDate, $category];
         }
 
         // Optimized query with direct JOIN instead of EXISTS subquery for better performance
@@ -91,21 +134,16 @@ class MonthlyBranchController extends Controller
                 AND inv.docstatus IN ('CO', 'CL')
                 AND inv.isactive = 'Y'
                 {$branchCondition}
-                AND EXTRACT(year FROM inv.dateinvoiced) = :year
+                AND DATE(inv.dateinvoiced) BETWEEN ? AND ?
                 AND inv.documentno LIKE 'INC%'
-                AND pc.name = :category
+                AND pc.name = ?
             GROUP BY
                 EXTRACT(month FROM inv.dateinvoiced)
             ORDER BY
                 month_number
         ";
 
-        $params = ['year' => $year, 'category' => $category];
-        if ($branch !== 'National') {
-            $params['branch'] = $branch;
-        }
-
-        return DB::select($query, $params);
+        return DB::select($query, $bindings);
     }
 
     private function formatMonthlyComparisonData($currentYearData, $previousYearData, $year, $previousYear)

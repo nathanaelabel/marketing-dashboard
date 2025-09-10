@@ -4,26 +4,63 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Helpers\ChartHelper;
 
 class NationalYearlyController extends Controller
 {
     public function getData(Request $request)
     {
-        $year = $request->get('year', date('Y'));
-        $previousYear = $year - 1;
-        $category = $request->get('category', 'MIKA');
+        try {
+            // Handle both year parameters (from frontend) and date parameters (legacy)
+            $year = $request->input('year');
+            $startDate = $request->input('start_date');
+            $endDate = $request->input('end_date');
 
-        // Get current year data
-        $currentYearData = $this->getRevenueData($year, $category);
+            // Convert year to date range if year parameter is provided
+            if ($year) {
+                $startDate = $year . '-01-01';
+                $endDate = $year . '-12-31';
 
-        // Get previous year data
-        $previousYearData = $this->getRevenueData($previousYear, $category);
+                // If it's the current year, limit end date to today to avoid querying future dates
+                $currentYear = date('Y');
+                if ($year == $currentYear) {
+                    $today = date('Y-m-d');
+                    $endDate = min($endDate, $today);
+                }
+            } else {
+                // Fallback to date parameters or defaults
+                $startDate = $startDate ?: date('Y') . '-01-01';
+                $endDate = $endDate ?: date('Y-m-d'); // Use today instead of end of year
+                $year = date('Y', strtotime($startDate));
+            }
 
-        // Combine and format data using ChartHelper
-        $formattedData = $this->formatYearlyComparisonData($currentYearData, $previousYearData, $year, $previousYear);
+            $previousYear = $year - 1;
+            $category = $request->get('category', 'MIKA');
 
-        return response()->json($formattedData);
+            // Get current year data using date range
+            $currentYearData = $this->getRevenueData($startDate, $endDate, $category);
+
+            // Get previous year data using date range
+            $previousStartDate = $previousYear . '-01-01';
+            $previousEndDate = $previousYear . '-12-31';
+            $previousYearData = $this->getRevenueData($previousStartDate, $previousEndDate, $category);
+
+            // Combine and format data using ChartHelper
+            $formattedData = $this->formatYearlyComparisonData($currentYearData, $previousYearData, $year, $previousYear);
+
+            return response()->json($formattedData);
+        } catch (\Exception $e) {
+            Log::error('NationalYearlyController getData error: ' . $e->getMessage(), [
+                'year' => $request->get('year'),
+                'start_date' => $startDate ?? null,
+                'end_date' => $endDate ?? null,
+                'category' => $request->get('category'),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json(['error' => 'Failed to fetch national yearly data'], 500);
+        }
     }
 
     public function getCategories()
@@ -33,9 +70,9 @@ class NationalYearlyController extends Controller
         return response()->json($categories);
     }
 
-    private function getRevenueData($year, $category)
+    private function getRevenueData($startDate, $endDate, $category)
     {
-        // Optimized query with direct JOIN instead of EXISTS subquery for better performance
+        // Optimized query with direct JOIN and date range filtering
         $query = "
             SELECT
                 org.name AS branch_name, 
@@ -54,18 +91,16 @@ class NationalYearlyController extends Controller
                 AND inv.docstatus IN ('CO', 'CL')
                 AND inv.isactive = 'Y'
                 AND org.name NOT LIKE '%HEAD OFFICE%'
-                AND EXTRACT(year FROM inv.dateinvoiced) = :year
+                AND DATE(inv.dateinvoiced) BETWEEN ? AND ?
                 AND inv.documentno LIKE 'INC%'
-                AND pc.name = :category
+                AND pc.name = ?
             GROUP BY
                 org.name
             ORDER BY
                 org.name
         ";
 
-        $params = ['year' => $year, 'category' => $category];
-
-        return DB::select($query, $params);
+        return DB::select($query, [$startDate, $endDate, $category]);
     }
 
     private function formatYearlyComparisonData($currentYearData, $previousYearData, $year, $previousYear)
