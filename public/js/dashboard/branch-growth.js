@@ -197,9 +197,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function fetchAndUpdateGrowthChart(branch, startYear, endYear, category) {
         const url = `/branch-growth/data?branch=${encodeURIComponent(branch)}&start_year=${startYear}&end_year=${endYear}&category=${encodeURIComponent(category)}`;
-        const chartContainerElement = chartContainer.parentElement;
+        const filterSelectors = ['growth-start-year-select', 'growth-end-year-select', 'growth-branch-select', 'growth-category-select'];
 
-        ChartHelper.showLoadingIndicator(chartContainerElement);
+        // Create a wrapper div around canvas if it doesn't exist
+        if (!chartContainer.parentElement.classList.contains('chart-wrapper')) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'chart-wrapper relative w-full';
+            wrapper.style.width = '100%';
+            wrapper.style.height = 'auto';
+            chartContainer.parentElement.insertBefore(wrapper, chartContainer);
+            wrapper.appendChild(chartContainer);
+        }
+
+        // Disable filters and show loading on chart area only
+        ChartHelper.disableFilters(filterSelectors);
+        ChartHelper.showChartLoadingIndicator(chartContainer.parentElement);
 
         fetch(url)
             .then(response => {
@@ -212,7 +224,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Check if the response contains an error
                 if (data.error) {
                     console.error('Server error:', data.error);
-                    ChartHelper.hideLoadingIndicator(chartContainerElement);
+                    ChartHelper.hideChartLoadingIndicator(chartContainer.parentElement);
+                    ChartHelper.enableFilters(filterSelectors);
                     showErrorMessage(data.error);
                     return;
                 }
@@ -220,18 +233,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Check if there's a message indicating no data
                 if (data.message) {
                     console.log('Server message:', data.message);
-                    ChartHelper.hideLoadingIndicator(chartContainerElement);
+                    ChartHelper.hideChartLoadingIndicator(chartContainer.parentElement);
+                    ChartHelper.enableFilters(filterSelectors);
                     showNoDataMessage(data.message);
                     return;
                 }
 
                 clearMessages();
-                ChartHelper.hideLoadingIndicator(chartContainerElement);
+                ChartHelper.hideChartLoadingIndicator(chartContainer.parentElement);
+                ChartHelper.enableFilters(filterSelectors);
                 updateBranchGrowthChart(data);
             })
             .catch(error => {
                 console.error('Error fetching Branch Growth data:', error);
-                ChartHelper.hideLoadingIndicator(chartContainerElement);
+                ChartHelper.hideChartLoadingIndicator(chartContainer.parentElement);
+                ChartHelper.enableFilters(filterSelectors);
                 ChartHelper.showErrorMessage(branchGrowthChart, ctx, 'Connection timed out. Try refreshing the page.');
             });
     }

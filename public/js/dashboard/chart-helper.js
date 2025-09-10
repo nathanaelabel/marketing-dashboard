@@ -48,6 +48,48 @@ const ChartHelper = {
         chartContainer.appendChild(loadingOverlay);
     },
 
+    showChartLoadingIndicator(chartElement) {
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10 chart-loading-overlay';
+        loadingOverlay.innerHTML = `
+            <div class="text-center">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+                <p class="text-sm font-medium text-gray-700">Loading chart data...</p>
+            </div>
+        `;
+        chartElement.style.position = 'relative';
+        chartElement.appendChild(loadingOverlay);
+    },
+
+    hideChartLoadingIndicator(chartElement) {
+        const loadingOverlay = chartElement.querySelector('.chart-loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.remove();
+        }
+    },
+
+    disableFilters(filterSelectors) {
+        filterSelectors.forEach(selector => {
+            const element = document.querySelector(selector) || document.getElementById(selector);
+            if (element) {
+                element.disabled = true;
+                element.style.opacity = '0.6';
+                element.style.cursor = 'not-allowed';
+            }
+        });
+    },
+
+    enableFilters(filterSelectors) {
+        filterSelectors.forEach(selector => {
+            const element = document.querySelector(selector) || document.getElementById(selector);
+            if (element) {
+                element.disabled = false;
+                element.style.opacity = '1';
+                element.style.cursor = 'pointer';
+            }
+        });
+    },
+
     hideLoadingIndicator(chartContainer) {
         const loadingOverlay = chartContainer.querySelector('.loading-overlay');
         if (loadingOverlay) {

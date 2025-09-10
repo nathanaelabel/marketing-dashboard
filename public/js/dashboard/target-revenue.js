@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function () {
             targetRevenueChart.destroy();
             targetRevenueChart = null;
         }
-        
+
         // Register custom legend margin plugin
         const LegendMargin = {
             id: 'legendMargin',
@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                     label += new Intl.NumberFormat('id-ID', {
                                         minimumFractionDigits: 0
                                     }).format(context.parsed.x);
-                                    
+
                                     if (context.dataset.label === 'Realization' && percentages[context.dataIndex] !== undefined) {
                                         label += ` (${percentages[context.dataIndex]}%)`;
                                     }
@@ -163,10 +163,10 @@ document.addEventListener('DOMContentLoaded', function () {
     function showNoTargetsMessage(data) {
         // Hide chart
         ctx.style.display = 'none';
-        
+
         // Show no targets message
         noTargetsMessage.classList.remove('hidden');
-        
+
         // Update period text
         const months = [
             '', 'January', 'February', 'March', 'April', 'May', 'June',
@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function hideNoTargetsMessage() {
         // Show chart
         ctx.style.display = 'block';
-        
+
         // Hide no targets message
         noTargetsMessage.classList.add('hidden');
     }
@@ -187,15 +187,18 @@ document.addEventListener('DOMContentLoaded', function () {
     function clearMessages() {
         const errorMessage = chartContainer.querySelector('.error-message');
         const noDataMessage = chartContainer.querySelector('.no-data-message');
-        
+
         if (errorMessage) errorMessage.remove();
         if (noDataMessage) noDataMessage.remove();
     }
 
     function fetchAndUpdateTargetChart(month, year, category) {
         const url = `/target-revenue/data?month=${month}&year=${year}&category=${encodeURIComponent(category)}`;
+        const filterSelectors = ['target-month-select', 'target-year-select', 'target-category-select'];
 
-        ChartHelper.showLoadingIndicator(chartContainer);
+        // Disable filters and show loading on chart area only
+        ChartHelper.disableFilters(filterSelectors);
+        ChartHelper.showChartLoadingIndicator(chartContainer);
 
         fetch(url)
             .then(response => {
@@ -205,35 +208,37 @@ document.addEventListener('DOMContentLoaded', function () {
                 return response.json();
             })
             .then(data => {
-                ChartHelper.hideLoadingIndicator(chartContainer);
-                
+                ChartHelper.hideChartLoadingIndicator(chartContainer);
+                ChartHelper.enableFilters(filterSelectors);
+
                 // Check if targets don't exist
                 if (data.no_targets) {
                     showNoTargetsMessage(data);
                     return;
                 }
-                
+
                 // Check if the response contains an error
                 if (data.error) {
                     console.error('Server error:', data.error);
                     ChartHelper.showErrorMessage(targetRevenueChart, ctx, data.error);
                     return;
                 }
-                
+
                 // Check if there's a message indicating no data
                 if (data.message) {
                     console.log('Server message:', data.message);
                     ChartHelper.showNoDataMessage(targetRevenueChart, ctx, data.message);
                     return;
                 }
-                
+
                 clearMessages();
                 hideNoTargetsMessage();
                 updateTargetRevenueChart(data);
             })
             .catch(error => {
                 console.error('Error fetching Target Revenue data:', error);
-                ChartHelper.hideLoadingIndicator(chartContainer);
+                ChartHelper.hideChartLoadingIndicator(chartContainer);
+                ChartHelper.enableFilters(filterSelectors);
                 ChartHelper.showErrorMessage(targetRevenueChart, ctx, 'Failed to load chart data. Please try again.');
             });
     }
@@ -254,11 +259,11 @@ document.addEventListener('DOMContentLoaded', function () {
     categorySelect.addEventListener('change', triggerUpdate);
 
     // Input Target button click handler
-    inputTargetBtn.addEventListener('click', function() {
+    inputTargetBtn.addEventListener('click', function () {
         const month = monthSelect.value;
         const year = yearSelect.value;
         const category = categorySelect.value;
-        
+
         const url = `/branch-target/input?month=${month}&year=${year}&category=${encodeURIComponent(category)}`;
         window.location.href = url;
     });

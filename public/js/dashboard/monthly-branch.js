@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         title: {
                             display: false
@@ -140,9 +141,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function fetchAndUpdateMonthlyChart(year, branch, category) {
         const url = `/monthly-branch/data?year=${year}&branch=${encodeURIComponent(branch)}&category=${encodeURIComponent(category)}`;
-        const chartContainer = ctx.parentElement;
+        const filterSelectors = ['monthly-year-select', 'monthly-branch-select', 'monthly-category-select'];
+        const chartContainer = document.getElementById('monthly-branch-chart');
 
-        ChartHelper.showLoadingIndicator(chartContainer);
+        // Create a wrapper div around canvas if it doesn't exist
+        if (!chartContainer.parentElement.classList.contains('chart-wrapper')) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'chart-wrapper relative w-full';
+            wrapper.style.width = '100%';
+            wrapper.style.height = 'auto';
+            chartContainer.parentElement.insertBefore(wrapper, chartContainer);
+            wrapper.appendChild(chartContainer);
+        }
+
+        // Disable filters and show loading on chart area only
+        ChartHelper.disableFilters(filterSelectors);
+        ChartHelper.showChartLoadingIndicator(chartContainer.parentElement);
 
         fetch(url)
             .then(response => {
@@ -152,12 +166,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 return response.json();
             })
             .then(data => {
-                ChartHelper.hideLoadingIndicator(chartContainer);
+                ChartHelper.hideChartLoadingIndicator(chartContainer.parentElement);
+                ChartHelper.enableFilters(filterSelectors);
                 updateMonthlyBranchChart(data);
             })
             .catch(error => {
                 console.error('Error fetching Monthly Branch data:', error);
-                ChartHelper.hideLoadingIndicator(chartContainer);
+                ChartHelper.hideChartLoadingIndicator(chartContainer.parentElement);
+                ChartHelper.enableFilters(filterSelectors);
                 ChartHelper.showErrorMessage(monthlyBranchChart, ctx, 'Connection timed out. Try refreshing the page.');
             });
     }
