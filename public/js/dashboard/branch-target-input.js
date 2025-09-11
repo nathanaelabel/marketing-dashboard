@@ -5,6 +5,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const submitSpinner = document.getElementById('submit-spinner');
     const alertContainer = document.getElementById('alert-container');
 
+    // Delete functionality elements
+    const deleteBtn = document.getElementById('delete-btn');
+    const deleteModal = document.getElementById('delete-modal');
+    const deletePeriodText = document.getElementById('delete-period-text');
+    const confirmDeleteBtn = document.getElementById('confirm-delete');
+    const cancelDeleteBtn = document.getElementById('cancel-delete');
+    const deleteText = document.getElementById('delete-text');
+    const deleteSpinner = document.getElementById('delete-spinner');
+
     function showAlert(message, type = 'error') {
         const alertClass = type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800';
         const iconClass = type === 'success' ? 'fa-check-circle text-green-400' : 'fa-exclamation-circle text-red-400';
@@ -235,6 +244,133 @@ document.addEventListener('DOMContentLoaded', function () {
                 showAlert('An error occurred while saving targets. Please try again.');
             });
     });
+
+    // Delete functionality
+    function showDeleteModal() {
+        console.log('showDeleteModal called');
+
+        const month = document.querySelector('input[name="month"]').value;
+        const year = document.querySelector('input[name="year"]').value;
+        const category = document.querySelector('input[name="category"]').value;
+
+        console.log('Form data:', { month, year, category });
+
+        // Get month name
+        const months = [
+            '', 'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        const monthName = months[parseInt(month)] || 'Unknown';
+
+        // Update period text in modal
+        if (deletePeriodText) {
+            deletePeriodText.textContent = `${monthName} ${year} - ${category}`;
+        }
+
+        // Show modal
+        if (deleteModal) {
+            console.log('Showing delete modal');
+            deleteModal.classList.remove('hidden');
+        } else {
+            console.log('Delete modal element not found');
+        }
+    }
+
+    function hideDeleteModal() {
+        deleteModal.classList.add('hidden');
+    }
+
+    function setDeleteLoading(loading) {
+        if (loading) {
+            confirmDeleteBtn.disabled = true;
+            deleteText.textContent = 'Deleting...';
+            deleteSpinner.classList.remove('hidden');
+        } else {
+            confirmDeleteBtn.disabled = false;
+            deleteText.textContent = 'Delete';
+            deleteSpinner.classList.add('hidden');
+        }
+    }
+
+    function performDelete() {
+        const month = document.querySelector('input[name="month"]').value;
+        const year = document.querySelector('input[name="year"]').value;
+        const category = document.querySelector('input[name="category"]').value;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        setDeleteLoading(true);
+
+        fetch('/branch-target/delete', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                month: month,
+                year: year,
+                category: category
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                setDeleteLoading(false);
+                hideDeleteModal();
+
+                if (data.success) {
+                    showAlert('Targets deleted successfully!', 'success');
+
+                    // Redirect after a short delay
+                    setTimeout(() => {
+                        window.location.href = data.redirect_url || '/dashboard';
+                    }, 1500);
+                } else {
+                    showAlert(data.message || 'Failed to delete targets. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting targets:', error);
+                setDeleteLoading(false);
+                hideDeleteModal();
+                showAlert('An error occurred while deleting targets. Please try again.');
+            });
+    }
+
+    // Delete button event listeners
+    if (deleteBtn) {
+        console.log('Delete button found, adding event listener');
+        deleteBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            console.log('Delete button clicked');
+            showDeleteModal();
+        });
+    } else {
+        console.log('Delete button not found');
+    }
+
+    if (cancelDeleteBtn) {
+        cancelDeleteBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            hideDeleteModal();
+        });
+    }
+
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            performDelete();
+        });
+    }
+
+    // Close modal when clicking outside
+    if (deleteModal) {
+        deleteModal.addEventListener('click', function (e) {
+            if (e.target === deleteModal) {
+                hideDeleteModal();
+            }
+        });
+    }
 
     // Auto-save functionality (optional)
     let autoSaveTimeout;

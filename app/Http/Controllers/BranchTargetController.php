@@ -133,6 +133,81 @@ class BranchTargetController extends Controller
         }
     }
 
+    public function deleteTargets(Request $request)
+    {
+        try {
+            $month = $request->input('month');
+            $year = $request->input('year');
+            $category = $request->input('category');
+
+            // Validation rules
+            $validator = Validator::make($request->all(), [
+                'month' => 'required|integer|between:1,12',
+                'year' => 'required|integer|between:2021,2025',
+                'category' => 'required|string|in:MIKA,SPARE PART',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
+            try {
+                // Check if targets exist
+                $targetsExist = DB::table('branch_targets')
+                    ->where('month', $month)
+                    ->where('year', $year)
+                    ->where('category', $category)
+                    ->exists();
+
+                if (!$targetsExist) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No targets found for the specified period'
+                    ], 404);
+                }
+
+                // Delete targets for this period
+                $deletedCount = DB::table('branch_targets')
+                    ->where('month', $month)
+                    ->where('year', $year)
+                    ->where('category', $category)
+                    ->delete();
+
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Targets deleted successfully',
+                    'deleted_count' => $deletedCount,
+                    'redirect_url' => route('dashboard') . '#target-revenue-section'
+                ]);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+
+        } catch (\Exception $e) {
+            Log::error('BranchTargetController deleteTargets error: ' . $e->getMessage(), [
+                'month' => $request->input('month'),
+                'year' => $request->input('year'),
+                'category' => $request->input('category'),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete targets. Please try again.'
+            ], 500);
+        }
+    }
+
     public function getMonthName($month)
     {
         $months = [

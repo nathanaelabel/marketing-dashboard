@@ -35,6 +35,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/target-revenue/categories', [TargetRevenueController::class, 'getCategories'])->name('target-revenue.categories');
     Route::get('/branch-target/input', [BranchTargetController::class, 'showInputForm'])->name('branch-target.input');
     Route::post('/branch-target/save', [BranchTargetController::class, 'saveTargets'])->name('branch-target.save');
+    Route::delete('/branch-target/delete', [BranchTargetController::class, 'deleteTargets'])->name('branch-target.delete');
 });
 
 require __DIR__ . '/auth.php';

@@ -205,8 +205,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const url = `/target-revenue/data?month=${month}&year=${year}&category=${encodeURIComponent(category)}`;
         const filterSelectors = ['target-month-select', 'target-year-select', 'target-category-select'];
 
-        // Disable filters and show loading on chart area only
+        // Disable filters and edit button, show loading on chart area only
         ChartHelper.disableFilters(filterSelectors);
+        if (editTargetBtn) editTargetBtn.disabled = true;
         ChartHelper.showChartLoadingIndicator(chartContainer);
 
         fetch(url)
@@ -219,6 +220,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 ChartHelper.hideChartLoadingIndicator(chartContainer);
                 ChartHelper.enableFilters(filterSelectors);
+                if (editTargetBtn) editTargetBtn.disabled = false;
 
                 // Check if targets don't exist
                 if (data.no_targets) {
@@ -248,6 +250,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.error('Error fetching Target Revenue data:', error);
                 ChartHelper.hideChartLoadingIndicator(chartContainer);
                 ChartHelper.enableFilters(filterSelectors);
+                if (editTargetBtn) editTargetBtn.disabled = false;
                 ChartHelper.showErrorMessage(targetRevenueChart, ctx, 'Failed to load chart data. Please try again.');
             });
     }
