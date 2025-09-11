@@ -48,7 +48,7 @@
                 <!-- Edit Target Button -->
                 <div>
                     <button id="edit-target-btn" class="hidden py-1.5 w-32 text-sm rounded-md border border-blue-300 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm focus:border-blue-300 focus:ring-1 focus:ring-blue-200 focus:ring-opacity-50 transition duration-200 mt-6 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                        <i class="fas fa-edit"></i>
+                        <i class="fas fa-edit mr-20"></i>
                         <span>Edit Target</span>
                     </button>
                 </div>
@@ -64,10 +64,10 @@
                 <div class="flex flex-col items-center justify-center space-y-4">
                     <i class="fas fa-chart-bar text-gray-400 text-4xl"></i>
                     <div class="text-gray-600">
-                        <p class="text-lg font-medium mb-2">Target belum diinput</p>
+                        <p class="text-lg font-medium mb-2">Tidak ada data target</p>
                         <p class="text-sm text-gray-500 mb-4">Silakan input target untuk periode <span id="period-text"></span></p>
                     </div>
-                    <button id="input-target-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition duration-200">
+                    <button id="input-target-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
                         <i class="fas fa-plus mr-2"></i>Input Target
                     </button>
                 </div>

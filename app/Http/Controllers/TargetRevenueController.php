@@ -35,7 +35,7 @@ class TargetRevenueController extends Controller
 
             // Get actual revenue data using the provided query
             $actualData = $this->getActualRevenueData($month, $year, $category);
-            
+
             // Get target data
             $targetData = $this->getTargetData($month, $year, $category);
 
@@ -129,7 +129,7 @@ class TargetRevenueController extends Controller
             ";
 
             $results = DB::select($query, [$category, $month, $year, $category, $month, $year]);
-            
+
             // Convert to associative array with branch name as key
             $data = [];
             foreach ($results as $result) {
@@ -198,10 +198,10 @@ class TargetRevenueController extends Controller
 
                 $target = $targetData[$branchName] ?? 0;
                 $actual = $actualData[$branchName]['netto'] ?? 0;
-                
+
                 $targetValues[] = $target;
                 $realizationValues[] = $actual;
-                
+
                 // Calculate percentage
                 $percentage = $target > 0 ? ($actual / $target) * 100 : 0;
                 $percentages[] = round($percentage);

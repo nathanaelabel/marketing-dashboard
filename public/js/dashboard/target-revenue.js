@@ -179,7 +179,9 @@ document.addEventListener('DOMContentLoaded', function () {
             'July', 'August', 'September', 'October', 'November', 'December'
         ];
         const monthName = months[data.month] || 'Unknown';
-        periodText.textContent = `${monthName} ${data.year} - ${data.category}`;
+
+        const formattedCategory = data.category.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+        periodText.textContent = `${monthName} ${data.year} - ${formattedCategory}`;
     }
 
     function hideNoTargetsMessage() {

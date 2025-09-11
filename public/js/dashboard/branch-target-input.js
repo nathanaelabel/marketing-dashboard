@@ -262,9 +262,11 @@ document.addEventListener('DOMContentLoaded', function () {
         ];
         const monthName = months[parseInt(month)] || 'Unknown';
 
+        const formattedCategory = category.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+
         // Update period text in modal
         if (deletePeriodText) {
-            deletePeriodText.textContent = `${monthName} ${year} - ${category}`;
+            deletePeriodText.textContent = `${monthName} ${year} - ${formattedCategory}`;
         }
 
         // Show modal
