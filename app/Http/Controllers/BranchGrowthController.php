@@ -12,35 +12,38 @@ class BranchGrowthController extends Controller
     public function getData(Request $request)
     {
         try {
-            $startYear = $request->get('start_year', 2024);
-            $endYear = $request->get('end_year', 2025);
+            // Handle both year parameters (from frontend) and date parameters (legacy)
+            $startYear = $request->input('start_year');
+            $endYear = $request->input('end_year');
+            $startDate = $request->input('start_date');
+            $endDate = $request->input('end_date');
+
+            // Convert years to date ranges if year parameters are provided
+            if ($startYear && $endYear) {
+                $startDate = $startYear . '-01-01';
+                $endDate = $endYear . '-12-31';
+            } else {
+                // Fallback to date parameters or defaults
+                $startDate = $startDate ?: '2024-01-01';
+                $endDate = $endDate ?: now()->toDateString();
+            }
+
             $category = $request->get('category', 'MIKA');
             $branch = $request->get('branch', 'National');
 
-            // Validate year range
-            if ($startYear > $endYear) {
-                return response()->json(['error' => 'Start year cannot be greater than end year'], 400);
-            }
-
-            if ($endYear > 2025) {
-                return response()->json(['error' => 'End year cannot be greater than 2025'], 400);
-            }
-
-            // Get data for all years in the range
-            $data = [];
-            for ($year = $startYear; $year <= $endYear; $year++) {
-                $yearData = $this->getYearlyRevenueData($year, $category, $branch);
-                $data[$year] = $yearData;
-            }
+            // Get revenue data using date range filtering like National Revenue
+            $data = $this->getRevenueDataByDateRange($startDate, $endDate, $category, $branch);
 
             // Format data for line chart
-            $formattedData = $this->formatGrowthData($data, $startYear, $endYear);
+            $formattedData = $this->formatMonthlyGrowthData($data, $startDate, $endDate);
 
             return response()->json($formattedData);
         } catch (\Exception $e) {
             Log::error('BranchGrowthController getData error: ' . $e->getMessage(), [
                 'start_year' => $request->get('start_year'),
                 'end_year' => $request->get('end_year'),
+                'start_date' => $startDate ?? null,
+                'end_date' => $endDate ?? null,
                 'category' => $request->get('category'),
                 'branch' => $request->get('branch'),
                 'trace' => $e->getTraceAsString()
@@ -86,7 +89,7 @@ class BranchGrowthController extends Controller
         }
     }
 
-    private function getYearlyRevenueData($year, $category, $branch)
+    private function getRevenueDataByDateRange($startDate, $endDate, $category, $branch)
     {
         try {
             // Branch condition - if National, sum all branches, otherwise filter by specific branch
@@ -97,21 +100,15 @@ class BranchGrowthController extends Controller
                 $branchBinding[] = $branch;
             }
 
-            // Optimized query using conditional aggregation instead of UNION ALL
             $query = "
-                SELECT 
-                    SUM(CASE WHEN EXTRACT(month FROM h.dateinvoiced) = 1 THEN d.linenetamt ELSE 0 END) AS b01,
-                    SUM(CASE WHEN EXTRACT(month FROM h.dateinvoiced) = 2 THEN d.linenetamt ELSE 0 END) AS b02,
-                    SUM(CASE WHEN EXTRACT(month FROM h.dateinvoiced) = 3 THEN d.linenetamt ELSE 0 END) AS b03,
-                    SUM(CASE WHEN EXTRACT(month FROM h.dateinvoiced) = 4 THEN d.linenetamt ELSE 0 END) AS b04,
-                    SUM(CASE WHEN EXTRACT(month FROM h.dateinvoiced) = 5 THEN d.linenetamt ELSE 0 END) AS b05,
-                    SUM(CASE WHEN EXTRACT(month FROM h.dateinvoiced) = 6 THEN d.linenetamt ELSE 0 END) AS b06,
-                    SUM(CASE WHEN EXTRACT(month FROM h.dateinvoiced) = 7 THEN d.linenetamt ELSE 0 END) AS b07,
-                    SUM(CASE WHEN EXTRACT(month FROM h.dateinvoiced) = 8 THEN d.linenetamt ELSE 0 END) AS b08,
-                    SUM(CASE WHEN EXTRACT(month FROM h.dateinvoiced) = 9 THEN d.linenetamt ELSE 0 END) AS b09,
-                    SUM(CASE WHEN EXTRACT(month FROM h.dateinvoiced) = 10 THEN d.linenetamt ELSE 0 END) AS b10,
-                    SUM(CASE WHEN EXTRACT(month FROM h.dateinvoiced) = 11 THEN d.linenetamt ELSE 0 END) AS b11,
-                    SUM(CASE WHEN EXTRACT(month FROM h.dateinvoiced) = 12 THEN d.linenetamt ELSE 0 END) AS b12
+                SELECT
+                    EXTRACT(year FROM h.dateinvoiced) as year,
+                    EXTRACT(month FROM h.dateinvoiced) as month,
+                    SUM(CASE 
+                        WHEN h.documentno LIKE 'INC%' THEN d.linenetamt 
+                        WHEN h.documentno LIKE 'CNC%' THEN -d.linenetamt 
+                        ELSE 0 
+                    END) as net_revenue
                 FROM
                     c_invoiceline d
                     INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
@@ -121,80 +118,46 @@ class BranchGrowthController extends Controller
                 WHERE
                     h.issotrx = 'Y'
                     AND h.ad_client_id = 1000001
-                    AND d.qtyinvoiced > 0 
-                    AND d.linenetamt > 0
                     AND h.docstatus IN ('CO', 'CL')
-                    AND h.documentno LIKE 'INC%'
+                    AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
                     AND cat.name = ?
-                    AND EXTRACT(year FROM h.dateinvoiced) = ?
+                    AND DATE(h.dateinvoiced) BETWEEN ? AND ?
                     {$branchCondition}
+                GROUP BY
+                    EXTRACT(year FROM h.dateinvoiced),
+                    EXTRACT(month FROM h.dateinvoiced)
+                ORDER BY
+                    year, month
             ";
 
-            $bindings = array_merge([$category, $year], $branchBinding);
+            $bindings = array_merge([$category, $startDate, $endDate], $branchBinding);
+
             $result = DB::select($query, $bindings);
 
-            // Ensure we always return a valid object with all months initialized to 0
-            $defaultData = (object)[
-                'b01' => 0,
-                'b02' => 0,
-                'b03' => 0,
-                'b04' => 0,
-                'b05' => 0,
-                'b06' => 0,
-                'b07' => 0,
-                'b08' => 0,
-                'b09' => 0,
-                'b10' => 0,
-                'b11' => 0,
-                'b12' => 0
-            ];
-
-            if (empty($result) || !isset($result[0])) {
-                return $defaultData;
-            }
-
-            $data = $result[0];
-
-            // Convert null values to 0 and ensure all months are present
-            foreach ($defaultData as $month => $defaultValue) {
-                if (!isset($data->$month) || $data->$month === null) {
-                    $data->$month = 0;
-                } else {
-                    // Convert to float to ensure numeric type
-                    $data->$month = (float)$data->$month;
-                }
-            }
-
-            return $data;
+            return $result;
         } catch (\Exception $e) {
-            Log::error('Error fetching yearly revenue data', [
-                'year' => $year,
+            Log::error('Error fetching revenue data by date range', [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
                 'category' => $category,
                 'branch' => $branch,
                 'error' => $e->getMessage()
             ]);
 
-            // Return default zero data on error
-            return (object)[
-                'b01' => 0,
-                'b02' => 0,
-                'b03' => 0,
-                'b04' => 0,
-                'b05' => 0,
-                'b06' => 0,
-                'b07' => 0,
-                'b08' => 0,
-                'b09' => 0,
-                'b10' => 0,
-                'b11' => 0,
-                'b12' => 0
-            ];
+            return [];
         }
     }
 
-    private function formatGrowthData($data, $startYear, $endYear)
+    private function formatMonthlyGrowthData($data, $startDate, $endDate)
     {
         try {
+            // Parse start and end dates to get year range
+            $start = new \DateTime($startDate);
+            $end = new \DateTime($endDate);
+            $startYear = (int)$start->format('Y');
+            $endYear = (int)$end->format('Y');
+
+            // Month labels (Jan - Dec)
             $monthLabels = [
                 'January',
                 'February',
@@ -210,6 +173,18 @@ class BranchGrowthController extends Controller
                 'December'
             ];
 
+            // Group data by year
+            $yearlyData = [];
+            foreach ($data as $row) {
+                $year = (int)$row->year;
+                $month = (int)$row->month;
+                if (!isset($yearlyData[$year])) {
+                    $yearlyData[$year] = array_fill(1, 12, 0); // Initialize months 1-12 with 0
+                }
+                $yearlyData[$year][$month] = (float)$row->net_revenue;
+            }
+
+            // Create datasets for each year
             $datasets = [];
             $defaultColors = [
                 'rgba(59, 130, 246, 0.8)',   // Blue
@@ -218,35 +193,20 @@ class BranchGrowthController extends Controller
                 'rgba(239, 68, 68, 0.8)',    // Red
                 'rgba(139, 92, 246, 0.8)'    // Purple
             ];
-
             $colorIndex = 0;
             $allValues = [];
 
-            // Create dataset for each year
             for ($year = $startYear; $year <= $endYear; $year++) {
-                $yearData = $data[$year] ?? null;
+                $monthlyValues = [];
 
-                if (!$yearData) {
-                    continue; // Skip if no data for this year
+                // Get data for each month (1-12)
+                for ($month = 1; $month <= 12; $month++) {
+                    $value = isset($yearlyData[$year][$month]) ? $yearlyData[$year][$month] : 0;
+                    $monthlyValues[] = $value;
+                    if ($value > 0) {
+                        $allValues[] = $value;
+                    }
                 }
-
-                $monthlyValues = [
-                    (float)($yearData->b01 ?? 0),
-                    (float)($yearData->b02 ?? 0),
-                    (float)($yearData->b03 ?? 0),
-                    (float)($yearData->b04 ?? 0),
-                    (float)($yearData->b05 ?? 0),
-                    (float)($yearData->b06 ?? 0),
-                    (float)($yearData->b07 ?? 0),
-                    (float)($yearData->b08 ?? 0),
-                    (float)($yearData->b09 ?? 0),
-                    (float)($yearData->b10 ?? 0),
-                    (float)($yearData->b11 ?? 0),
-                    (float)($yearData->b12 ?? 0)
-                ];
-
-                // Add to all values for max calculation
-                $allValues = array_merge($allValues, $monthlyValues);
 
                 // Use default colors cycling through them
                 $color = $defaultColors[$colorIndex % count($defaultColors)];
@@ -271,21 +231,8 @@ class BranchGrowthController extends Controller
                 $colorIndex++;
             }
 
-            // Handle case where no datasets were created
-            if (empty($datasets)) {
-                return [
-                    'labels' => $monthLabels,
-                    'datasets' => [],
-                    'yAxisLabel' => 'Revenue',
-                    'yAxisDivisor' => 1,
-                    'yAxisUnit' => '',
-                    'suggestedMax' => 100,
-                    'message' => 'No data available for the selected year range'
-                ];
-            }
-
-            // Calculate max value for Y-axis scaling
-            $maxValue = empty($allValues) ? 0 : max($allValues);
+            // Calculate max value for Y-axis
+            $maxValue = !empty($allValues) ? max($allValues) : 100;
 
             // Use ChartHelper for Y-axis configuration
             $yAxisConfig = ChartHelper::getYAxisConfig($maxValue, null, $allValues);
@@ -300,22 +247,174 @@ class BranchGrowthController extends Controller
                 'suggestedMax' => $suggestedMax,
             ];
         } catch (\Exception $e) {
-            Log::error('Error formatting growth data', [
-                'start_year' => $startYear,
-                'end_year' => $endYear,
+            Log::error('Error formatting monthly growth data', [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
                 'error' => $e->getMessage()
             ]);
 
-            // Return minimal valid structure on error
             return [
                 'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                'datasets' => [],
+                'datasets' => [
+                    [
+                        'label' => 'Net Revenue',
+                        'data' => array_fill(0, 12, 0),
+                        'borderColor' => 'rgb(75, 192, 192)',
+                        'backgroundColor' => 'rgba(75, 192, 192, 0.2)',
+                        'tension' => 0.1
+                    ]
+                ],
                 'yAxisLabel' => 'Revenue',
                 'yAxisDivisor' => 1,
                 'yAxisUnit' => '',
                 'suggestedMax' => 100,
                 'error' => 'Failed to format chart data'
             ];
+        }
+    }
+
+    private function getMultiYearRevenueData($startYear, $endYear, $category, $branch)
+    {
+        try {
+            // Branch condition - if National, sum all branches, otherwise filter by specific branch
+            $branchCondition = '';
+            $branchBinding = [];
+            if ($branch !== 'National') {
+                $branchCondition = 'AND org.name = ?';
+                $branchBinding[] = $branch;
+            }
+
+            // Build conditional aggregation for all years and months (BRUTO - RETUR)
+            $yearSelects = [];
+            for ($year = $startYear; $year <= $endYear; $year++) {
+                for ($month = 1; $month <= 12; $month++) {
+                    $yearSelects[] = "SUM(CASE 
+                        WHEN EXTRACT(year FROM h.dateinvoiced) = $year 
+                        AND EXTRACT(month FROM h.dateinvoiced) = $month 
+                        AND h.documentno LIKE 'INC%' 
+                        THEN d.linenetamt 
+                        WHEN EXTRACT(year FROM h.dateinvoiced) = $year 
+                        AND EXTRACT(month FROM h.dateinvoiced) = $month 
+                        AND h.documentno LIKE 'CNC%' 
+                        THEN -d.linenetamt 
+                        ELSE 0 
+                    END) AS y{$year}_b" . str_pad($month, 2, '0', STR_PAD_LEFT);
+                }
+            }
+
+            $selectClause = implode(",\n                    ", $yearSelects);
+
+            $query = "
+                SELECT 
+                    $selectClause
+                FROM
+                    c_invoiceline d
+                    INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+                    INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                    INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
+                    INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                WHERE
+                    h.issotrx = 'Y'
+                    AND h.ad_client_id = 1000001
+                    AND h.docstatus IN ('CO', 'CL')
+                    AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
+                    AND cat.name = ?
+                    AND h.dateinvoiced >= ? AND h.dateinvoiced < ?
+                    {$branchCondition}
+            ";
+
+            // Use date range instead of EXTRACT for better performance
+            $startDate = $startYear . '-01-01';
+            $endDate = ($endYear + 1) . '-01-01';
+
+            $bindings = array_merge([$category, $startDate, $endDate], $branchBinding);
+
+            Log::info('BranchGrowthController query debug', [
+                'query' => $query,
+                'bindings' => $bindings,
+                'start_year' => $startYear,
+                'end_year' => $endYear,
+                'category' => $category,
+                'branch' => $branch
+            ]);
+
+            $result = DB::select($query, $bindings);
+
+            Log::info('BranchGrowthController query result', [
+                'result_count' => count($result),
+                'result' => $result
+            ]);
+
+            // Convert result to year-based structure
+            $data = [];
+            if (!empty($result) && isset($result[0])) {
+                $row = $result[0];
+                for ($year = $startYear; $year <= $endYear; $year++) {
+                    $yearData = (object)[
+                        'b01' => (float)($row->{"y{$year}_b01"} ?? 0),
+                        'b02' => (float)($row->{"y{$year}_b02"} ?? 0),
+                        'b03' => (float)($row->{"y{$year}_b03"} ?? 0),
+                        'b04' => (float)($row->{"y{$year}_b04"} ?? 0),
+                        'b05' => (float)($row->{"y{$year}_b05"} ?? 0),
+                        'b06' => (float)($row->{"y{$year}_b06"} ?? 0),
+                        'b07' => (float)($row->{"y{$year}_b07"} ?? 0),
+                        'b08' => (float)($row->{"y{$year}_b08"} ?? 0),
+                        'b09' => (float)($row->{"y{$year}_b09"} ?? 0),
+                        'b10' => (float)($row->{"y{$year}_b10"} ?? 0),
+                        'b11' => (float)($row->{"y{$year}_b11"} ?? 0),
+                        'b12' => (float)($row->{"y{$year}_b12"} ?? 0)
+                    ];
+                    $data[$year] = $yearData;
+                }
+            } else {
+                // Return default zero data for all years
+                for ($year = $startYear; $year <= $endYear; $year++) {
+                    $data[$year] = (object)[
+                        'b01' => 0,
+                        'b02' => 0,
+                        'b03' => 0,
+                        'b04' => 0,
+                        'b05' => 0,
+                        'b06' => 0,
+                        'b07' => 0,
+                        'b08' => 0,
+                        'b09' => 0,
+                        'b10' => 0,
+                        'b11' => 0,
+                        'b12' => 0
+                    ];
+                }
+            }
+
+            return $data;
+        } catch (\Exception $e) {
+            Log::error('Error fetching multi-year revenue data', [
+                'start_year' => $startYear,
+                'end_year' => $endYear,
+                'category' => $category,
+                'branch' => $branch,
+                'error' => $e->getMessage()
+            ]);
+
+            // Return default zero data for all years on error
+            $data = [];
+            for ($year = $startYear; $year <= $endYear; $year++) {
+                $data[$year] = (object)[
+                    'b01' => 0,
+                    'b02' => 0,
+                    'b03' => 0,
+                    'b04' => 0,
+                    'b05' => 0,
+                    'b06' => 0,
+                    'b07' => 0,
+                    'b08' => 0,
+                    'b09' => 0,
+                    'b10' => 0,
+                    'b11' => 0,
+                    'b12' => 0
+                ];
+            }
+            return $data;
         }
     }
 }

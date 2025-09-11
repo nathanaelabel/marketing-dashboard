@@ -48,6 +48,48 @@ const ChartHelper = {
         chartContainer.appendChild(loadingOverlay);
     },
 
+    showChartLoadingIndicator(chartElement) {
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10 chart-loading-overlay';
+        loadingOverlay.innerHTML = `
+            <div class="text-center">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+                <p class="text-sm font-medium text-gray-700">Loading chart data...</p>
+            </div>
+        `;
+        chartElement.style.position = 'relative';
+        chartElement.appendChild(loadingOverlay);
+    },
+
+    hideChartLoadingIndicator(chartElement) {
+        const loadingOverlay = chartElement.querySelector('.chart-loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.remove();
+        }
+    },
+
+    disableFilters(filterSelectors) {
+        filterSelectors.forEach(selector => {
+            const element = document.querySelector(selector) || document.getElementById(selector);
+            if (element) {
+                element.disabled = true;
+                element.style.opacity = '0.6';
+                element.style.cursor = 'not-allowed';
+            }
+        });
+    },
+
+    enableFilters(filterSelectors) {
+        filterSelectors.forEach(selector => {
+            const element = document.querySelector(selector) || document.getElementById(selector);
+            if (element) {
+                element.disabled = false;
+                element.style.opacity = '1';
+                element.style.cursor = 'pointer';
+            }
+        });
+    },
+
     hideLoadingIndicator(chartContainer) {
         const loadingOverlay = chartContainer.querySelector('.loading-overlay');
         if (loadingOverlay) {
@@ -63,7 +105,7 @@ const ChartHelper = {
         }
 
         const chartContainer = chartContext.parentElement;
-        
+
         // Clear previous messages
         const existingError = chartContainer.querySelector('.error-message');
         if (existingError) {
@@ -91,10 +133,10 @@ const ChartHelper = {
         if (currentValue <= 0 || previousValue <= 0) {
             return null;
         }
-        
+
         const growth = ((currentValue - previousValue) / previousValue) * 100;
         const prefix = growth >= 0 ? '' : '';
-        
+
         return prefix + growth.toFixed(decimalPlaces) + '%';
     },
 
@@ -110,15 +152,15 @@ const ChartHelper = {
         if (value === 0) {
             return null;
         }
-        
+
         const scaledValue = value / divisor;
-        
+
         if (unit === 'B') {
             const rounded = Math.round(scaledValue * Math.pow(10, decimalPlaces)) / Math.pow(10, decimalPlaces);
             const display = (rounded % 1 === 0) ? rounded.toFixed(0) : rounded.toFixed(decimalPlaces);
             return display + 'B';
         }
-        
+
         return Math.round(scaledValue).toFixed(0) + 'M';
     },
 
@@ -144,5 +186,57 @@ const ChartHelper = {
             }
             return null;
         };
+    },
+
+    /**
+     * Format number for display with appropriate scaling
+     * @param {number} value - Raw value to format
+     * @param {number} divisor - Divisor for scaling (1, 1000000, 1000000000)
+     * @returns {string} Formatted display string
+     */
+    formatNumberForDisplay(value, divisor) {
+        if (value === 0) return '0';
+
+        const scaledValue = value / divisor;
+
+        if (divisor === 1000000000) { // Billions
+            if (scaledValue % 1 === 0) return scaledValue.toFixed(0) + 'B';
+            return scaledValue.toFixed(1) + 'B';
+        } else if (divisor === 1000000) { // Millions
+            return Math.round(scaledValue) + 'M';
+        } else {
+            // For raw values or thousands
+            return new Intl.NumberFormat('id-ID', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(scaledValue);
+        }
+    },
+
+    /**
+     * Show no data message in chart container
+     * @param {object} chartInstance - Chart.js instance
+     * @param {HTMLElement} chartContext - Canvas element
+     * @param {string} message - Message to display
+     */
+    showNoDataMessage(chartInstance, chartContext, message) {
+        if (chartInstance) {
+            chartInstance.data.labels = [];
+            chartInstance.data.datasets = [];
+            chartInstance.update();
+        }
+
+        const chartContainer = chartContext.parentElement;
+
+        // Clear previous messages
+        const existingMessage = chartContainer.querySelector('.no-data-message');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'no-data-message text-center p-4 text-gray-600';
+        messageDiv.innerHTML = `<i class="fas fa-info-circle mr-2"></i>${message}`;
+        chartContainer.appendChild(messageDiv);
     }
 };
