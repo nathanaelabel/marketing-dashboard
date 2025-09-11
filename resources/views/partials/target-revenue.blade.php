@@ -44,13 +44,20 @@
                         <option value="SPARE PART">Spare Part</option>
                     </select>
                 </div>
+
+                <!-- Edit Target Button -->
+                <div>
+                    <button id="edit-target-btn" class="hidden bg-orange-600 hover:bg-orange-700 text-white font-medium py-1.5 px-4 rounded-lg text-sm transition duration-200 mt-6">
+                        <i class="fas fa-edit mr-10"></i>Edit Target
+                    </button>
+                </div>
             </div>
         </div>
-        
+
         <!-- Chart Container -->
         <div id="target-chart-container" class="relative">
             <canvas id="target-revenue-chart" style="max-height: 600px; width: 100%;"></canvas>
-            
+
             <!-- No Targets Message -->
             <div id="no-targets-message" class="hidden text-center p-8">
                 <div class="flex flex-col items-center justify-center space-y-4">

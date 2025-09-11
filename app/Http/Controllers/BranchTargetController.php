@@ -15,6 +15,7 @@ class BranchTargetController extends Controller
         $month = $request->get('month', date('n'));
         $year = $request->get('year', date('Y'));
         $category = $request->get('category', 'MIKA');
+        $isEditMode = $request->has('edit');
 
         // Get all branches
         $branches = ChartHelper::getLocations();
@@ -27,7 +28,7 @@ class BranchTargetController extends Controller
             ->pluck('target_amount', 'branch_name')
             ->toArray();
 
-        return view('branch-target-input', compact('month', 'year', 'category', 'branches', 'existingTargets'));
+        return view('branch-target-input', compact('month', 'year', 'category', 'branches', 'existingTargets', 'isEditMode'));
     }
 
     public function saveTargets(Request $request)

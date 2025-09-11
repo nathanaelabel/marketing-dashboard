@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const categorySelect = document.getElementById('target-category-select');
     const noTargetsMessage = document.getElementById('no-targets-message');
     const inputTargetBtn = document.getElementById('input-target-btn');
+    const editTargetBtn = document.getElementById('edit-target-btn');
     const periodText = document.getElementById('period-text');
     const chartContainer = document.getElementById('target-chart-container');
 
@@ -86,7 +87,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         },
                         formatter: function (value, context) {
                             if (context.dataset.label === 'Realization' && percentages[context.dataIndex] !== undefined) {
-                                return percentages[context.dataIndex] + '%';
+                                // Show both billion format and percentage for realization bars
+                                const billionValue = (value / 1000000000).toFixed(2) + 'B';
+                                return billionValue + ' (' + percentages[context.dataIndex] + '%)';
                             }
                             return ChartHelper.formatNumberForDisplay(value, yAxisDivisor);
                         }
@@ -167,6 +170,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // Show no targets message
         noTargetsMessage.classList.remove('hidden');
 
+        // Hide edit button
+        editTargetBtn.classList.add('hidden');
+
         // Update period text
         const months = [
             '', 'January', 'February', 'March', 'April', 'May', 'June',
@@ -182,6 +188,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Hide no targets message
         noTargetsMessage.classList.add('hidden');
+
+        // Show edit button
+        editTargetBtn.classList.remove('hidden');
     }
 
     function clearMessages() {
@@ -265,6 +274,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const category = categorySelect.value;
 
         const url = `/branch-target/input?month=${month}&year=${year}&category=${encodeURIComponent(category)}`;
+        window.location.href = url;
+    });
+
+    // Edit Target button click handler
+    editTargetBtn.addEventListener('click', function () {
+        const month = monthSelect.value;
+        const year = yearSelect.value;
+        const category = categorySelect.value;
+
+        const url = `/branch-target/input?month=${month}&year=${year}&category=${encodeURIComponent(category)}&edit=1`;
         window.location.href = url;
     });
 

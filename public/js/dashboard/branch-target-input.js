@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function showAlert(message, type = 'error') {
         const alertClass = type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800';
         const iconClass = type === 'success' ? 'fa-check-circle text-green-400' : 'fa-exclamation-circle text-red-400';
-        
+
         const alertHtml = `
             <div class="mb-4 p-4 border rounded-md ${alertClass}">
                 <div class="flex">
@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
             </div>
         `;
-        
+
         alertContainer.innerHTML = alertHtml;
         alertContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
@@ -47,12 +47,12 @@ document.addEventListener('DOMContentLoaded', function () {
     function showFieldError(fieldName, message) {
         const input = document.querySelector(`input[name="targets[${fieldName}]"]`);
         const errorElement = document.getElementById(`error_${fieldName.replace(' ', '_')}`);
-        
+
         if (input) {
             input.classList.remove('border-gray-300', 'focus:border-indigo-300', 'focus:ring-indigo-200');
             input.classList.add('border-red-300', 'focus:border-red-300', 'focus:ring-red-200');
         }
-        
+
         if (errorElement) {
             errorElement.textContent = message;
             errorElement.classList.remove('hidden');
@@ -63,14 +63,20 @@ document.addEventListener('DOMContentLoaded', function () {
         clearFieldErrors();
         let isValid = true;
         const inputs = document.querySelectorAll('input[name^="targets"]');
-        
+
         inputs.forEach(input => {
             const value = input.value.trim();
             const fieldName = input.name.match(/\[(.*?)\]/)[1];
-            
-            if (!value || value === '' || parseFloat(value) < 0) {
-                showFieldError(fieldName, 'Target amount is required and must be greater than or equal to 0');
+
+            if (!value || value === '') {
+                showFieldError(fieldName, 'Target amount is required');
                 isValid = false;
+            } else {
+                const numericValue = parseFormattedNumber(value);
+                if (numericValue < 0) {
+                    showFieldError(fieldName, 'Target amount must be greater than or equal to 0');
+                    isValid = false;
+                }
             }
         });
 
@@ -89,45 +95,86 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function formatNumberForDisplay(value) {
+        // Format number with Indonesian thousand separators (periods)
+        return new Intl.NumberFormat('id-ID', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(value);
+    }
+
+    function parseFormattedNumber(formattedValue) {
+        // Remove all periods (thousand separators) and convert back to number
+        return parseFloat(formattedValue.replace(/\./g, '')) || 0;
+    }
+
     function formatNumber(input) {
-        // Remove any non-digit characters except decimal point
-        let value = input.value.replace(/[^\d.]/g, '');
-        
-        // Ensure only one decimal point
-        const parts = value.split('.');
-        if (parts.length > 2) {
-            value = parts[0] + '.' + parts.slice(1).join('');
+        // Store the raw numeric value (remove all non-digits)
+        let rawValue = input.value.replace(/[^\d]/g, '');
+
+        if (rawValue === '') {
+            input.value = '';
+            return;
         }
-        
-        // Limit decimal places to 2
-        if (parts[1] && parts[1].length > 2) {
-            value = parts[0] + '.' + parts[1].substring(0, 2);
-        }
-        
-        input.value = value;
+
+        // Convert to number and format with thousand separators
+        const numericValue = parseInt(rawValue);
+        const formattedValue = formatNumberForDisplay(numericValue);
+        input.value = formattedValue;
+    }
+
+    function validateNumericInput(input) {
+        // Only allow numeric input, remove any non-digits
+        let rawValue = input.value.replace(/[^\d]/g, '');
+        input.value = rawValue;
     }
 
     // Add input formatting for all target inputs
     const targetInputs = document.querySelectorAll('input[name^="targets"]');
     targetInputs.forEach(input => {
-        input.addEventListener('input', function() {
+        // Format existing values on page load
+        if (input.value && input.value.trim() !== '') {
+            const numericValue = parseFloat(input.value);
+            if (!isNaN(numericValue)) {
+                input.value = formatNumberForDisplay(numericValue);
+            }
+        }
+
+        input.addEventListener('input', function (e) {
+            // Only validate numeric input while typing, don't format
+            validateNumericInput(this);
+        });
+
+        input.addEventListener('blur', function () {
+            // Format the number only when field loses focus
             formatNumber(this);
         });
 
-        input.addEventListener('blur', function() {
-            // Format the number for display
-            const value = parseFloat(this.value);
-            if (!isNaN(value)) {
-                this.value = value.toFixed(2);
+        // Also add keydown event to handle special keys
+        input.addEventListener('keydown', function (e) {
+            // Allow: backspace, delete, tab, escape, enter
+            if ([46, 8, 9, 27, 13].indexOf(e.keyCode) !== -1 ||
+                // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                (e.keyCode === 65 && e.ctrlKey === true) ||
+                (e.keyCode === 67 && e.ctrlKey === true) ||
+                (e.keyCode === 86 && e.ctrlKey === true) ||
+                (e.keyCode === 88 && e.ctrlKey === true) ||
+                // Allow: home, end, left, right
+                (e.keyCode >= 35 && e.keyCode <= 39)) {
+                return;
+            }
+            // Ensure that it is a number and stop the keypress
+            if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                e.preventDefault();
             }
         });
     });
 
-    form.addEventListener('submit', function(e) {
+    form.addEventListener('submit', function (e) {
         e.preventDefault();
-        
+
         clearAlert();
-        
+
         if (!validateForm()) {
             showAlert('Please fill in all required fields correctly.');
             return;
@@ -135,7 +182,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
         setLoading(true);
 
-        const formData = new FormData(form);
+        // Convert formatted numbers back to numeric values before submission
+        const formData = new FormData();
+        const originalFormData = new FormData(form);
+
+        for (let [key, value] of originalFormData.entries()) {
+            if (key.startsWith('targets[')) {
+                // Convert formatted number back to numeric value
+                formData.append(key, parseFormattedNumber(value));
+            } else {
+                formData.append(key, value);
+            }
+        }
+
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
         fetch('/branch-target/save', {
@@ -146,41 +205,41 @@ document.addEventListener('DOMContentLoaded', function () {
                 'Accept': 'application/json'
             }
         })
-        .then(response => response.json())
-        .then(data => {
-            setLoading(false);
-            
-            if (data.success) {
-                showAlert('Targets saved successfully!', 'success');
-                
-                // Redirect after a short delay
-                setTimeout(() => {
-                    window.location.href = data.redirect_url || '/dashboard';
-                }, 1500);
-            } else {
-                if (data.errors) {
-                    // Handle validation errors
-                    Object.keys(data.errors).forEach(field => {
-                        const fieldName = field.replace('targets.', '');
-                        showFieldError(fieldName, data.errors[field][0]);
-                    });
-                    showAlert('Please correct the errors below.');
+            .then(response => response.json())
+            .then(data => {
+                setLoading(false);
+
+                if (data.success) {
+                    showAlert('Targets saved successfully!', 'success');
+
+                    // Redirect after a short delay
+                    setTimeout(() => {
+                        window.location.href = data.redirect_url || '/dashboard';
+                    }, 1500);
                 } else {
-                    showAlert(data.message || 'Failed to save targets. Please try again.');
+                    if (data.errors) {
+                        // Handle validation errors
+                        Object.keys(data.errors).forEach(field => {
+                            const fieldName = field.replace('targets.', '');
+                            showFieldError(fieldName, data.errors[field][0]);
+                        });
+                        showAlert('Please correct the errors below.');
+                    } else {
+                        showAlert(data.message || 'Failed to save targets. Please try again.');
+                    }
                 }
-            }
-        })
-        .catch(error => {
-            console.error('Error saving targets:', error);
-            setLoading(false);
-            showAlert('An error occurred while saving targets. Please try again.');
-        });
+            })
+            .catch(error => {
+                console.error('Error saving targets:', error);
+                setLoading(false);
+                showAlert('An error occurred while saving targets. Please try again.');
+            });
     });
 
     // Auto-save functionality (optional)
     let autoSaveTimeout;
     targetInputs.forEach(input => {
-        input.addEventListener('input', function() {
+        input.addEventListener('input', function () {
             clearTimeout(autoSaveTimeout);
             autoSaveTimeout = setTimeout(() => {
                 // Could implement auto-save here if needed
