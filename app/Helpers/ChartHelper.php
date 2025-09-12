@@ -190,7 +190,7 @@ class ChartHelper
             'PWM Surabaya' => 'SBY',
             'PWM Pekanbaru' => 'PKU',
             'PWM Cirebon' => 'CRB',
-            'MPM Tangerang' => 'TRG',
+            'MPM Tangerang' => 'TGR',
             'PWM Bekasi' => 'BKS',
             'PWM Semarang' => 'SMG',
             'PWM Banjarmasin' => 'BJM',
