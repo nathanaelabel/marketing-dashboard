@@ -21,12 +21,12 @@ class ChartHelper
         $significantSmallerValueThreshold = 0.7 * 1e9; // e.g., 700M. If a bar is below this, it's a 'smaller' significant value.
 
         if ($maxValue < $forceMillionLowThreshold) {
-            return ['label' => 'Million Rupiah (Rp)', 'divisor' => 1e6, 'unit' => 'M'];
+            return ['label' => 'Juta Rupiah', 'divisor' => 1e6, 'unit' => 'Jt'];
         }
 
         // If maxValue is very high, force Billions
         if ($maxValue >= $forceVeryHighBillionsThreshold) {
-            return ['label' => 'Billion Rupiah (Rp)', 'divisor' => 1e9, 'unit' => 'B'];
+            return ['label' => 'Miliar Rupiah', 'divisor' => 1e9, 'unit' => 'M'];
         }
 
         // If maxValue is between 1B (inclusive) and forceVeryHighBillionsThreshold (exclusive)
@@ -47,14 +47,14 @@ class ChartHelper
             }
 
             if ($preferMillions) {
-                return ['label' => 'Million Rupiah (Rp)', 'divisor' => 1e6, 'unit' => 'M'];
+                return ['label' => 'Juta Rupiah', 'divisor' => 1e6, 'unit' => 'Jt'];
             }
             // Otherwise (maxValue is 1B up to $forceVeryHighBillionsThreshold and no significantly smaller bars, or only one bar), use Billions
-            return ['label' => 'Billion Rupiah (Rp)', 'divisor' => 1e9, 'unit' => 'B'];
+            return ['label' => 'Miliar Rupiah', 'divisor' => 1e9, 'unit' => 'M'];
         }
 
         // Default: maxValue is < 1B (and >= $forceMillionLowThreshold)
-        return ['label' => 'Million Rupiah (Rp)', 'divisor' => 1e6, 'unit' => 'M'];
+        return ['label' => 'Juta Rupiah', 'divisor' => 1e6, 'unit' => 'Jt'];
     }
 
     /**
@@ -67,13 +67,13 @@ class ChartHelper
     public static function formatNumberForDisplay(float $value, int $precision = 1): string
     {
         if ($value >= 1e9) {
-            return round($value / 1e9, $precision) . 'B';
+            return round($value / 1e9, $precision) . 'M';
         }
         if ($value >= 1e6) {
-            return round($value / 1e6, $precision) . 'M';
+            return round($value / 1e6, $precision) . 'Jt';
         }
         if ($value >= 1e3) {
-            return round($value / 1e3, $precision) . 'K';
+            return round($value / 1e3, $precision) . 'rb';
         }
         return (string)round($value, $precision);
     }
@@ -423,13 +423,13 @@ class ChartHelper
 
         $scaledValue = $value / $divisor;
 
-        if ($unit === 'B') {
+        if ($unit === 'M') {
             $rounded = round($scaledValue, $decimalPlaces);
             $display = ($rounded % 1 === 0) ? number_format($rounded, 0) : number_format($rounded, $decimalPlaces, '.', '');
-            return $display . 'B';
+            return $display . 'M';
         }
 
-        return number_format(round($scaledValue), 0) . 'M';
+        return number_format(round($scaledValue), 0) . 'Jt';
     }
 
     /**

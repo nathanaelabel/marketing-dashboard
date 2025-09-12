@@ -49,15 +49,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const prevButton = document.getElementById('ci-prev-page');
     const nextButton = document.getElementById('ci-next-page');
 
+    // Use centralized formatting from ChartHelper
     const formatCurrency = (value) => {
-        if (Math.abs(value) >= 1e9) {
-            return 'Rp ' + (value / 1e9).toFixed(1) + 'B';
-        } else if (Math.abs(value) >= 1e6) {
-            return 'Rp ' + (value / 1e6).toFixed(1) + 'M';
-        } else if (Math.abs(value) >= 1e3) {
-            return 'Rp ' + (value / 1e3).toFixed(1) + 'K';
-        }
-        return 'Rp ' + value;
+        return ChartHelper.formatCurrencyDisplay(value, 1, true);
     };
 
     async function fetchAndUpdateChart(page = 1) {
@@ -79,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (chart) {
                 chart.destroy();
-                chart = null; 
+                chart = null;
             }
 
             // Check if we have valid chart data
@@ -176,7 +170,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                     if (!originalData || !originalData.v) return '';
                                     const total = originalData.value;
                                     const percentage = total > 0 ? ((originalData.v / total) * 100).toFixed(2) : 0;
-                                    return `${context.dataset.label}: ${formatCurrency(originalData.v)} (${percentage}%)`;
+                                    // Show full value with Indonesian number formatting
+                                    const fullValue = Math.round(originalData.v).toLocaleString('id-ID');
+                                    return `${context.dataset.label}: ${fullValue} (${percentage}%)`;
                                 }
                             }
                         },

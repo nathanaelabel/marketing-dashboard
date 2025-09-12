@@ -152,15 +152,9 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
+    // Use centralized formatting from ChartHelper
     function formatCurrency(value, precision = 2) {
-        if (value >= 1e9) {
-            return `Rp ${(value / 1e9).toFixed(precision)}B`;
-        } else if (value >= 1e6) {
-            return `Rp ${(value / 1e6).toFixed(precision)}M`;
-        } else if (value >= 1e3) {
-            return `Rp ${(value / 1e3).toFixed(2)}K`;
-        }
-        return `Rp ${value}`;
+        return ChartHelper.formatCurrencyDisplay(value, precision, true);
     }
 
     function updateUI(data, source) {
