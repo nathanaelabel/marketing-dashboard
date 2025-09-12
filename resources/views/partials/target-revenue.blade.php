@@ -47,8 +47,8 @@
 
                 <!-- Edit Target Button -->
                 <div>
-                    <button id="edit-target-btn" class="hidden py-1.5 w-32 text-sm rounded-md border border-blue-300 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm focus:border-blue-300 focus:ring-1 focus:ring-blue-200 focus:ring-opacity-50 transition duration-200 mt-6 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                        <i class="fas fa-edit mr-20"></i>
+                    <button id="edit-target-btn" class="hidden py-1.5 px-2 w-32 text-sm rounded-md border border-blue-300 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm focus:border-blue-300 focus:ring-1 focus:ring-blue-200 focus:ring-opacity-50 transition duration-200 mt-6 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-edit"></i>
                         <span>Edit Target</span>
                     </button>
                 </div>
