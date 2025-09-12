@@ -249,7 +249,7 @@ const ChartHelper = {
      */
     formatCurrencyDisplay(value, precision = 1, includeRp = true) {
         const prefix = includeRp ? 'Rp ' : '';
-        
+
         if (Math.abs(value) >= 1e9) {
             return `${prefix}${(value / 1e9).toFixed(precision)}M`;
         } else if (Math.abs(value) >= 1e6) {
