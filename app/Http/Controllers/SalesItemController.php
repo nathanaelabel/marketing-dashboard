@@ -33,7 +33,7 @@ class SalesItemController extends Controller
 
             // Get all branch data
             $branchData = $this->getSalesItemData($month, $year, $offset, $perPage);
-            
+
             // Get total count for pagination
             $totalCount = $this->getTotalItemCount($month, $year);
             $totalPages = ceil($totalCount / $perPage);
@@ -57,7 +57,6 @@ class SalesItemController extends Controller
                     'month_name' => date('F', mktime(0, 0, 0, $month, 1))
                 ]
             ]);
-
         } catch (\Exception $e) {
             Log::error('SalesItemController getData error: ' . $e->getMessage(), [
                 'month' => $request->get('month'),
@@ -138,14 +137,14 @@ class SalesItemController extends Controller
         // Define branch mapping for abbreviations
         $branchMapping = [
             'PWM Pontianak' => 'PTK',
-            'PWM Medan' => 'MDN', 
+            'PWM Medan' => 'MDN',
             'PWM Makassar' => 'MKS',
             'PWM Palembang' => 'PLB',
             'PWM Denpasar' => 'DPS',
             'PWM Surabaya' => 'SBY',
             'PWM Pekanbaru' => 'PKU',
             'PWM Cirebon' => 'CRB',
-            'PWM Tangerang' => 'TGR',
+            'MPM Tangerang' => 'TGR',
             'PWM Bekasi' => 'BKS',
             'PWM Semarang' => 'SMG',
             'PWM Banjarmasin' => 'BJM',
@@ -163,7 +162,7 @@ class SalesItemController extends Controller
         foreach ($rawData as $row) {
             $productKey = $row->product_name . '|' . $row->product_status;
             $branchAbbr = $branchMapping[$row->branch_name] ?? substr($row->branch_name, 0, 3);
-            
+
             if (!isset($groupedData[$productKey])) {
                 $groupedData[$productKey] = [
                     'product_name' => $row->product_name,
@@ -173,7 +172,7 @@ class SalesItemController extends Controller
             }
 
             $groupedData[$productKey]['branches'][$branchAbbr] = (float)$row->total_net;
-            
+
             // Calculate national total
             if (!isset($nationalTotals[$productKey])) {
                 $nationalTotals[$productKey] = 0;
