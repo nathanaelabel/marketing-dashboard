@@ -146,6 +146,7 @@
     </div>
 
     @push('scripts')
+    <script src="{{ asset('js/dashboard/table-helper.js') }}"></script>
     <script src="{{ asset('js/dashboard/sales-item.js') }}"></script>
     @endpush
 </x-app-layout>

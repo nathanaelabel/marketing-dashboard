@@ -6,11 +6,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Helpers\TableHelper;
 
-class SalesItemController extends Controller
+class SalesFamilyController extends Controller
 {
     public function index()
     {
-        return view('sales-item');
+        return view('sales-family');
     }
 
     public function getData(Request $request)
@@ -19,32 +19,27 @@ class SalesItemController extends Controller
             $month = $request->get('month', date('n'));
             $year = $request->get('year', date('Y'));
             $page = $request->get('page', 1);
-            $type = $request->get('type', 'rp'); // 'rp' or 'pcs'
+            $type = $request->get('type', 'amount'); // 'amount' or 'quantity'
             $perPage = 50;
             $offset = ($page - 1) * $perPage;
 
-            // Validate parameters using TableHelper
+            // Validate using TableHelper
             $validationErrors = TableHelper::validatePeriodParameters($month, $year);
             if (!empty($validationErrors)) {
                 return response()->json(['error' => $validationErrors[0]], 400);
             }
 
-            // Validate type parameter
-            if (!in_array($type, ['rp', 'pcs'])) {
-                return response()->json(['error' => 'Invalid type parameter'], 400);
-            }
-
             // Get data and count
-            $branchData = $this->getSalesItemData($month, $year, $type, $offset, $perPage);
-            $totalCount = $this->getTotalItemCount($month, $year, $type);
+            $branchData = $this->getSalesFamilyData($month, $year, $type, $offset, $perPage);
+            $totalCount = $this->getTotalFamilyCount($month, $year);
 
-            // Transform data using TableHelper
-            $valueField = $type === 'pcs' ? 'total_qty' : 'total_net';
+            // Transform data using TableHelper - supports both amount and quantity
+            $valueField = $type === 'quantity' ? 'total_qty' : 'total_rp';
             $transformedData = TableHelper::transformDataForBranchTable(
-                $branchData,
-                'product_name',
+                $branchData, 
+                'family_name', 
                 $valueField,
-                ['product_status']
+                [] // No additional fields needed since we only use group1
             );
 
             // Build response using TableHelper
@@ -54,8 +49,9 @@ class SalesItemController extends Controller
             return response()->json(TableHelper::successResponse($transformedData, $pagination, $period, [
                 'type' => $type
             ]));
+
         } catch (\Exception $e) {
-            TableHelper::logError('SalesItemController', 'getData', $e, [
+            TableHelper::logError('SalesFamilyController', 'getData', $e, [
                 'month' => $request->get('month'),
                 'year' => $request->get('year'),
                 'page' => $request->get('page'),
@@ -66,33 +62,32 @@ class SalesItemController extends Controller
         }
     }
 
-    private function getSalesItemData($month, $year, $type, $offset, $perPage)
+    private function getSalesFamilyData($month, $year, $type, $offset, $perPage)
     {
-        // Choose field based on type
-        $valueField = $type === 'pcs' ? 'qtyinvoiced' : 'linenetamt';
-        $totalField = $type === 'pcs' ? 'total_qty' : 'total_net';
-
+        // Build both calculations since we return both values
+        $qtyCalculation = TableHelper::getValueCalculation('qtyinvoiced');
+        $amountCalculation = TableHelper::getValueCalculation('linenetamt');
+        
         $selectFields = "
             org.name as branch_name, 
-            prd.name as product_name, 
-            prd.status as product_status,
-            " . TableHelper::getValueCalculation($valueField) . " AS {$totalField}";
-
-        // Both types require both conditions
+            prd.group1 as family_name,
+            {$qtyCalculation} AS total_qty,
+            {$amountCalculation} AS total_rp";
+        
         $additionalConditions = "AND d.qtyinvoiced > 0 AND d.linenetamt > 0";
-        $groupBy = "org.name, prd.name, prd.status";
-        $orderBy = "prd.name LIMIT ? OFFSET ?";
-
+        $groupBy = "org.name, prd.group1";
+        $orderBy = "org.name, prd.group1 LIMIT ? OFFSET ?";
+        
         $query = TableHelper::buildBaseSalesQuery($selectFields, '', $additionalConditions, $groupBy, $orderBy);
 
         return DB::select($query, [$month, $year, $perPage, $offset]);
     }
 
-    private function getTotalItemCount($month, $year, $type)
+    private function getTotalFamilyCount($month, $year)
     {
-        $countField = "CONCAT(prd.name, '|', prd.status)";
+        $countField = "prd.group1";
         $additionalConditions = "AND d.qtyinvoiced > 0 AND d.linenetamt > 0";
-
+        
         $query = TableHelper::buildCountQuery($countField, '', $additionalConditions);
 
         $result = DB::select($query, [$month, $year]);
