@@ -1,7 +1,19 @@
 document.addEventListener('DOMContentLoaded', function () {
+
+    // Function to update section title
+    function updateSectionTitle(type) {
+        const sectionTitle = document.getElementById('section-title');
+        if (sectionTitle) {
+            sectionTitle.textContent = type === 'pcs' ?
+                'Penjualan Per Item (Pcs)' :
+                'Penjualan Per Item (Rp)';
+        }
+    }
+
     // Initialize TableHelper with type support
     const salesItemTable = new TableHelper({
         apiEndpoint: '/sales-item/data',
+        perPage: 50, // Set to 50 items per page
 
         // Add type filter selector
         typeSelectSelector: '#type-select',
@@ -19,6 +31,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 this.elements.tableBody.innerHTML = '<tr><td colspan="21" class="px-3 py-4 text-center text-gray-500">No data available</td></tr>';
                 return;
             }
+
+            // Update section title based on current type
+            updateSectionTitle(data.type || 'rp');
 
             // Dynamic formatting based on data type
             const isRp = data.type === 'rp';
@@ -58,10 +73,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Add event listener for type selector
+    // Add event listener for type changes
     const typeSelect = document.getElementById('type-select');
     if (typeSelect) {
-        typeSelect.addEventListener('change', () => {
+        typeSelect.addEventListener('change', function () {
+            // Update title immediately when dropdown changes
+            updateSectionTitle(this.value);
+            // Reset to page 1 and reload data
             salesItemTable.currentPage = 1;
             salesItemTable.loadData();
         });
@@ -69,4 +87,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize the table
     salesItemTable.init();
+
+    // Set initial title based on default selection
+    updateSectionTitle('rp');
 });

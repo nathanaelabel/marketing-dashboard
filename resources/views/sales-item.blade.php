@@ -10,10 +10,18 @@
             <!-- Sales Item Section -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6 text-gray-900">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Penjualan Per Item (Rp)</h3>
-                    
+                    <h3 id="section-title" class="text-lg font-medium text-gray-900 mb-4">Penjualan Per Item (Rp)</h3>
+
                     <!-- Filters -->
                     <div class="flex flex-wrap gap-4 mb-6">
+                        <div class="flex-1 min-w-[120px]">
+                            <label for="type-select" class="block text-sm font-medium text-gray-700 mb-1">Jenis</label>
+                            <select id="type-select" class="block w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="rp">Rupiah</option>
+                                <option value="pcs">Pieces</option>
+                            </select>
+                        </div>
+
                         <div class="flex-1 min-w-[120px]">
                             <label for="month-select" class="block text-sm font-medium text-gray-700 mb-1">Bulan</label>
                             <select id="month-select" class="block w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
@@ -31,7 +39,7 @@
                                 <option value="12">Desember</option>
                             </select>
                         </div>
-                        
+
                         <div class="flex-1 min-w-[120px]">
                             <label for="year-select" class="block text-sm font-medium text-gray-700 mb-1">Tahun</label>
                             <select id="year-select" class="block w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
@@ -83,7 +91,7 @@
                         <!-- Period Info -->
                         <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
                             <p class="text-sm text-blue-800">
-                                <span class="font-medium">Period:</span> 
+                                <span class="font-medium">Period:</span>
                                 <span id="period-info">-</span>
                             </p>
                         </div>
