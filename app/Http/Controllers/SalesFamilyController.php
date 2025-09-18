@@ -36,8 +36,8 @@ class SalesFamilyController extends Controller
             // Transform data using TableHelper - supports both amount and quantity
             $valueField = $type === 'quantity' ? 'total_qty' : 'total_rp';
             $transformedData = TableHelper::transformDataForBranchTable(
-                $branchData, 
-                'family_name', 
+                $branchData,
+                'family_name',
                 $valueField,
                 [] // No additional fields needed since we only use group1
             );
@@ -49,7 +49,6 @@ class SalesFamilyController extends Controller
             return response()->json(TableHelper::successResponse($transformedData, $pagination, $period, [
                 'type' => $type
             ]));
-
         } catch (\Exception $e) {
             TableHelper::logError('SalesFamilyController', 'getData', $e, [
                 'month' => $request->get('month'),
@@ -67,17 +66,17 @@ class SalesFamilyController extends Controller
         // Build both calculations since we return both values
         $qtyCalculation = TableHelper::getValueCalculation('qtyinvoiced');
         $amountCalculation = TableHelper::getValueCalculation('linenetamt');
-        
+
         $selectFields = "
             org.name as branch_name, 
             prd.group1 as family_name,
             {$qtyCalculation} AS total_qty,
             {$amountCalculation} AS total_rp";
-        
+
         $additionalConditions = "AND d.qtyinvoiced > 0 AND d.linenetamt > 0";
         $groupBy = "org.name, prd.group1";
         $orderBy = "org.name, prd.group1 LIMIT ? OFFSET ?";
-        
+
         $query = TableHelper::buildBaseSalesQuery($selectFields, '', $additionalConditions, $groupBy, $orderBy);
 
         return DB::select($query, [$month, $year, $perPage, $offset]);
@@ -87,7 +86,7 @@ class SalesFamilyController extends Controller
     {
         $countField = "prd.group1";
         $additionalConditions = "AND d.qtyinvoiced > 0 AND d.linenetamt > 0";
-        
+
         $query = TableHelper::buildCountQuery($countField, '', $additionalConditions);
 
         $result = DB::select($query, [$month, $year]);
