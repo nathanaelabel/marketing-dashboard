@@ -50,30 +50,18 @@
                                 <option value="2025">2025</option>
                             </select>
                         </div>
-                    </div>
 
-                    <!-- Table Controls -->
-                    <div class="flex flex-wrap items-end gap-4 mb-4">
-                        <div>
-                            <label for="entries-per-page" class="block text-sm font-medium text-gray-700 mb-1">Show</label>
-                            <select id="entries-per-page" class="block pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                                <option value="10" selected>10</option>
-                                <option value="25">25</option>
-                                <option value="50">50</option>
-                                <option value="100">100</option>
-                            </select>
-                            <span class="text-sm text-gray-500 ml-1">entries</span>
-                        </div>
-
-                        <div class="flex-1 max-w-sm">
+                        <div class="flex-1 min-w-[200px]">
                             <label for="search-input" class="block text-sm font-medium text-gray-700 mb-1">Search</label>
-                            <input
-                                type="text"
-                                id="search-input"
-                                placeholder="Search nama barang..."
-                                class="block w-full pl-3 pr-3 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <input 
+                                type="text" 
+                                id="search-input" 
+                                placeholder="Search nama barang..." 
+                                class="block w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            >
                         </div>
                     </div>
+
 
                     <!-- Loading Indicator -->
                     <div id="loading-indicator" class="flex items-center justify-center py-8 hidden">
@@ -111,12 +99,26 @@
 
                     <!-- Table Container -->
                     <div id="table-container" class="hidden">
-                        <!-- Period Info -->
-                        <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                            <p class="text-sm text-blue-800">
-                                <span class="font-medium">Period:</span>
-                                <span id="period-info">-</span>
-                            </p>
+                        <!-- Period Info and Show Entries -->
+                        <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm text-blue-800">Show</span>
+                                    <select id="entries-per-page" class="pl-2 pr-6 py-1 text-sm border border-blue-300 rounded bg-white text-blue-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="10" selected>10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                    <span class="text-sm text-blue-800">entries</span>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-sm text-blue-800">
+                                    <span class="font-medium">Period:</span>
+                                    <span id="period-info">-</span>
+                                </p>
+                            </div>
                         </div>
 
                         <!-- Table -->
