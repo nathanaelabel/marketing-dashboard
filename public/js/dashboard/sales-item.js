@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize TableHelper with type support
     const salesItemTable = new TableHelper({
         apiEndpoint: '/sales-item/data',
-        perPage: 50, // Set to 50 items per page
 
         // Add type filter selector
         typeSelectSelector: '#type-select',
@@ -73,13 +72,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Add event listener for type changes
+    // Add event listener for type changes (needs server reload)
     const typeSelect = document.getElementById('type-select');
     if (typeSelect) {
         typeSelect.addEventListener('change', function () {
             // Update title immediately when dropdown changes
             updateSectionTitle(this.value);
-            // Reset to page 1 and reload data
+            // Reset to page 1 and reload data from server
             salesItemTable.currentPage = 1;
             salesItemTable.loadData();
         });

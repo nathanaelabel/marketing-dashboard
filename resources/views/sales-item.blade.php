@@ -52,6 +52,29 @@
                         </div>
                     </div>
 
+                    <!-- Table Controls -->
+                    <div class="flex flex-wrap items-end gap-4 mb-4">
+                        <div>
+                            <label for="entries-per-page" class="block text-sm font-medium text-gray-700 mb-1">Show</label>
+                            <select id="entries-per-page" class="block pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                            <span class="text-sm text-gray-500 ml-1">entries</span>
+                        </div>
+
+                        <div class="flex-1 max-w-sm">
+                            <label for="search-input" class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                            <input
+                                type="text"
+                                id="search-input"
+                                placeholder="Search nama barang..."
+                                class="block w-full pl-3 pr-3 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
                     <!-- Loading Indicator -->
                     <div id="loading-indicator" class="flex items-center justify-center py-8 hidden">
                         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

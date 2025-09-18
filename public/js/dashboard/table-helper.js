@@ -26,6 +26,9 @@ class TableHelper {
         this.currentPage = 1;
         this.totalPages = 1;
         this.currentData = null;
+        this.allData = null; // Store all data for client-side operations
+        this.filteredData = null; // Store filtered data
+        this.perPage = 10; // Default entries per page
 
         this.initializeElements();
         this.bindEvents();
@@ -43,7 +46,7 @@ class TableHelper {
     }
 
     bindEvents() {
-        // Filter change events
+        // Filter change events - these reload data from server
         if (this.elements.monthSelect) {
             this.elements.monthSelect.addEventListener('change', () => {
                 this.currentPage = 1;
@@ -58,12 +61,12 @@ class TableHelper {
             });
         }
 
-        // Pagination events
+        // Client-side pagination events
         if (this.elements.prevPageBtn) {
             this.elements.prevPageBtn.addEventListener('click', () => {
                 if (this.currentPage > 1) {
                     this.currentPage--;
-                    this.loadData();
+                    this.renderCurrentPage();
                 }
             });
         }
@@ -72,8 +75,31 @@ class TableHelper {
             this.elements.nextPageBtn.addEventListener('click', () => {
                 if (this.currentPage < this.totalPages) {
                     this.currentPage++;
-                    this.loadData();
+                    this.renderCurrentPage();
                 }
+            });
+        }
+
+        // Entries per page change
+        const entriesSelect = document.getElementById('entries-per-page');
+        if (entriesSelect) {
+            entriesSelect.addEventListener('change', () => {
+                this.perPage = parseInt(entriesSelect.value);
+                this.currentPage = 1;
+                this.renderCurrentPage();
+            });
+        }
+
+        // Search filter
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+            let searchTimeout;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    this.currentPage = 1;
+                    this.applyFiltersAndRender();
+                }, 300); // Debounce search
             });
         }
     }
@@ -97,6 +123,8 @@ class TableHelper {
         if (this.elements.tableContainer) {
             this.elements.tableContainer.classList.add('hidden');
         }
+        // Disable pagination buttons during loading
+        this.disablePaginationButtons(true);
     }
 
     hideLoading() {
@@ -140,6 +168,24 @@ class TableHelper {
         this.hideMessages();
         if (this.elements.tableContainer) {
             this.elements.tableContainer.classList.remove('hidden');
+        }
+        // Re-enable pagination buttons
+        this.disablePaginationButtons(false);
+    }
+
+    disablePaginationButtons(disabled) {
+        if (this.elements.prevPageBtn) {
+            this.elements.prevPageBtn.disabled = disabled;
+        }
+        if (this.elements.nextPageBtn) {
+            this.elements.nextPageBtn.disabled = disabled;
+        }
+        // Disable page number buttons
+        if (this.elements.pageNumbers) {
+            const pageButtons = this.elements.pageNumbers.querySelectorAll('button');
+            pageButtons.forEach(btn => {
+                btn.disabled = disabled;
+            });
         }
     }
 
@@ -190,6 +236,7 @@ class TableHelper {
         this.showLoading();
 
         try {
+            // Shorter timeout for faster feedback
             const response = await this.fetchData(filters);
             this.handleDataResponse(response);
         } catch (error) {
@@ -239,20 +286,35 @@ class TableHelper {
             }
         });
 
-        const response = await fetch(url.toString(), {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+        // Add cache busting to prevent browser cache issues
+        url.searchParams.append('_', Date.now());
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+        try {
+            const response = await fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'Cache-Control': 'no-cache'
+                },
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-        });
 
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            return response.json();
+        } catch (error) {
+            clearTimeout(timeoutId);
+            throw error;
         }
-
-        return response.json();
     }
 
     handleDataResponse(data) {
@@ -268,9 +330,13 @@ class TableHelper {
             return;
         }
 
+        // Store all data for client-side operations
+        this.allData = data.data;
         this.currentData = data;
-        this.renderTable(data);
-        this.updatePagination(data.pagination);
+        this.currentPage = 1;
+        
+        // Apply filters and render current page
+        this.applyFiltersAndRender();
         this.updatePeriodInfo(data.period);
         this.showTable();
     }
@@ -279,6 +345,78 @@ class TableHelper {
         this.hideLoading();
         console.error('Error loading table data:', error);
         this.showError('Failed to load data. Please try again.');
+    }
+
+    // Client-side filtering and pagination methods
+    applyFiltersAndRender() {
+        if (!this.allData) return;
+
+        // Apply search filter
+        const searchInput = document.getElementById('search-input');
+        const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+        if (searchTerm) {
+            this.filteredData = this.allData.filter(item => {
+                return item.product_name && item.product_name.toLowerCase().includes(searchTerm);
+            });
+        } else {
+            this.filteredData = [...this.allData];
+        }
+
+        this.renderCurrentPage();
+    }
+
+    renderCurrentPage() {
+        if (!this.filteredData) return;
+
+        // Calculate pagination
+        const totalItems = this.filteredData.length;
+        this.totalPages = Math.ceil(totalItems / this.perPage);
+        
+        // Ensure current page is valid
+        if (this.currentPage > this.totalPages && this.totalPages > 0) {
+            this.currentPage = this.totalPages;
+        }
+
+        // Get current page data
+        const startIndex = (this.currentPage - 1) * this.perPage;
+        const endIndex = startIndex + this.perPage;
+        const pageData = this.filteredData.slice(startIndex, endIndex);
+
+        // Render table with current page data
+        const dataForRender = {
+            ...this.currentData,
+            data: pageData
+        };
+        
+        if (this.config.renderTable) {
+            this.config.renderTable.call(this, dataForRender);
+        } else {
+            console.warn('renderTable method not implemented');
+        }
+
+        // Update pagination controls
+        this.updateClientSidePagination(totalItems);
+    }
+
+    updateClientSidePagination(totalItems) {
+        // Update pagination info
+        if (this.elements.paginationInfo) {
+            const startItem = totalItems === 0 ? 0 : ((this.currentPage - 1) * this.perPage) + 1;
+            const endItem = Math.min(this.currentPage * this.perPage, totalItems);
+            this.elements.paginationInfo.textContent = `Showing ${startItem}-${endItem} of ${totalItems} entries`;
+        }
+
+        // Update navigation buttons
+        if (this.elements.prevPageBtn) {
+            this.elements.prevPageBtn.disabled = this.currentPage <= 1;
+        }
+        if (this.elements.nextPageBtn) {
+            this.elements.nextPageBtn.disabled = this.currentPage >= this.totalPages;
+        }
+
+        // Generate page numbers
+        this.generatePageNumbers(this.currentPage, this.totalPages);
     }
 
     // Table rendering - to be implemented by specific table types
@@ -366,7 +504,7 @@ class TableHelper {
         if (!isActive) {
             button.addEventListener('click', () => {
                 this.currentPage = page;
-                this.loadData();
+                this.renderCurrentPage();
             });
         }
 
