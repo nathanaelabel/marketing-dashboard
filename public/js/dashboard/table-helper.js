@@ -192,7 +192,7 @@ class TableHelper {
     // Formatting utilities
     static formatCurrency(value) {
         if (!value || value === 0) return '-';
-        
+
         return new Intl.NumberFormat('id-ID', {
             style: 'currency',
             currency: 'IDR',
@@ -203,7 +203,7 @@ class TableHelper {
 
     static formatNumber(value, decimals = 0) {
         if (!value || value === 0) return '-';
-        
+
         return new Intl.NumberFormat('id-ID', {
             minimumFractionDigits: decimals,
             maximumFractionDigits: decimals
@@ -212,7 +212,7 @@ class TableHelper {
 
     static formatPercent(value, decimals = 1) {
         if (!value || value === 0) return '-';
-        
+
         return new Intl.NumberFormat('id-ID', {
             style: 'percent',
             minimumFractionDigits: decimals,
@@ -228,7 +228,7 @@ class TableHelper {
     // API Request handling
     async loadData() {
         const filters = this.getFilters();
-        
+
         if (!this.validateFilters(filters)) {
             return;
         }
@@ -279,7 +279,7 @@ class TableHelper {
 
     async fetchData(filters) {
         const url = new URL(this.config.apiEndpoint, window.location.origin);
-        
+
         Object.keys(filters).forEach(key => {
             if (filters[key] !== undefined && filters[key] !== null) {
                 url.searchParams.append(key, filters[key]);
@@ -334,7 +334,7 @@ class TableHelper {
         this.allData = data.data;
         this.currentData = data;
         this.currentPage = 1;
-        
+
         // Apply filters and render current page
         this.applyFiltersAndRender();
         this.updatePeriodInfo(data.period);
@@ -372,7 +372,7 @@ class TableHelper {
         // Calculate pagination
         const totalItems = this.filteredData.length;
         this.totalPages = Math.ceil(totalItems / this.perPage);
-        
+
         // Ensure current page is valid
         if (this.currentPage > this.totalPages && this.totalPages > 0) {
             this.currentPage = this.totalPages;
@@ -388,7 +388,7 @@ class TableHelper {
             ...this.currentData,
             data: pageData
         };
-        
+
         if (this.config.renderTable) {
             this.config.renderTable.call(this, dataForRender);
         } else {
@@ -456,7 +456,7 @@ class TableHelper {
 
     generatePageNumbers(current, total) {
         if (!this.elements.pageNumbers) return;
-        
+
         this.elements.pageNumbers.innerHTML = '';
 
         if (total <= 1) return;
@@ -495,12 +495,11 @@ class TableHelper {
     addPageButton(page, isActive = false) {
         const button = document.createElement('button');
         button.textContent = page;
-        button.className = `px-3 py-1 border rounded-md text-sm ${
-            isActive 
-                ? 'bg-blue-600 text-white border-blue-600' 
+        button.className = `px-3 py-1 border rounded-md text-sm ${isActive
+                ? 'bg-blue-600 text-white border-blue-600'
                 : 'text-gray-500 border-gray-300 hover:bg-gray-50'
-        }`;
-        
+            }`;
+
         if (!isActive) {
             button.addEventListener('click', () => {
                 this.currentPage = page;
@@ -528,26 +527,26 @@ class TableHelper {
     static buildTableRow(item, columns, options = {}) {
         const rowClass = options.rowClass || 'hover:bg-gray-50';
         const cellClass = options.cellClass || 'px-3 py-2 text-sm text-gray-900 border-r border-gray-200';
-        
+
         let html = `<tr class="${rowClass}">`;
-        
+
         columns.forEach((column, index) => {
             const value = TableHelper.formatCellValue(item[column.field], column.type);
             const alignment = column.align || (column.type === 'currency' || column.type === 'number' ? 'text-right' : 'text-left');
             const extraClass = column.class || '';
             const isLast = index === columns.length - 1;
-            
+
             html += `<td class="${cellClass} ${alignment} ${extraClass} ${isLast ? '' : 'border-r border-gray-200'}">`;
-            
+
             if (column.type === 'text' && column.maxWidth) {
                 html += `<div class="truncate max-w-${column.maxWidth}" title="${item[column.field]}">${value}</div>`;
             } else {
                 html += value;
             }
-            
+
             html += '</td>';
         });
-        
+
         html += '</tr>';
         return html;
     }

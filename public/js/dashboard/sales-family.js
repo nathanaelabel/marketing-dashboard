@@ -1,33 +1,43 @@
+// Update section title based on data type
+function updateSectionTitle(type) {
+    const sectionTitle = document.getElementById('section-title');
+    if (sectionTitle) {
+        sectionTitle.textContent = type === 'pcs' ? 'Penjualan Per Family (Pcs)' : 'Penjualan Per Family (Rp)';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
+    // Set initial title
+    updateSectionTitle('rp');
+
     // Initialize TableHelper for Sales Family with type toggle functionality
     const salesFamilyTable = new TableHelper({
         apiEndpoint: '/sales-family/data',
-
-        // Add type filter selector
-        typeSelectSelector: '#type-select',
 
         // Override getAdditionalFilters to include type
         getAdditionalFilters: function () {
             const typeSelect = document.getElementById('type-select');
             return {
-                type: typeSelect ? typeSelect.value : 'amount'
+                type: typeSelect ? typeSelect.value : 'rp'
             };
         },
 
         renderTable: function (data) {
             if (!data.data || data.data.length === 0) {
-                this.elements.tableBody.innerHTML = '<tr><td colspan="21" class="px-3 py-4 text-center text-gray-500">No data available</td></tr>';
+                this.elements.tableBody.innerHTML = '<tr><td colspan="20" class="px-3 py-4 text-center text-gray-500">No data available</td></tr>';
                 return;
             }
 
+            // Update section title based on data type
+            updateSectionTitle(data.type);
+
             // Dynamic column configuration based on data type
-            const isQuantity = data.type === 'quantity';
+            const isQuantity = data.type === 'pcs';
             const columns = [
                 { field: 'no', type: 'text', align: 'left' },
                 { field: 'family_name', type: 'text', align: 'left', maxWidth: 'xs' },
-                { field: 'family_code', type: 'text', align: 'left' },
                 ...TableHelper.getBranchCodes().map(code => ({
-                    field: code,
+                    field: code.toLowerCase(),
                     type: isQuantity ? 'number' : 'currency',
                     align: 'right'
                 })),
@@ -48,7 +58,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Add event listener for type selector
     const typeSelect = document.getElementById('type-select');
     if (typeSelect) {
-        typeSelect.addEventListener('change', () => {
+        typeSelect.addEventListener('change', (e) => {
+            updateSectionTitle(e.target.value);
             salesFamilyTable.currentPage = 1;
             salesFamilyTable.loadData();
         });

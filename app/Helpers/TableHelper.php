@@ -46,15 +46,15 @@ class TableHelper
     public static function validatePeriodParameters($month, $year)
     {
         $errors = [];
-        
+
         if (!is_numeric($month) || $month < 1 || $month > 12) {
             $errors[] = 'Invalid month parameter';
         }
-        
+
         if (!is_numeric($year) || $year < 2020 || $year > 2030) {
             $errors[] = 'Invalid year parameter';
         }
-        
+
         return $errors;
     }
 
@@ -64,7 +64,7 @@ class TableHelper
     public static function calculatePagination($currentPage, $perPage, $totalCount)
     {
         $totalPages = ceil($totalCount / $perPage);
-        
+
         return [
             'current_page' => (int)$currentPage,
             'per_page' => $perPage,
@@ -132,7 +132,7 @@ class TableHelper
     {
         $branchMapping = self::getBranchMapping();
         $branchCodes = self::getBranchCodes();
-        
+
         // Group data by key
         $groupedData = [];
         $nationalTotals = [];
@@ -144,15 +144,15 @@ class TableHelper
                 $keyParts[] = $row->$field ?? '';
             }
             $itemKey = implode('|', $keyParts);
-            
+
             $branchAbbr = $branchMapping[$row->branch_name] ?? substr($row->branch_name, 0, 3);
-            
+
             if (!isset($groupedData[$itemKey])) {
                 $groupedData[$itemKey] = [
                     $keyField => $row->$keyField,
                     'branches' => []
                 ];
-                
+
                 // Add additional fields to the grouped data
                 foreach ($additionalFields as $field) {
                     $groupedData[$itemKey][$field] = $row->$field ?? '';
@@ -160,7 +160,7 @@ class TableHelper
             }
 
             $groupedData[$itemKey]['branches'][$branchAbbr] = (float)($row->$valueField ?? 0);
-            
+
             // Calculate national total
             if (!isset($nationalTotals[$itemKey])) {
                 $nationalTotals[$itemKey] = 0;
@@ -186,7 +186,7 @@ class TableHelper
 
             // Add main field
             $rowData[$keyField] = $itemData[$keyField];
-            
+
             // Add additional fields
             foreach ($additionalFields as $field) {
                 $rowData[$field] = $itemData[$field];
