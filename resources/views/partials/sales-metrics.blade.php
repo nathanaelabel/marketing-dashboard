@@ -45,12 +45,12 @@
                 <p class="mt-1 text-2xl font-semibold text-gray-900" id="pending-so-value">-</p>
             </div>
             <div class="bg-gray-50 p-4 rounded-lg shadow">
-                <h3 class="text-sm font-medium text-gray-500" id="stock-value-label">Stock Value</h3>
-                <p class="mt-1 text-2xl font-semibold text-gray-900" id="stock-value-value">-</p>
-            </div>
-            <div class="bg-gray-50 p-4 rounded-lg shadow">
                 <h3 class="text-sm font-medium text-gray-500" id="store-returns-label">Store Returns</h3>
                 <p class="mt-1 text-2xl font-semibold text-gray-900" id="store-returns-value">-</p>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-lg shadow">
+                <h3 class="text-sm font-medium text-gray-500" id="stock-value-label">Stock Value</h3>
+                <p class="mt-1 text-2xl font-semibold text-gray-900" id="stock-value-value">-</p>
             </div>
         </div>
 

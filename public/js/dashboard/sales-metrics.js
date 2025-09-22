@@ -158,11 +158,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateUI(data, source) {
+        // Extract end date from date range for Stock Value (point-in-time metric)
+        const endDate = data.date_range.split(' - ')[1] || data.date_range;
+
         // Update labels and values for metric cards
         totalSoLabel.textContent = `Total Sales Order ${data.date_range}`;
         pendingSoLabel.textContent = `Pending Sales Order ${data.date_range}`;
-        stockValueLabel.textContent = `Stock Value ${data.date_range}`;
         storeReturnsLabel.textContent = `Store Returns ${data.date_range}`;
+        stockValueLabel.textContent = `Stock Value ${endDate}`;
 
         totalSoValue.textContent = formatCurrency(data.total_so, 2);
         pendingSoValue.textContent = formatCurrency(data.pending_so, 2);
