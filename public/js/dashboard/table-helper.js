@@ -80,8 +80,9 @@ class TableHelper {
             });
         }
 
-        // Entries per page change
-        const entriesSelect = document.getElementById('entries-per-page');
+        // Entries per page change - use configured selector or default
+        const entriesSelector = this.config.entriesPerPageSelector || '#entries-per-page';
+        const entriesSelect = document.querySelector(entriesSelector);
         if (entriesSelect) {
             entriesSelect.addEventListener('change', () => {
                 this.perPage = parseInt(entriesSelect.value);
@@ -90,17 +91,19 @@ class TableHelper {
             });
         }
 
-        // Search filter
-        const searchInput = document.getElementById('search-input');
-        if (searchInput) {
-            let searchTimeout;
-            searchInput.addEventListener('input', () => {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    this.currentPage = 1;
-                    this.applyFiltersAndRender();
-                }, 300); // Debounce search
-            });
+        // Search filter - only bind if searchInputSelector is configured
+        if (this.config.searchInputSelector) {
+            const searchInput = document.querySelector(this.config.searchInputSelector);
+            if (searchInput) {
+                let searchTimeout;
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
+                        this.currentPage = 1;
+                        this.applyFiltersAndRender();
+                    }, 300); // Debounce search
+                });
+            }
         }
     }
 
@@ -351,13 +354,15 @@ class TableHelper {
     applyFiltersAndRender() {
         if (!this.allData) return;
 
-        // Apply search filter
-        const searchInput = document.getElementById('search-input');
+        // Apply search filter using configured selector and field
+        const searchSelector = this.config.searchInputSelector || '#search-input';
+        const searchField = this.config.searchField || 'product_name';
+        const searchInput = document.querySelector(searchSelector);
         const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
         if (searchTerm) {
             this.filteredData = this.allData.filter(item => {
-                return item.product_name && item.product_name.toLowerCase().includes(searchTerm);
+                return item[searchField] && item[searchField].toLowerCase().includes(searchTerm);
             });
         } else {
             this.filteredData = [...this.allData];
@@ -496,8 +501,8 @@ class TableHelper {
         const button = document.createElement('button');
         button.textContent = page;
         button.className = `px-3 py-1 border rounded-md text-sm ${isActive
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'text-gray-500 border-gray-300 hover:bg-gray-50'
+            ? 'bg-blue-600 text-white border-blue-600'
+            : 'text-gray-500 border-gray-300 hover:bg-gray-50'
             }`;
 
         if (!isActive) {

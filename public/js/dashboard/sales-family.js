@@ -14,6 +14,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const salesFamilyTable = new TableHelper({
         apiEndpoint: '/sales-family/data',
 
+        // Configure search functionality for family names
+        searchInputSelector: '#family-search-input',
+        searchField: 'family_name',
+
+        // Configure entries per page selector  
+        entriesPerPageSelector: '#family-entries-per-page',
+
         // Override selectors to use family- prefixed IDs
         monthSelectSelector: '#family-month-select',
         yearSelectSelector: '#family-year-select',
@@ -35,25 +42,6 @@ document.addEventListener('DOMContentLoaded', function () {
             return {
                 type: typeSelect ? typeSelect.value : 'rp'
             };
-        },
-
-        // Override applyFiltersAndRender for family-specific search
-        applyFiltersAndRender: function () {
-            if (!this.allData) return;
-
-            // Apply search filter for family names
-            const searchInput = document.getElementById('family-search-input');
-            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
-
-            if (searchTerm) {
-                this.filteredData = this.allData.filter(item => {
-                    return item.family_name && item.family_name.toLowerCase().includes(searchTerm);
-                });
-            } else {
-                this.filteredData = [...this.allData];
-            }
-
-            this.renderCurrentPage();
         },
 
         renderTable: function (data) {
@@ -99,28 +87,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Add custom search event listener for family search
-    const familySearchInput = document.getElementById('family-search-input');
-    if (familySearchInput) {
-        let searchTimeout;
-        familySearchInput.addEventListener('input', () => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                salesFamilyTable.currentPage = 1;
-                salesFamilyTable.applyFiltersAndRender();
-            }, 300); // Debounce search
-        });
-    }
-
-    // Add custom entries per page event listener
-    const familyEntriesSelect = document.getElementById('family-entries-per-page');
-    if (familyEntriesSelect) {
-        familyEntriesSelect.addEventListener('change', () => {
-            salesFamilyTable.perPage = parseInt(familyEntriesSelect.value);
-            salesFamilyTable.currentPage = 1;
-            salesFamilyTable.renderCurrentPage();
-        });
-    }
 
     // Initialize the table
     salesFamilyTable.init();

@@ -14,6 +14,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const salesItemTable = new TableHelper({
         apiEndpoint: '/sales-item/data',
 
+        // Configure search functionality
+        searchInputSelector: '#search-input',
+        searchField: 'product_name',
+
+        // Configure entries per page selector
+        entriesPerPageSelector: '#entries-per-page',
+
         // Add type filter selector
         typeSelectSelector: '#type-select',
 
