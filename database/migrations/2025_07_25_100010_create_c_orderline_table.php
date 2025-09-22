@@ -22,6 +22,7 @@ return new class extends Migration
             $table->decimal('qtydelivered', 16, 4);
             $table->decimal('qtyinvoiced', 16, 4);
             $table->decimal('priceactual', 16, 4);
+            $table->decimal('linenetamt', 16, 4);
             $table->timestamp('created')->nullable();
             $table->timestamp('updated')->nullable();
 

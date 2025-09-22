@@ -12,6 +12,8 @@ use App\Models\COrder;
 use App\Models\COrderline;
 use App\Models\MProduct;
 use App\Models\MLocator;
+use App\Models\MPricelistVersion;
+use App\Models\MProductprice;
 
 class AdOrg extends Model
 {
@@ -67,5 +69,15 @@ class AdOrg extends Model
     public function products()
     {
         return $this->hasMany(MProduct::class, 'ad_org_id', 'ad_org_id');
+    }
+
+    public function priceListVersions()
+    {
+        return $this->hasMany(MPricelistVersion::class, 'ad_org_id', 'ad_org_id');
+    }
+
+    public function productPrices()
+    {
+        return $this->hasMany(MProductprice::class, 'ad_org_id', 'ad_org_id');
     }
 }

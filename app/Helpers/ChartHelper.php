@@ -2,6 +2,8 @@
 
 namespace App\Helpers;
 
+use Illuminate\Support\Facades\DB;
+
 class ChartHelper
 {
     /**
@@ -13,18 +15,18 @@ class ChartHelper
      */
     public static function getYAxisConfig(float $maxValue, ?float $averageRelevantValue = null, array $allDataValues = []): array
     {
-        $billionThreshold = 1e9;    // 1 Billion
+        $billionThreshold = 1e9; // 1 Billion
         $forceVeryHighBillionsThreshold = 2 * 1e9; // e.g., if max is 2B or more, definitely use Billions
         $forceMillionLowThreshold = 2 * 1e6; // Values below this (e.g., 2M) will definitely use Millions scale
         $significantSmallerValueThreshold = 0.7 * 1e9; // e.g., 700M. If a bar is below this, it's a 'smaller' significant value.
 
         if ($maxValue < $forceMillionLowThreshold) {
-            return ['label' => 'Million Rupiah (Rp)', 'divisor' => 1e6, 'unit' => 'M'];
+            return ['label' => 'Juta Rupiah', 'divisor' => 1e6, 'unit' => 'Jt'];
         }
 
         // If maxValue is very high, force Billions
         if ($maxValue >= $forceVeryHighBillionsThreshold) {
-            return ['label' => 'Billion Rupiah (Rp)', 'divisor' => 1e9, 'unit' => 'B'];
+            return ['label' => 'Miliar Rupiah', 'divisor' => 1e9, 'unit' => 'M'];
         }
 
         // If maxValue is between 1B (inclusive) and forceVeryHighBillionsThreshold (exclusive)
@@ -45,14 +47,14 @@ class ChartHelper
             }
 
             if ($preferMillions) {
-                return ['label' => 'Million Rupiah (Rp)', 'divisor' => 1e6, 'unit' => 'M'];
+                return ['label' => 'Juta Rupiah', 'divisor' => 1e6, 'unit' => 'Jt'];
             }
             // Otherwise (maxValue is 1B up to $forceVeryHighBillionsThreshold and no significantly smaller bars, or only one bar), use Billions
-            return ['label' => 'Billion Rupiah (Rp)', 'divisor' => 1e9, 'unit' => 'B'];
+            return ['label' => 'Miliar Rupiah', 'divisor' => 1e9, 'unit' => 'M'];
         }
 
         // Default: maxValue is < 1B (and >= $forceMillionLowThreshold)
-        return ['label' => 'Million Rupiah (Rp)', 'divisor' => 1e6, 'unit' => 'M'];
+        return ['label' => 'Juta Rupiah', 'divisor' => 1e6, 'unit' => 'Jt'];
     }
 
     /**
@@ -65,13 +67,13 @@ class ChartHelper
     public static function formatNumberForDisplay(float $value, int $precision = 1): string
     {
         if ($value >= 1e9) {
-            return round($value / 1e9, $precision) . 'B';
+            return round($value / 1e9, $precision) . 'M';
         }
         if ($value >= 1e6) {
-            return round($value / 1e6, $precision) . 'M';
+            return round($value / 1e6, $precision) . 'Jt';
         }
         if ($value >= 1e3) {
-            return round($value / 1e3, $precision) . 'K';
+            return round($value / 1e3, $precision) . 'rb';
         }
         return (string)round($value, $precision);
     }
@@ -133,5 +135,314 @@ class ChartHelper
         }
 
         return $suggestedMax;
+    }
+
+    public static function formatAccountsReceivableData($data, $currentDate)
+    {
+        $labels = $data->pluck('branch_name')->map(function ($name) {
+            return self::getBranchAbbreviation($name);
+        });
+
+        $totalOverdue = $data->sum('total_overdue');
+
+        $datasets = [
+            [
+                'label' => '1 - 30 Days',
+                'data' => $data->pluck('overdue_1_30')->all(),
+                'backgroundColor' => 'rgba(22, 220, 160, 0.8)',
+                'borderRadius' => 5,
+            ],
+            [
+                'label' => '31 - 60 Days',
+                'data' => $data->pluck('overdue_31_60')->all(),
+                'backgroundColor' => 'rgba(139, 92, 246, 0.8)',
+                'borderRadius' => 5,
+            ],
+            [
+                'label' => '61 - 90 Days',
+                'data' => $data->pluck('overdue_61_90')->all(),
+                'backgroundColor' => 'rgba(251, 146, 60, 0.8)',
+                'borderRadius' => 5,
+            ],
+            [
+                'label' => '> 90 Days',
+                'data' => $data->pluck('overdue_90_plus')->all(),
+                'backgroundColor' => 'rgba(244, 63, 94, 0.8)',
+                'borderRadius' => 5,
+            ],
+        ];
+
+        return [
+            'labels' => $labels,
+            'datasets' => $datasets,
+            'total' => 'Rp ' . number_format($totalOverdue, 0, ',', '.'),
+            'date' => \Carbon\Carbon::parse($currentDate)->format('l, d F Y'),
+        ];
+    }
+
+    public static function getBranchAbbreviation(string $branchName): string
+    {
+        $abbreviations = [
+            'PWM Medan' => 'MDN',
+            'PWM Makassar' => 'MKS',
+            'PWM Palembang' => 'PLB',
+            'PWM Denpasar' => 'DPS',
+            'PWM Surabaya' => 'SBY',
+            'PWM Pekanbaru' => 'PKU',
+            'PWM Cirebon' => 'CRB',
+            'MPM Tangerang' => 'TGR',
+            'PWM Bekasi' => 'BKS',
+            'PWM Semarang' => 'SMG',
+            'PWM Banjarmasin' => 'BJM',
+            'PWM Bandung' => 'BDG',
+            'PWM Lampung' => 'LMP',
+            'PWM Jakarta' => 'JKT',
+            'PWM Pontianak' => 'PTK',
+            'PWM Purwokerto' => 'PWT',
+            'PWM Padang' => 'PDG',
+        ];
+
+        // Return the abbreviation if found, otherwise return the original name
+        return $abbreviations[$branchName] ?? $branchName;
+    }
+
+    /**
+     * Get category color mapping for consistent chart colors
+     */
+    public static function getCategoryColors(): array
+    {
+        return [
+            'MIKA' => 'rgb(81, 178, 243)',
+            'AKSESORIS' => 'rgba(22, 220, 160, 0.8)',
+            'CAT' => 'rgba(139, 92, 246, 0.8)',
+            'SPARE PART' => 'rgba(244, 63, 94, 0.8)',
+            'PRODUCT IMPORT' => 'rgba(241, 92, 246, 0.8)',
+        ];
+    }
+
+    /**
+     * Format date range for display
+     */
+    public static function formatDateRange(string $startDate, string $endDate): string
+    {
+        $formattedStart = \Carbon\Carbon::parse($startDate)->format('j M Y');
+        $formattedEnd = \Carbon\Carbon::parse($endDate)->format('j M Y');
+        return $formattedStart . ' - ' . $formattedEnd;
+    }
+
+    /**
+     * Get standard invoice query filters
+     */
+    public static function getStandardInvoiceFilters(): array
+    {
+        return [
+            'h.ad_client_id' => 1000001,
+            'h.issotrx' => 'Y',
+            'h.isactive' => 'Y'
+        ];
+    }
+
+    /**
+     * Build accounts receivable aging query with subqueries
+     */
+    public static function buildAccountsReceivableQuery(string $locationFilter = null): array
+    {
+        $paymentsSubquery = "
+            SELECT
+                c_invoice_id,
+                SUM(amount + discountamt + writeoffamt) as paidamt
+            FROM c_allocationline
+            GROUP BY c_invoice_id
+        ";
+
+        $overdueQuery = "
+            SELECT
+                inv.ad_org_id,
+                inv.grandtotal - COALESCE(p.paidamt, 0) as open_amount,
+                DATE_PART('day', NOW() - inv.dateinvoiced::date) as age
+            FROM c_invoice as inv
+            LEFT JOIN ({$paymentsSubquery}) as p ON inv.c_invoice_id = p.c_invoice_id
+            WHERE inv.issotrx = 'Y'
+            AND inv.docstatus = 'CO'
+            AND (inv.grandtotal - COALESCE(p.paidamt, 0)) > 0.01
+        ";
+
+        $mainQuery = "
+            SELECT
+                org.name as branch_name,
+                SUM(CASE WHEN overdue.age BETWEEN 1 AND 30 THEN overdue.open_amount ELSE 0 END) as overdue_1_30,
+                SUM(CASE WHEN overdue.age BETWEEN 31 AND 60 THEN overdue.open_amount ELSE 0 END) as overdue_31_60,
+                SUM(CASE WHEN overdue.age BETWEEN 61 AND 90 THEN overdue.open_amount ELSE 0 END) as overdue_61_90,
+                SUM(CASE WHEN overdue.age > 90 THEN overdue.open_amount ELSE 0 END) as overdue_90_plus,
+                SUM(overdue.open_amount) as total_overdue
+            FROM ad_org as org
+            JOIN ({$overdueQuery}) as overdue ON org.ad_org_id = overdue.ad_org_id
+            WHERE overdue.age > 0
+        ";
+
+        $bindings = [];
+        if ($locationFilter && $locationFilter !== 'National') {
+            $mainQuery .= " AND org.name LIKE ?";
+            $bindings[] = $locationFilter;
+        }
+
+        $mainQuery .= " GROUP BY org.name ORDER BY total_overdue DESC";
+
+        return [
+            'query' => $mainQuery,
+            'bindings' => $bindings
+        ];
+    }
+
+    public static function formatNationalRevenueData($queryResult)
+    {
+        $totalRevenue = $queryResult->sum('total_revenue');
+        $labels = $queryResult->pluck('branch_name')->map(fn($name) => self::getBranchAbbreviation($name));
+        $dataValues = $queryResult->pluck('total_revenue')->all();
+
+        $maxRevenue = $queryResult->max('total_revenue') ?? 0;
+
+        $yAxisConfig = self::getYAxisConfig($maxRevenue, null, $dataValues);
+
+        $suggestedMax = self::calculateSuggestedMax($maxRevenue, $yAxisConfig['divisor']);
+
+        return [
+            'totalRevenue' => $totalRevenue,
+            'labels' => $labels,
+            'datasets' => [
+                [
+                    'label' => 'Revenue',
+                    'data' => $dataValues,
+                ],
+            ],
+            'yAxisLabel' => $yAxisConfig['label'],
+            'yAxisDivisor' => $yAxisConfig['divisor'],
+            'yAxisUnit' => $yAxisConfig['unit'],
+            'suggestedMax' => $suggestedMax,
+        ];
+    }
+
+    public static function getLocations()
+    {
+        try {
+            $rawLocations = DB::table('ad_org')
+                ->where('isactive', 'Y')
+                ->whereNotIn('name', ['*', 'HQ', 'Store', 'PWM Pusat'])
+                ->orderBy('name')
+                ->pluck('name');
+
+            return $rawLocations;
+        } catch (\Exception $e) {
+            throw new \Exception('Error fetching locations: ' . $e->getMessage());
+        }
+    }
+
+    public static function getYearlyComparisonDatasets($year, $previousYear, $currentYearValues, $previousYearValues)
+    {
+        return [
+            [
+                'label' => $previousYear,
+                'data' => $previousYearValues,
+                // Blue 500 (lighter) for previous year
+                'backgroundColor' => 'rgba(59, 130, 246, 0.7)',
+                'borderColor' => 'rgba(59, 130, 246, 1)',
+                'borderWidth' => 1,
+                'borderRadius' => 6,
+            ],
+            [
+                'label' => $year,
+                'data' => $currentYearValues,
+                // Blue 600 (darker) for current year
+                'backgroundColor' => 'rgba(38, 102, 241, 0.9)',
+                'borderColor' => 'rgba(37, 99, 235, 1)',
+                'borderWidth' => 1,
+                'borderRadius' => 6,
+            ]
+        ];
+    }
+
+    public static function getBranchDisplayName(string $branchName): string
+    {
+        $displayNames = [
+            'PWM Medan' => 'Medan',
+            'PWM Makassar' => 'Makassar',
+            'PWM Palembang' => 'Palembang',
+            'PWM Denpasar' => 'Denpasar',
+            'PWM Surabaya' => 'Surabaya',
+            'PWM Pekanbaru' => 'Pekanbaru',
+            'PWM Cirebon' => 'Cirebon',
+            'MPM Tangerang' => 'Tangerang',
+            'PWM Bekasi' => 'Bekasi',
+            'PWM Semarang' => 'Semarang',
+            'PWM Banjarmasin' => 'Banjarmasin',
+            'PWM Bandung' => 'Bandung',
+            'PWM Lampung' => 'Lampung',
+            'PWM Jakarta' => 'Jakarta',
+            'PWM Pontianak' => 'Pontianak',
+            'PWM Purwokerto' => 'Purwokerto',
+            'PWM Padang' => 'Padang',
+        ];
+
+        return $displayNames[$branchName] ?? $branchName;
+    }
+
+    /**
+     * Calculate percentage growth between two values with decimal precision
+     * 
+     * @param float $currentValue Current period value
+     * @param float $previousValue Previous period value
+     * @param int $decimalPlaces Number of decimal places (default: 1)
+     * @return string|null Formatted percentage string or null if calculation not possible
+     */
+    public static function calculatePercentageGrowth(float $currentValue, float $previousValue, int $decimalPlaces = 1): ?string
+    {
+        if ($currentValue <= 0 || $previousValue <= 0) {
+            return null;
+        }
+
+        $growth = (($currentValue - $previousValue) / $previousValue) * 100;
+        $prefix = $growth >= 0 ? '' : '';
+
+        return $prefix . number_format($growth, $decimalPlaces, '.', '') . '%';
+    }
+
+    /**
+     * Format value with appropriate unit (M/B) and decimal precision
+     * 
+     * @param float $value Raw value
+     * @param float $divisor Divisor (1e6 for millions, 1e9 for billions)
+     * @param string $unit Unit string ('M' or 'B')
+     * @param int $decimalPlaces Number of decimal places
+     * @return string|null Formatted value string or null for zero values
+     */
+    public static function formatValueWithUnit(float $value, float $divisor, string $unit, int $decimalPlaces = 1): ?string
+    {
+        if ($value === 0) {
+            return null;
+        }
+
+        $scaledValue = $value / $divisor;
+
+        if ($unit === 'M') {
+            $rounded = round($scaledValue, $decimalPlaces);
+            $display = ($rounded % 1 === 0) ? number_format($rounded, 0) : number_format($rounded, $decimalPlaces, '.', '');
+            return $display . 'M';
+        }
+
+        return number_format(round($scaledValue), 0) . 'Jt';
+    }
+
+    /**
+     * Get available product categories
+     */
+    public static function getCategories()
+    {
+        return DB::table('m_product_category')
+            ->where('isactive', 'Y')
+            ->whereIn('name', ['MIKA', 'SPARE PART'])
+            ->select('name')
+            ->distinct()
+            ->orderBy('name')
+            ->get();
     }
 }
