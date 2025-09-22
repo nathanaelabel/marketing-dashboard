@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         formatter: function (value, context) {
                             if (context.dataset.label === 'Realization' && percentages[context.dataIndex] !== undefined) {
                                 // Show both billion format and percentage for realization bars
-                                const billionValue = (value / 1000000000).toFixed(2) + 'B';
+                                const billionValue = ChartHelper.formatCurrencyDisplay(value, 2, false);
                                 return billionValue + ' (' + percentages[context.dataIndex] + '%)';
                             }
                             return ChartHelper.formatNumberForDisplay(value, yAxisDivisor);

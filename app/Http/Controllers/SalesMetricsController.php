@@ -43,7 +43,7 @@ class SalesMetricsController extends Controller
             }
             $salesOrderData = DB::selectOne($salesOrderQuery, $soBindings);
 
-            // 2. Stock Value Query
+            // 2. Stock Value Query - Current stock value (point-in-time calculation)
             $stockValueQuery = "
             SELECT
               SUM(s.qtyonhand * prc.pricelist * 0.615) as stock_value
@@ -57,16 +57,16 @@ class SalesMetricsController extends Controller
             WHERE
               UPPER(plv.name) LIKE '%PURCHASE%'
               AND plv.isactive = 'Y'
+              AND s.qtyonhand > 0
             ";
 
-            $bindings = [];
+            $stockValueBindings = [];
             if ($location !== 'National') {
-                $stockValueQuery .= " AND loc.value = ? AND org.name like ?";
-                $bindings[] = $location;
-                $bindings[] = $locationFilter;
+                $stockValueQuery .= " AND org.name LIKE ?";
+                $stockValueBindings[] = $locationFilter;
             }
 
-            $stockValueData = DB::selectOne($stockValueQuery, $bindings);
+            $stockValueData = DB::selectOne($stockValueQuery, $stockValueBindings);
 
             // 3. Store Returns Query
             $storeReturnsQuery = "
@@ -167,7 +167,7 @@ class SalesMetricsController extends Controller
     {
         try {
             $locations = ChartHelper::getLocations();
-            
+
             // Add National option at the beginning
             $locationOptions = collect([
                 [
@@ -175,7 +175,7 @@ class SalesMetricsController extends Controller
                     'display' => 'National'
                 ]
             ]);
-            
+
             // Map locations to include both value (full name) and display name
             $branchOptions = $locations->map(function ($location) {
                 return [
@@ -183,10 +183,10 @@ class SalesMetricsController extends Controller
                     'display' => ChartHelper::getBranchDisplayName($location)
                 ];
             });
-            
+
             // Merge National option with branch options
             $allOptions = $locationOptions->merge($branchOptions);
-            
+
             return response()->json($allOptions);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);

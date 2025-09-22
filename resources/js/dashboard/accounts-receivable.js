@@ -72,11 +72,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                             label += ': ';
                                         }
                                         if (context.parsed.y !== null) {
-                                            label += new Intl.NumberFormat('id-ID', {
-                                                style: 'currency',
-                                                currency: 'IDR',
-                                                minimumFractionDigits: 0
-                                            }).format(context.parsed.y);
+                                            // Format with Indonesian number format using dots as thousand separators
+                                            const formattedValue = Math.round(context.parsed.y).toLocaleString('id-ID');
+                                            label += formattedValue;
                                         }
                                         return label;
                                     }
@@ -95,9 +93,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                     const billions = value / 1000000000;
                                     const display = Math.round(billions * 10) / 10;
                                     if (display % 1 === 0) {
-                                        return display.toFixed(0) + 'B';
+                                        return display.toFixed(0) + 'M';
                                     }
-                                    return display.toFixed(1) + 'B';
+                                    return display.toFixed(1) + 'M';
                                 }
                             }
                         },
@@ -111,12 +109,14 @@ document.addEventListener('DOMContentLoaded', function () {
                                 max: yMax,
                                 ticks: {
                                     callback: function (value) {
-                                        return ChartHelper.formatCurrency(value, 1000000000);
+                                        // Show clean numbers like 230, 200, 150 (value is in billions)
+                                        const scaledValue = value / 1000000000;
+                                        return Math.round(scaledValue);
                                     }
                                 },
                                 title: {
                                     display: true,
-                                    text: 'Billion Rupiah (Rp)'
+                                    text: 'Miliar Rupiah'
                                 }
                             }
                         }

@@ -29,9 +29,9 @@ const ChartHelper = {
 
     formatYAxisLabel(value) {
         if (value >= 1000000) {
-            return (value / 1000000) + 'M';
+            return (value / 1000000) + 'Jt';
         } else if (value >= 1000) {
-            return (value / 1000) + 'K';
+            return (value / 1000) + 'rb';
         }
         return value;
     },
@@ -155,13 +155,13 @@ const ChartHelper = {
 
         const scaledValue = value / divisor;
 
-        if (unit === 'B') {
+        if (unit === 'M') {
             const rounded = Math.round(scaledValue * Math.pow(10, decimalPlaces)) / Math.pow(10, decimalPlaces);
             const display = (rounded % 1 === 0) ? rounded.toFixed(0) : rounded.toFixed(decimalPlaces);
-            return display + 'B';
+            return display + 'M';
         }
 
-        return Math.round(scaledValue).toFixed(0) + 'M';
+        return Math.round(scaledValue).toFixed(0) + 'Jt';
     },
 
     /**
@@ -200,10 +200,10 @@ const ChartHelper = {
         const scaledValue = value / divisor;
 
         if (divisor === 1000000000) { // Billions
-            if (scaledValue % 1 === 0) return scaledValue.toFixed(0) + 'B';
-            return scaledValue.toFixed(1) + 'B';
+            if (scaledValue % 1 === 0) return scaledValue.toFixed(0) + 'M';
+            return scaledValue.toFixed(1) + 'M';
         } else if (divisor === 1000000) { // Millions
-            return Math.round(scaledValue) + 'M';
+            return Math.round(scaledValue) + 'Jt';
         } else {
             // For raw values or thousands
             return new Intl.NumberFormat('id-ID', {
@@ -238,5 +238,25 @@ const ChartHelper = {
         messageDiv.className = 'no-data-message text-center p-4 text-gray-600';
         messageDiv.innerHTML = `<i class="fas fa-info-circle mr-2"></i>${message}`;
         chartContainer.appendChild(messageDiv);
+    },
+
+    /**
+     * Centralized currency formatting function with Indonesian units
+     * @param {number} value - Raw value to format
+     * @param {number} precision - Decimal precision (default: 1)
+     * @param {boolean} includeRp - Whether to include 'Rp' prefix (default: true)
+     * @returns {string} Formatted currency string
+     */
+    formatCurrencyDisplay(value, precision = 1, includeRp = true) {
+        const prefix = includeRp ? 'Rp ' : '';
+
+        if (Math.abs(value) >= 1e9) {
+            return `${prefix}${(value / 1e9).toFixed(precision)}M`;
+        } else if (Math.abs(value) >= 1e6) {
+            return `${prefix}${(value / 1e6).toFixed(precision)}Jt`;
+        } else if (Math.abs(value) >= 1e3) {
+            return `${prefix}${(value / 1e3).toFixed(precision)}rb`;
+        }
+        return `${prefix}${value}`;
     }
 };

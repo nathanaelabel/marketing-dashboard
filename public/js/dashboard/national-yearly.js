@@ -19,15 +19,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const yAxisDivisor = dataFromServer.yAxisDivisor;
         const suggestedMax = dataFromServer.suggestedMax;
 
+        // Use centralized formatting from ChartHelper
         const formatValueWithUnit = (value) => {
-            if (value === 0) return null;
-            const scaledValue = value / yAxisDivisor;
-            if (dataFromServer.yAxisUnit === 'B') {
-                const rounded = Math.round(scaledValue * 10) / 10;
-                const display = (rounded % 1 === 0) ? rounded.toFixed(0) : rounded.toFixed(1);
-                return display + 'B';
-            }
-            return Math.round(scaledValue) + 'M';
+            return ChartHelper.formatValueWithUnit(value, yAxisDivisor, dataFromServer.yAxisUnit, 1);
         };
 
         const formatGrowthLabel = (value, context) => {

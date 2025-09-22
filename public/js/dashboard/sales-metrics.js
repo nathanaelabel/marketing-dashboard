@@ -152,23 +152,20 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
+    // Use centralized formatting from ChartHelper
     function formatCurrency(value, precision = 2) {
-        if (value >= 1e9) {
-            return `Rp ${(value / 1e9).toFixed(precision)}B`;
-        } else if (value >= 1e6) {
-            return `Rp ${(value / 1e6).toFixed(precision)}M`;
-        } else if (value >= 1e3) {
-            return `Rp ${(value / 1e3).toFixed(2)}K`;
-        }
-        return `Rp ${value}`;
+        return ChartHelper.formatCurrencyDisplay(value, precision, true);
     }
 
     function updateUI(data, source) {
+        // Extract end date from date range for Stock Value (point-in-time metric)
+        const endDate = data.date_range.split(' - ')[1] || data.date_range;
+
         // Update labels and values for metric cards
         totalSoLabel.textContent = `Total Sales Order ${data.date_range}`;
         pendingSoLabel.textContent = `Pending Sales Order ${data.date_range}`;
-        stockValueLabel.textContent = `Stock Value ${data.date_range}`;
         storeReturnsLabel.textContent = `Store Returns ${data.date_range}`;
+        stockValueLabel.textContent = `Stock Value ${endDate}`;
 
         totalSoValue.textContent = formatCurrency(data.total_so, 2);
         pendingSoValue.textContent = formatCurrency(data.pending_so, 2);

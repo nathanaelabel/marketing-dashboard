@@ -11,12 +11,16 @@ use App\Http\Controllers\MonthlyBranchController;
 use App\Http\Controllers\BranchGrowthController;
 use App\Http\Controllers\TargetRevenueController;
 use App\Http\Controllers\BranchTargetController;
+use App\Http\Controllers\SalesItemController;
+use App\Http\Controllers\SalesFamilyController;
+use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
 
 
 
 Route::middleware('auth')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/report', [ReportController::class, 'index'])->name('report');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -36,6 +40,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/branch-target/input', [BranchTargetController::class, 'showInputForm'])->name('branch-target.input');
     Route::post('/branch-target/save', [BranchTargetController::class, 'saveTargets'])->name('branch-target.save');
     Route::delete('/branch-target/delete', [BranchTargetController::class, 'deleteTargets'])->name('branch-target.delete');
+    Route::get('/sales-item/data', [SalesItemController::class, 'getData'])->name('sales-item.data');
+    Route::get('/sales-family/data', [SalesFamilyController::class, 'getData'])->name('sales-family.data');
 });
 
 require __DIR__ . '/auth.php';
