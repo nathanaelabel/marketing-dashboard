@@ -445,4 +445,55 @@ class ChartHelper
             ->orderBy('name')
             ->get();
     }
+
+    /**
+     * Calculate fair comparison date ranges for year-over-year analysis
+     * 
+     * This method ensures both years have the same period length for accurate comparison.
+     * For example, if today is September 24, 2025, instead of comparing:
+     * - 2024: Jan 1 - Dec 31 (full year)
+     * - 2025: Jan 1 - Sep 24 (partial year)
+     * 
+     * It will compare:
+     * - 2024: Jan 1 - Sep 24 (same period)
+     * - 2025: Jan 1 - Sep 24 (same period)
+     * 
+     * This eliminates unfair percentage comparisons caused by different period lengths.
+     * 
+     * @param string $currentEndDate Current period end date (Y-m-d format)
+     * @param int $previousYear Previous year to compare against
+     * @return array Array with 'current' and 'previous' date range arrays
+     */
+    public static function calculateFairComparisonDateRanges(string $currentEndDate, int $previousYear): array
+    {
+        $currentYear = date('Y', strtotime($currentEndDate));
+
+        // Current year range: Jan 1 to specified end date
+        $currentStartDate = $currentYear . '-01-01';
+
+        // Previous year range: Jan 1 to same month/day as current end date
+        $endDateParts = explode('-', $currentEndDate);
+        $currentMonth = $endDateParts[1];
+        $currentDay = $endDateParts[2];
+
+        $previousStartDate = $previousYear . '-01-01';
+        $previousEndDate = $previousYear . '-' . $currentMonth . '-' . $currentDay;
+
+        // Validate the previous end date exists (handle Feb 29 on non-leap years)
+        if (!checkdate($currentMonth, $currentDay, $previousYear)) {
+            // If date doesn't exist (like Feb 29 on non-leap year), use last day of that month
+            $previousEndDate = date('Y-m-t', strtotime($previousYear . '-' . $currentMonth . '-01'));
+        }
+
+        return [
+            'current' => [
+                'start' => $currentStartDate,
+                'end' => $currentEndDate
+            ],
+            'previous' => [
+                'start' => $previousStartDate,
+                'end' => $previousEndDate
+            ]
+        ];
+    }
 }
