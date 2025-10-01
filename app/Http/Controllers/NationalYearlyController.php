@@ -12,41 +12,31 @@ class NationalYearlyController extends Controller
     public function getData(Request $request)
     {
         try {
-            // Handle both year parameters (from frontend) and date parameters (legacy)
             $year = $request->input('year');
             $startDate = $request->input('start_date');
             $endDate = $request->input('end_date');
+            $today = date('Y-m-d');
+            $currentYear = date('Y');
 
-            // Convert year to date range if year parameter is provided
             if ($year) {
                 $startDate = $year . '-01-01';
                 $endDate = $year . '-12-31';
 
-                // If it's the current year, limit end date to today to avoid querying future dates
-                $currentYear = date('Y');
                 if ($year == $currentYear) {
-                    $today = date('Y-m-d');
-                    $endDate = min($endDate, $today);
+                    $endDate = $today;
                 }
             } else {
-                // Fallback to date parameters or defaults
                 $startDate = $startDate ?: date('Y') . '-01-01';
-                $endDate = $endDate ?: date('Y-m-d'); // Use today instead of end of year
+                $endDate = $endDate ?: $today;
                 $year = date('Y', strtotime($startDate));
             }
 
             $previousYear = $year - 1;
             $category = $request->get('category', 'MIKA');
 
-            // Get current year data using date range
-            $currentYearData = $this->getRevenueData($startDate, $endDate, $category);
-
-            // Get previous year data using date range
-            $previousStartDate = $previousYear . '-01-01';
-            $previousEndDate = $previousYear . '-12-31';
-            $previousYearData = $this->getRevenueData($previousStartDate, $previousEndDate, $category);
-
-            // Combine and format data using ChartHelper
+            $dateRanges = ChartHelper::calculateFairComparisonDateRanges($endDate, $previousYear);
+            $currentYearData = $this->getRevenueData($dateRanges['current']['start'], $dateRanges['current']['end'], $category);
+            $previousYearData = $this->getRevenueData($dateRanges['previous']['start'], $dateRanges['previous']['end'], $category);
             $formattedData = $this->formatYearlyComparisonData($currentYearData, $previousYearData, $year, $previousYear);
 
             return response()->json($formattedData);
@@ -55,6 +45,7 @@ class NationalYearlyController extends Controller
                 'year' => $request->get('year'),
                 'start_date' => $startDate ?? null,
                 'end_date' => $endDate ?? null,
+                'date_ranges' => $dateRanges ?? null,
                 'category' => $request->get('category'),
                 'trace' => $e->getTraceAsString()
             ]);

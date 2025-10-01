@@ -11,19 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('c_invoice', function (Blueprint $table) {
-            $table->integer('c_invoice_id')->primary();
+        Schema::create('c_bpartner_location', function (Blueprint $table) {
+            $table->integer('c_bpartner_location_id')->primary();
             $table->integer('ad_client_id');
             $table->integer('ad_org_id');
-            $table->integer('c_bpartner_id');
             $table->char('isactive', 1);
-            $table->char('issotrx', 1);
-            $table->string('documentno', 30);
-            $table->string('docstatus', 2);
-            $table->timestamp('dateinvoiced');
-            $table->decimal('totallines', 16, 2);
-            $table->decimal('grandtotal', 16, 2);
-            $table->char('ispaid', 1);
+            $table->integer('c_bpartner_id');
+            $table->string('name', 60); // Location name (e.g., city)
+            $table->char('isshipto', 1)->default('N'); // Is ship to address?
+            $table->char('isbillto', 1)->default('N'); // Is bill to address?
             $table->timestamp('created')->nullable();
             $table->timestamp('updated')->nullable();
 
@@ -38,6 +34,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('c_invoice');
+        Schema::dropIfExists('c_bpartner_location');
     }
 };

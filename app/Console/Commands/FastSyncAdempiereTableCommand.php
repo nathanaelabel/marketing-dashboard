@@ -64,6 +64,8 @@ class FastSyncAdempiereTableCommand extends Command
             'm_storage',
             'm_pricelist_version',
             'm_productprice',
+            'c_bpartner',
+            'c_bpartner_location',
             'c_invoiceline',
             'c_orderline',
             'c_allocationline'

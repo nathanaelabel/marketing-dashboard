@@ -83,7 +83,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
             <h3 class="mt-2 text-sm font-medium text-gray-900">No Data Available</h3>
-            <p class="mt-1 text-sm text-gray-500">No sales family data found for the selected period.</p>
+            <p class="mt-1 text-sm text-gray-500">No data found for the selected period.</p>
         </div>
 
         <!-- Table Container -->

@@ -207,6 +207,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (previousYearLabel) previousYearLabel.textContent = (year - 1);
         if (currentYearLabel) currentYearLabel.textContent = year;
 
+        // Show comparison period info for current year
+        const periodDescription = ChartHelper.getFairComparisonPeriodDescription(year);
+        console.log(periodDescription); // For debugging - can be displayed in UI if needed
+
         fetchAndUpdateYearlyChart(year, category);
     };
 

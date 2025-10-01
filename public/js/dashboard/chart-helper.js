@@ -258,5 +258,30 @@ const ChartHelper = {
             return `${prefix}${(value / 1e3).toFixed(precision)}rb`;
         }
         return `${prefix}${value}`;
+    },
+
+    /**
+     * Get fair comparison period description for display
+     * @param {number} currentYear - Current year being analyzed
+     * @returns {string} Period description for UI display
+     */
+    getFairComparisonPeriodDescription(currentYear) {
+        const today = new Date();
+        const currentYearNum = today.getFullYear();
+
+        if (currentYear == currentYearNum) {
+            // For current year, show the actual period being compared
+            const monthNames = [
+                'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+            ];
+            const currentMonth = monthNames[today.getMonth()];
+            const currentDay = today.getDate();
+
+            return `Perbandingan periode yang sama: Jan - ${currentDay} ${currentMonth} untuk kedua tahun`;
+        } else {
+            // For historical years, show full year comparison
+            return `Perbandingan periode penuh: Januari - Desember untuk kedua tahun`;
+        }
     }
 };

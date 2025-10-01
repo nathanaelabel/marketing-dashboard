@@ -40,7 +40,9 @@ class SyncAllAdempiereDataCommand extends Command
         $fullSyncTables = [
             ['model' => 'MLocator'],
             ['model' => 'MStorage'],
-            ['model' => 'MPricelistVersion']
+            ['model' => 'MPricelistVersion'],
+            ['model' => 'CBpartner'],
+            ['model' => 'CBpartnerLocation']
         ];
 
         // Tables using fast sync with various filtering strategies
