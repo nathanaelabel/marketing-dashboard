@@ -11,17 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('c_invoice', function (Blueprint $table) {
-            $table->integer('c_invoice_id')->primary();
+        Schema::create('c_bpartner', function (Blueprint $table) {
+            $table->integer('c_bpartner_id')->primary();
             $table->integer('ad_client_id');
             $table->integer('ad_org_id');
-            $table->char('isactive', 1)->default('Y');
-            $table->char('issotrx', 1)->default('Y');
-            $table->string('documentno', 30);
-            $table->string('docstatus', 2);
-            $table->timestamp('dateinvoiced')->nullable();
-            $table->decimal('grandtotal', 16, 2);
-            $table->char('ispaid', 1);
+            $table->char('isactive', 1);
+            $table->string('value', 40); // Business Partner code
+            $table->string('name', 60); // Business Partner name
+            $table->char('iscustomer', 1);
+            $table->char('isvendor', 1);
             $table->timestamp('created')->nullable();
             $table->timestamp('updated')->nullable();
 
@@ -34,6 +32,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('c_invoice');
+        Schema::dropIfExists('c_bpartner');
     }
 };
