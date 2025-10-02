@@ -227,18 +227,40 @@ document.addEventListener('DOMContentLoaded', function () {
     // Three-dots menu toggle
     const menuButton = document.getElementById('menuButton');
     const dropdownMenu = document.getElementById('dropdownMenu');
-    
+
     if (menuButton && dropdownMenu) {
         // Toggle dropdown on button click
-        menuButton.addEventListener('click', function(e) {
+        menuButton.addEventListener('click', function (e) {
             e.stopPropagation();
             dropdownMenu.classList.toggle('hidden');
         });
 
         // Close dropdown when clicking outside
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             if (!menuButton.contains(e.target) && !dropdownMenu.contains(e.target)) {
                 dropdownMenu.classList.add('hidden');
+            }
+        });
+    }
+
+    // Refresh Data functionality
+    const refreshBtn = document.getElementById('refreshDataBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Get current date values and refresh the chart
+            const currentStartDate = startDateInput.value;
+            const currentEndDate = endDateInput.value;
+
+            if (currentStartDate && currentEndDate) {
+                fetchAndUpdateNationalRevenueChart(currentStartDate, currentEndDate);
             }
         });
     }
@@ -246,13 +268,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Export to Excel functionality
     const exportBtn = document.getElementById('exportExcelBtn');
     if (exportBtn) {
-        exportBtn.addEventListener('click', function(e) {
+        exportBtn.addEventListener('click', function (e) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             const currentStartDate = startDateInput.value;
             const currentEndDate = endDateInput.value;
-            
+
             if (!currentStartDate || !currentEndDate) {
                 alert('Please select both start and end dates');
                 return;
@@ -266,17 +288,11 @@ document.addEventListener('DOMContentLoaded', function () {
             // Show loading state
             const originalContent = exportBtn.innerHTML;
             exportBtn.disabled = true;
-            exportBtn.innerHTML = `
-                <svg class="animate-spin h-4 w-4 mr-3 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Exporting...
-            `;
+            exportBtn.innerHTML = 'Exporting...';
 
             // Create download URL with parameters
             const exportUrl = `/national-revenue/export?start_date=${currentStartDate}&end_date=${currentEndDate}`;
-            
+
             // Use window.location for direct download (more reliable than creating link)
             window.location.href = exportUrl;
 

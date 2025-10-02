@@ -63,53 +63,108 @@ class NationalRevenueController extends Controller
         $totalRevenue = $queryResult->sum('total_revenue');
 
         // Format dates for filename and display
-        $formattedStartDate = \Carbon\Carbon::parse($startDate)->format('d-m-Y');
-        $formattedEndDate = \Carbon\Carbon::parse($endDate)->format('d-m-Y');
-        $filename = 'National_Revenue_' . $formattedStartDate . '_to_' . $formattedEndDate . '.csv';
+        $formattedStartDate = \Carbon\Carbon::parse($startDate)->format('d F Y');
+        $formattedEndDate = \Carbon\Carbon::parse($endDate)->format('d F Y');
+        $fileStartDate = \Carbon\Carbon::parse($startDate)->format('d-m-Y');
+        $fileEndDate = \Carbon\Carbon::parse($endDate)->format('d-m-Y');
+        $filename = 'National_Revenue_' . $fileStartDate . '_to_' . $fileEndDate . '.xls';
 
-        // Create CSV content
+        // Create XLS content using HTML table format
         $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Type' => 'application/vnd.ms-excel',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
             'Pragma' => 'no-cache',
             'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
             'Expires' => '0'
         ];
 
-        $callback = function() use ($queryResult, $totalRevenue, $startDate, $endDate, $formattedStartDate, $formattedEndDate) {
-            $file = fopen('php://output', 'w');
-            
-            // Add UTF-8 BOM for proper Excel encoding
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+        $html = '
+        <html xmlns:x="urn:schemas-microsoft-com:office:excel">
+        <head>
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+            <!--[if gte mso 9]>
+            <xml>
+                <x:ExcelWorkbook>
+                    <x:ExcelWorksheets>
+                        <x:ExcelWorksheet>
+                            <x:Name>National Revenue</x:Name>
+                            <x:WorksheetOptions>
+                                <x:Print>
+                                    <x:ValidPrinterInfo/>
+                                </x:Print>
+                            </x:WorksheetOptions>
+                        </x:ExcelWorksheet>
+                    </x:ExcelWorksheets>
+                </x:ExcelWorkbook>
+            </xml>
+            <![endif]-->
+            <style>
+                body { font-family: Calibri, Arial, sans-serif; font-size: 10pt; }
+                table { border-collapse: collapse; }
+                th, td { 
+                    border: 1px solid #ddd; 
+                    padding: 4px 8px; 
+                    text-align: left; 
+                    font-size: 10pt;
+                    white-space: nowrap;
+                }
+                th { 
+                    background-color: #4CAF50; 
+                    color: white; 
+                    font-weight: bold; 
+                    font-size: 10pt;
+                }
+                .title { font-size: 10pt; font-weight: bold; margin-bottom: 5px; }
+                .period { font-size: 10pt; margin-bottom: 10px; }
+                .total-row { font-weight: bold; background-color: #f2f2f2; }
+                .number { text-align: right; }
+                .col-no { width: 70px; }
+                .col-branch { width: 250px; }
+                .col-code { width: 160px; }
+                .col-revenue { width: 280px; }
+            </style>
+        </head>
+        <body>
+            <div class="title">National Revenue Report</div>
+            <div class="period">Period: ' . $formattedStartDate . ' to ' . $formattedEndDate . '</div>
+            <br>
+            <table>
+                <colgroup>
+                    <col class="col-no">
+                    <col class="col-branch">
+                    <col class="col-code">
+                    <col class="col-revenue">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>Branch Name</th>
+                        <th>Branch Code</th>
+                        <th style="text-align: right;">Revenue (Rp)</th>
+                    </tr>
+                </thead>
+                <tbody>';
 
-            // Add title and date range
-            fputcsv($file, ['National Revenue Report']);
-            fputcsv($file, ['Period: ' . $formattedStartDate . ' to ' . $formattedEndDate]);
-            fputcsv($file, []); // Empty row
+        $no = 1;
+        foreach ($queryResult as $row) {
+            $html .= '<tr>
+                <td>' . $no++ . '</td>
+                <td>' . htmlspecialchars($row->branch_name) . '</td>
+                <td>' . htmlspecialchars(ChartHelper::getBranchAbbreviation($row->branch_name)) . '</td>
+                <td class="number">' . number_format($row->total_revenue, 2, '.', ',') . '</td>
+            </tr>';
+        }
 
-            // Add headers
-            fputcsv($file, ['No', 'Branch Name', 'Branch Code', 'Revenue (Rp)']);
+        $html .= '
+                    <tr class="total-row">
+                        <td colspan="3" style="text-align: right;"><strong>TOTAL</strong></td>
+                        <td class="number"><strong>' . number_format($totalRevenue, 2, '.', ',') . '</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </body>
+        </html>';
 
-            // Add data rows
-            $no = 1;
-            foreach ($queryResult as $row) {
-                fputcsv($file, [
-                    $no++,
-                    $row->branch_name,
-                    ChartHelper::getBranchAbbreviation($row->branch_name),
-                    number_format($row->total_revenue, 2, '.', '')
-                ]);
-            }
-
-            // Add empty row before total
-            fputcsv($file, []);
-
-            // Add total row
-            fputcsv($file, ['', '', 'TOTAL', number_format($totalRevenue, 2, '.', '')]);
-
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        return response($html, 200, $headers);
     }
 }
