@@ -110,28 +110,28 @@ class ChartHelper
             return $minSuggestedMaxDivisorUnits * $divisor;
         }
 
-        // Calculate suggested max by adding padding to the actual max data value.
-        $suggestedMax = $maxDataValue * $paddingFactor;
-
-        // Ensure the suggestedMax is at least the minimum defined by minSuggestedMaxDivisorUnits.
-        // This prevents the axis from being too small if maxDataValue is positive but very tiny.
-        $minimumSensibleMax = $minSuggestedMaxDivisorUnits * $divisor;
-        if ($suggestedMax < $minimumSensibleMax && $maxDataValue < $minimumSensibleMax) {
-            // Only apply this if maxDataValue itself is also below the minimum sensible max
-            // to avoid inflating a small dataset (e.g. max 1M) to 5M if 5M is the minimum.
-            // The goal is to have a reasonable *minimum* axis height, not to always force it to 5M if data is 1M.
-            // Let's refine: if maxDataValue is 1M, suggestedMax (1.2M) might be less than minimumSensibleMax (5M).
-            // In this case, we want the axis to go up to a bit above 1.2M, not jump to 5M.
-            // The $minSuggestedMaxDivisorUnits is more for the $maxDataValue <= 0 case.
-            // For positive data, we just want to ensure it's not ridiculously small.
-            // A better approach for positive data: ensure the suggested max is at least slightly larger than maxDataValue.
-            // And make sure it's a 'round-ish' number in terms of the divisor.
+        // Calculate the scaled value (e.g., if maxDataValue is 34M and divisor is 1e6, scaledValue = 34)
+        $scaledValue = $maxDataValue / $divisor;
+        
+        // For small values (< 5), just round up to 5
+        if ($scaledValue <= 3.5) {
+            return 5 * $divisor; // Return 5M or 5B
         }
+        
+        // Round up to the next "nice" number (multiple of 5)
+        // For example: 34 -> 35, but we want to add one more bar -> 40
+        $roundedUp = ceil($scaledValue / 5) * 5;
+        
+        // Add one more bar increment (5 units) to prevent values from being cut off
+        $suggestedMaxScaled = $roundedUp + 5;
+        
+        // Convert back to raw units
+        $suggestedMax = $suggestedMaxScaled * $divisor;
 
-        // Let's simplify: just pad the max value. The Chart.js `suggestedMax` will already try to find nice ticks.
-        // If the padded value is very small, ensure it's at least one unit of the divisor for visibility.
-        if ($suggestedMax < $divisor) {
-            return $divisor; // At least 1M or 1B
+        // Ensure minimum sensible max
+        $minimumSensibleMax = $minSuggestedMaxDivisorUnits * $divisor;
+        if ($suggestedMax < $minimumSensibleMax) {
+            return $minimumSensibleMax;
         }
 
         return $suggestedMax;
