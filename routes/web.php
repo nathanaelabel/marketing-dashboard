@@ -26,7 +26,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('/national-revenue/data', [NationalRevenueController::class, 'data'])->name('national-revenue.data');
-    Route::get('/national-revenue/export', [NationalRevenueController::class, 'exportExcel'])->name('national-revenue.export');
+    Route::get('/national-revenue/export-excel', [NationalRevenueController::class, 'exportExcel'])->name('national-revenue.export-excel');
+    Route::get('/national-revenue/export-pdf', [NationalRevenueController::class, 'exportPdf'])->name('national-revenue.export-pdf');
     Route::get('/accounts-receivable/data', [AccountsReceivableController::class, 'data'])->name('accounts-receivable.data');
     Route::get('/sales-metrics/data', [SalesMetricsController::class, 'getData'])->name('sales-metrics.data');
     Route::get('/sales-metrics/locations', [SalesMetricsController::class, 'getLocations'])->name('sales-metrics.locations');
