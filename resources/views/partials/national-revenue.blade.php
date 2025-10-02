@@ -51,12 +51,12 @@
                                 Refresh Data
                             </button>
                             <button type="button" id="exportExcelBtn" class="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 whitespace-nowrap" role="menuitem">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-gray-700" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill-opacity="0.01" stroke="currentColor" stroke-width="1" />
-                                    <path d="M14 2v6h6" fill="none" stroke="currentColor" stroke-width="1" />
-                                    <text x="12" y="16" font-size="7" font-weight="bold" fill="currentColor" text-anchor="middle" font-family="Arial, sans-serif">XLS</text>
-                                </svg>
+                                <i class="bi bi-file-excel text-gray-700" style="font-size: 1.25rem; margin-right: 0.75rem;"></i>
                                 Export to Excel
+                            </button>
+                            <button type="button" id="exportPdfBtn" class="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 whitespace-nowrap" role="menuitem">
+                                <i class="bi bi-file-pdf text-gray-700" style="font-size: 1.25rem; margin-right: 0.75rem;"></i>
+                                Export to PDF
                             </button>
                         </div>
                     </div>
