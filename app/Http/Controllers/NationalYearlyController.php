@@ -141,4 +141,316 @@ class NationalYearlyController extends Controller
             'suggestedMax' => $suggestedMax,
         ];
     }
+
+    public function exportExcel(Request $request)
+    {
+        $year = $request->input('year', date('Y'));
+        $category = $request->input('category', 'MIKA');
+        $today = date('Y-m-d');
+        $currentYear = date('Y');
+
+        $startDate = $year . '-01-01';
+        $endDate = $year . '-12-31';
+
+        if ($year == $currentYear) {
+            $endDate = $today;
+        }
+
+        $previousYear = $year - 1;
+
+        $dateRanges = ChartHelper::calculateFairComparisonDateRanges($endDate, $previousYear);
+        $currentYearData = $this->getRevenueData($dateRanges['current']['start'], $dateRanges['current']['end'], $category);
+        $previousYearData = $this->getRevenueData($dateRanges['previous']['start'], $dateRanges['previous']['end'], $category);
+
+        // Get all unique branches from both datasets
+        $allBranches = collect($currentYearData)->pluck('branch_name')
+            ->merge(collect($previousYearData)->pluck('branch_name'))
+            ->unique()
+            ->sort()
+            ->values();
+
+        // Map data for each year
+        $currentYearMap = collect($currentYearData)->keyBy('branch_name');
+        $previousYearMap = collect($previousYearData)->keyBy('branch_name');
+
+        $filename = 'National_Yearly_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '.xls';
+
+        // Create XLS content using HTML table format
+        $headers = [
+            'Content-Type' => 'application/vnd.ms-excel',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0'
+        ];
+
+        $html = '
+        <html xmlns:x="urn:schemas-microsoft-com:office:excel">
+        <head>
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+            <!--[if gte mso 9]>
+            <xml>
+                <x:ExcelWorkbook>
+                    <x:ExcelWorksheets>
+                        <x:ExcelWorksheet>
+                            <x:Name>National Yearly Revenue</x:Name>
+                            <x:WorksheetOptions>
+                                <x:Print>
+                                    <x:ValidPrinterInfo/>
+                                </x:Print>
+                            </x:WorksheetOptions>
+                        </x:ExcelWorksheet>
+                    </x:ExcelWorksheets>
+                </x:ExcelWorkbook>
+            </xml>
+            <![endif]-->
+            <style>
+                body { font-family: Calibri, Arial, sans-serif; font-size: 10pt; }
+                table { border-collapse: collapse; }
+                th, td { 
+                    border: 1px solid #ddd; 
+                    padding: 4px 8px; 
+                    text-align: left; 
+                    font-size: 10pt;
+                    white-space: nowrap;
+                }
+                th { 
+                    background-color: #4CAF50; 
+                    color: white; 
+                    font-weight: bold; 
+                    font-size: 10pt;
+                }
+                .title { font-size: 10pt; font-weight: bold; margin-bottom: 5px; }
+                .period { font-size: 10pt; margin-bottom: 10px; }
+                .total-row { font-weight: bold; background-color: #f2f2f2; }
+                .number { text-align: right; }
+                .col-no { width: 90px; }
+                .col-branch { width: 270px; }
+                .col-code { width: 160px; }
+                .col-amount { width: 300px; }
+            </style>
+        </head>
+        <body>
+            <div class="title">National Yearly Revenue Report</div>
+            <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Category: ' . htmlspecialchars($category) . '</div>
+            <br>
+            <table>
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>Branch Name</th>
+                        <th>Branch Code</th>
+                        <th style="text-align: right;">' . $previousYear . ' (Rp)</th>
+                        <th style="text-align: right;">' . $year . ' (Rp)</th>
+                        <th style="text-align: right;">Growth (%)</th>
+                    </tr>
+                </thead>
+                <tbody>';
+
+        $no = 1;
+        $totalPreviousYear = 0;
+        $totalCurrentYear = 0;
+
+        foreach ($allBranches as $branch) {
+            $currentRevenue = $currentYearMap->get($branch);
+            $previousRevenue = $previousYearMap->get($branch);
+
+            $currentValue = $currentRevenue ? $currentRevenue->total_revenue : 0;
+            $previousValue = $previousRevenue ? $previousRevenue->total_revenue : 0;
+
+            $totalPreviousYear += $previousValue;
+            $totalCurrentYear += $currentValue;
+
+            $growth = 0;
+            if ($previousValue > 0) {
+                $growth = (($currentValue - $previousValue) / $previousValue) * 100;
+            }
+
+            $html .= '<tr>
+                <td>' . $no++ . '</td>
+                <td>' . htmlspecialchars($branch) . '</td>
+                <td>' . htmlspecialchars(ChartHelper::getBranchAbbreviation($branch)) . '</td>
+                <td class="number">' . number_format($previousValue, 2, '.', ',') . '</td>
+                <td class="number">' . number_format($currentValue, 2, '.', ',') . '</td>
+                <td class="number">' . number_format($growth, 2, '.', ',') . '%</td>
+            </tr>';
+        }
+
+        $totalGrowth = 0;
+        if ($totalPreviousYear > 0) {
+            $totalGrowth = (($totalCurrentYear - $totalPreviousYear) / $totalPreviousYear) * 100;
+        }
+
+        $html .= '
+                    <tr class="total-row">
+                        <td colspan="3" style="text-align: right;"><strong>TOTAL</strong></td>
+                        <td class="number"><strong>' . number_format($totalPreviousYear, 2, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($totalCurrentYear, 2, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($totalGrowth, 2, '.', ',') . '%</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </body>
+        </html>';
+
+        return response($html, 200, $headers);
+    }
+
+    public function exportPdf(Request $request)
+    {
+        $year = $request->input('year', date('Y'));
+        $category = $request->input('category', 'MIKA');
+        $today = date('Y-m-d');
+        $currentYear = date('Y');
+
+        $startDate = $year . '-01-01';
+        $endDate = $year . '-12-31';
+
+        if ($year == $currentYear) {
+            $endDate = $today;
+        }
+
+        $previousYear = $year - 1;
+
+        $dateRanges = ChartHelper::calculateFairComparisonDateRanges($endDate, $previousYear);
+        $currentYearData = $this->getRevenueData($dateRanges['current']['start'], $dateRanges['current']['end'], $category);
+        $previousYearData = $this->getRevenueData($dateRanges['previous']['start'], $dateRanges['previous']['end'], $category);
+
+        // Get all unique branches from both datasets
+        $allBranches = collect($currentYearData)->pluck('branch_name')
+            ->merge(collect($previousYearData)->pluck('branch_name'))
+            ->unique()
+            ->sort()
+            ->values();
+
+        // Map data for each year
+        $currentYearMap = collect($currentYearData)->keyBy('branch_name');
+        $previousYearMap = collect($previousYearData)->keyBy('branch_name');
+
+        // Create HTML for PDF
+        $html = '
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+            <style>
+                @page { margin: 20px; }
+                body { 
+                    font-family: Arial, sans-serif; 
+                    font-size: 9pt;
+                    margin: 0;
+                    padding: 20px;
+                }
+                .header {
+                    text-align: center;
+                    margin-bottom: 20px;
+                }
+                .title { 
+                    font-size: 16pt; 
+                    font-weight: bold; 
+                    margin-bottom: 5px;
+                }
+                .period { 
+                    font-size: 10pt; 
+                    color: #666;
+                    margin-bottom: 20px;
+                }
+                table { 
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 10px;
+                }
+                th, td { 
+                    border: 1px solid #ddd; 
+                    padding: 6px; 
+                    text-align: left;
+                    font-size: 8pt;
+                }
+                th { 
+                    background-color: rgba(38, 102, 241, 0.9); 
+                    color: white; 
+                    font-weight: bold;
+                }
+                .number { text-align: right; }
+                .total-row { 
+                    font-weight: bold; 
+                    background-color: #f2f2f2;
+                }
+                .total-row td {
+                    border-top: 2px solid #333;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="title">National Yearly Revenue Report</div>
+                <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Category: ' . htmlspecialchars($category) . '</div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 30px;">No</th>
+                        <th style="width: 150px;">Branch</th>
+                        <th style="width: 50px;">Code</th>
+                        <th style="width: 100px; text-align: right;">' . $previousYear . '</th>
+                        <th style="width: 100px; text-align: right;">' . $year . '</th>
+                        <th style="width: 80px; text-align: right;">Growth (%)</th>
+                    </tr>
+                </thead>
+                <tbody>';
+
+        $no = 1;
+        $totalPreviousYear = 0;
+        $totalCurrentYear = 0;
+
+        foreach ($allBranches as $branch) {
+            $currentRevenue = $currentYearMap->get($branch);
+            $previousRevenue = $previousYearMap->get($branch);
+
+            $currentValue = $currentRevenue ? $currentRevenue->total_revenue : 0;
+            $previousValue = $previousRevenue ? $previousRevenue->total_revenue : 0;
+
+            $totalPreviousYear += $previousValue;
+            $totalCurrentYear += $currentValue;
+
+            $growth = 0;
+            if ($previousValue > 0) {
+                $growth = (($currentValue - $previousValue) / $previousValue) * 100;
+            }
+
+            $html .= '<tr>
+                <td>' . $no++ . '</td>
+                <td>' . htmlspecialchars($branch) . '</td>
+                <td>' . htmlspecialchars(ChartHelper::getBranchAbbreviation($branch)) . '</td>
+                <td class="number">' . number_format($previousValue, 2, '.', ',') . '</td>
+                <td class="number">' . number_format($currentValue, 2, '.', ',') . '</td>
+                <td class="number">' . number_format($growth, 2, '.', ',') . '%</td>
+            </tr>';
+        }
+
+        $totalGrowth = 0;
+        if ($totalPreviousYear > 0) {
+            $totalGrowth = (($totalCurrentYear - $totalPreviousYear) / $totalPreviousYear) * 100;
+        }
+
+        $html .= '
+                    <tr class="total-row">
+                        <td colspan="3" style="text-align: right;"><strong>TOTAL</strong></td>
+                        <td class="number"><strong>' . number_format($totalPreviousYear, 2, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($totalCurrentYear, 2, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($totalGrowth, 2, '.', ',') . '%</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </body>
+        </html>';
+
+        // Use DomPDF to generate PDF
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+        $pdf->setPaper('A4', 'portrait');
+
+        $filename = 'National_Yearly_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '.pdf';
+
+        return $pdf->download($filename);
+    }
 }

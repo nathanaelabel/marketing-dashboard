@@ -199,4 +199,342 @@ class MonthlyBranchController extends Controller
             'suggestedMax' => $suggestedMax,
         ];
     }
+
+    public function exportExcel(Request $request)
+    {
+        $year = $request->input('year', date('Y'));
+        $category = $request->input('category', 'MIKA');
+        $branch = $request->input('branch', 'National');
+        $currentYear = date('Y');
+
+        $startDate = $year . '-01-01';
+        $endDate = $year . '-12-31';
+
+        if ($year == $currentYear) {
+            $today = date('Y-m-d');
+            $endDate = min($endDate, $today);
+        }
+
+        $previousYear = $year - 1;
+
+        // Get current year data
+        $currentYearData = $this->getMonthlyRevenueData($startDate, $endDate, $category, $branch);
+
+        // Get previous year data
+        $previousStartDate = $previousYear . '-01-01';
+        $previousEndDate = $previousYear . '-12-31';
+        $previousYearData = $this->getMonthlyRevenueData($previousStartDate, $previousEndDate, $category, $branch);
+
+        // Month labels
+        $monthLabels = [
+            'January',
+            'February',
+            'March',
+            'April',
+            'May',
+            'June',
+            'July',
+            'August',
+            'September',
+            'October',
+            'November',
+            'December'
+        ];
+
+        // Map data by month
+        $currentYearMap = collect($currentYearData)->keyBy('month_number');
+        $previousYearMap = collect($previousYearData)->keyBy('month_number');
+
+        $branchDisplay = $branch === 'National' ? 'National' : ChartHelper::getBranchDisplayName($branch);
+        $filename = 'Monthly_Branch_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $branchDisplay) . '_' . str_replace(' ', '_', $category) . '.xls';
+
+        // Create XLS content using HTML table format
+        $headers = [
+            'Content-Type' => 'application/vnd.ms-excel',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0'
+        ];
+
+        $html = '
+        <html xmlns:x="urn:schemas-microsoft-com:office:excel">
+        <head>
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+            <!--[if gte mso 9]>
+            <xml>
+                <x:ExcelWorkbook>
+                    <x:ExcelWorksheets>
+                        <x:ExcelWorksheet>
+                            <x:Name>Monthly Branch Revenue</x:Name>
+                            <x:WorksheetOptions>
+                                <x:Print>
+                                    <x:ValidPrinterInfo/>
+                                </x:Print>
+                            </x:WorksheetOptions>
+                        </x:ExcelWorksheet>
+                    </x:ExcelWorksheets>
+                </x:ExcelWorkbook>
+            </xml>
+            <![endif]-->
+            <style>
+                body { font-family: Calibri, Arial, sans-serif; font-size: 10pt; }
+                table { border-collapse: collapse; }
+                th, td { 
+                    border: 1px solid #ddd; 
+                    padding: 4px 8px; 
+                    text-align: left; 
+                    font-size: 10pt;
+                    white-space: nowrap;
+                }
+                th { 
+                    background-color: #4CAF50; 
+                    color: white; 
+                    font-weight: bold; 
+                    font-size: 10pt;
+                }
+                .title { font-size: 10pt; font-weight: bold; margin-bottom: 5px; }
+                .period { font-size: 10pt; margin-bottom: 10px; }
+                .total-row { font-weight: bold; background-color: #f2f2f2; }
+                .number { text-align: right; }
+                .col-no { width: 90px; }
+                .col-month { width: 200px; }
+                .col-amount { width: 300px; }
+            </style>
+        </head>
+        <body>
+            <div class="title">Monthly Branch Revenue Report</div>
+            <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Branch: ' . htmlspecialchars($branchDisplay) . ' | Category: ' . htmlspecialchars($category) . '</div>
+            <br>
+            <table>
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>Month</th>
+                        <th style="text-align: right;">' . $previousYear . ' (Rp)</th>
+                        <th style="text-align: right;">' . $year . ' (Rp)</th>
+                        <th style="text-align: right;">Growth (%)</th>
+                    </tr>
+                </thead>
+                <tbody>';
+
+        $no = 1;
+        $totalPreviousYear = 0;
+        $totalCurrentYear = 0;
+
+        for ($month = 1; $month <= 12; $month++) {
+            $currentRevenue = $currentYearMap->get($month);
+            $previousRevenue = $previousYearMap->get($month);
+
+            $currentValue = $currentRevenue ? $currentRevenue->total_revenue : 0;
+            $previousValue = $previousRevenue ? $previousRevenue->total_revenue : 0;
+
+            $totalPreviousYear += $previousValue;
+            $totalCurrentYear += $currentValue;
+
+            $growth = 0;
+            if ($previousValue > 0) {
+                $growth = (($currentValue - $previousValue) / $previousValue) * 100;
+            }
+
+            $html .= '<tr>
+                <td>' . $no++ . '</td>
+                <td>' . $monthLabels[$month - 1] . '</td>
+                <td class="number">' . number_format($previousValue, 2, '.', ',') . '</td>
+                <td class="number">' . number_format($currentValue, 2, '.', ',') . '</td>
+                <td class="number">' . number_format($growth, 2, '.', ',') . '%</td>
+            </tr>';
+        }
+
+        $totalGrowth = 0;
+        if ($totalPreviousYear > 0) {
+            $totalGrowth = (($totalCurrentYear - $totalPreviousYear) / $totalPreviousYear) * 100;
+        }
+
+        $html .= '
+                    <tr class="total-row">
+                        <td colspan="2" style="text-align: right;"><strong>TOTAL</strong></td>
+                        <td class="number"><strong>' . number_format($totalPreviousYear, 2, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($totalCurrentYear, 2, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($totalGrowth, 2, '.', ',') . '%</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </body>
+        </html>';
+
+        return response($html, 200, $headers);
+    }
+
+    public function exportPdf(Request $request)
+    {
+        $year = $request->input('year', date('Y'));
+        $category = $request->input('category', 'MIKA');
+        $branch = $request->input('branch', 'National');
+        $currentYear = date('Y');
+
+        $startDate = $year . '-01-01';
+        $endDate = $year . '-12-31';
+
+        if ($year == $currentYear) {
+            $today = date('Y-m-d');
+            $endDate = min($endDate, $today);
+        }
+
+        $previousYear = $year - 1;
+
+        // Get current year data
+        $currentYearData = $this->getMonthlyRevenueData($startDate, $endDate, $category, $branch);
+
+        // Get previous year data
+        $previousStartDate = $previousYear . '-01-01';
+        $previousEndDate = $previousYear . '-12-31';
+        $previousYearData = $this->getMonthlyRevenueData($previousStartDate, $previousEndDate, $category, $branch);
+
+        // Month labels
+        $monthLabels = [
+            'January',
+            'February',
+            'March',
+            'April',
+            'May',
+            'June',
+            'July',
+            'August',
+            'September',
+            'October',
+            'November',
+            'December'
+        ];
+
+        // Map data by month
+        $currentYearMap = collect($currentYearData)->keyBy('month_number');
+        $previousYearMap = collect($previousYearData)->keyBy('month_number');
+
+        $branchDisplay = $branch === 'National' ? 'National' : ChartHelper::getBranchDisplayName($branch);
+
+        // Create HTML for PDF
+        $html = '
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+            <style>
+                @page { margin: 20px; }
+                body { 
+                    font-family: Arial, sans-serif; 
+                    font-size: 9pt;
+                    margin: 0;
+                    padding: 20px;
+                }
+                .header {
+                    text-align: center;
+                    margin-bottom: 20px;
+                }
+                .title { 
+                    font-size: 16pt; 
+                    font-weight: bold; 
+                    margin-bottom: 5px;
+                }
+                .period { 
+                    font-size: 10pt; 
+                    color: #666;
+                    margin-bottom: 20px;
+                }
+                table { 
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 10px;
+                }
+                th, td { 
+                    border: 1px solid #ddd; 
+                    padding: 6px; 
+                    text-align: left;
+                    font-size: 8pt;
+                }
+                th { 
+                    background-color: rgba(38, 102, 241, 0.9); 
+                    color: white; 
+                    font-weight: bold;
+                }
+                .number { text-align: right; }
+                .total-row { 
+                    font-weight: bold; 
+                    background-color: #f2f2f2;
+                }
+                .total-row td {
+                    border-top: 2px solid #333;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="title">Monthly Branch Revenue Report</div>
+                <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Branch: ' . htmlspecialchars($branchDisplay) . ' | Category: ' . htmlspecialchars($category) . '</div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">No</th>
+                        <th style="width: 140px;">Month</th>
+                        <th style="width: 200px; text-align: right;">' . $previousYear . '</th>
+                        <th style="width: 200px; text-align: right;">' . $year . '</th>
+                        <th style="width: 160px; text-align: right;">Growth (%)</th>
+                    </tr>
+                </thead>
+                <tbody>';
+
+        $no = 1;
+        $totalPreviousYear = 0;
+        $totalCurrentYear = 0;
+
+        for ($month = 1; $month <= 12; $month++) {
+            $currentRevenue = $currentYearMap->get($month);
+            $previousRevenue = $previousYearMap->get($month);
+
+            $currentValue = $currentRevenue ? $currentRevenue->total_revenue : 0;
+            $previousValue = $previousRevenue ? $previousRevenue->total_revenue : 0;
+
+            $totalPreviousYear += $previousValue;
+            $totalCurrentYear += $currentValue;
+
+            $growth = 0;
+            if ($previousValue > 0) {
+                $growth = (($currentValue - $previousValue) / $previousValue) * 100;
+            }
+
+            $html .= '<tr>
+                <td>' . $no++ . '</td>
+                <td>' . $monthLabels[$month - 1] . '</td>
+                <td class="number">' . number_format($previousValue, 2, '.', ',') . '</td>
+                <td class="number">' . number_format($currentValue, 2, '.', ',') . '</td>
+                <td class="number">' . number_format($growth, 2, '.', ',') . '%</td>
+            </tr>';
+        }
+
+        $totalGrowth = 0;
+        if ($totalPreviousYear > 0) {
+            $totalGrowth = (($totalCurrentYear - $totalPreviousYear) / $totalPreviousYear) * 100;
+        }
+
+        $html .= '
+                    <tr class="total-row">
+                        <td colspan="2" style="text-align: right;"><strong>TOTAL</strong></td>
+                        <td class="number"><strong>' . number_format($totalPreviousYear, 2, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($totalCurrentYear, 2, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($totalGrowth, 2, '.', ',') . '%</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </body>
+        </html>';
+
+        // Use DomPDF to generate PDF
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+        $pdf->setPaper('A4', 'portrait');
+
+        $filename = 'Monthly_Branch_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $branchDisplay) . '_' . str_replace(' ', '_', $category) . '.pdf';
+
+        return $pdf->download($filename);
+    }
 }
