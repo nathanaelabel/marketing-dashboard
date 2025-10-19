@@ -417,4 +417,274 @@ class BranchGrowthController extends Controller
             return $data;
         }
     }
+
+    public function exportExcel(Request $request)
+    {
+        $startYear = $request->input('start_year', 2024);
+        $endYear = $request->input('end_year', 2025);
+        $category = $request->input('category', 'MIKA');
+        $branch = $request->input('branch', 'National');
+
+        $startDate = $startYear . '-01-01';
+        $endDate = $endYear . '-12-31';
+
+        // Get revenue data
+        $data = $this->getRevenueDataByDateRange($startDate, $endDate, $category, $branch);
+
+        $branchDisplay = $branch === 'National' ? 'National' : ChartHelper::getBranchDisplayName($branch);
+        $filename = 'Branch_Revenue_Growth_' . $startYear . '-' . $endYear . '_' . str_replace(' ', '_', $branchDisplay) . '_' . str_replace(' ', '_', $category) . '.xls';
+
+        // Create XLS content using HTML table format
+        $headers = [
+            'Content-Type' => 'application/vnd.ms-excel',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0'
+        ];
+
+        $monthLabels = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+        $html = '
+        <html xmlns:x="urn:schemas-microsoft-com:office:excel">
+        <head>
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+            <!--[if gte mso 9]>
+            <xml>
+                <x:ExcelWorkbook>
+                    <x:ExcelWorksheets>
+                        <x:ExcelWorksheet>
+                            <x:Name>Branch Revenue Growth</x:Name>
+                            <x:WorksheetOptions>
+                                <x:Print>
+                                    <x:ValidPrinterInfo/>
+                                </x:Print>
+                            </x:WorksheetOptions>
+                        </x:ExcelWorksheet>
+                    </x:ExcelWorksheets>
+                </x:ExcelWorkbook>
+            </xml>
+            <![endif]-->
+            <style>
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: rgba(38, 102, 241, 0.9); color: white; font-weight: bold; }
+                .number { text-align: right; mso-number-format: "#,##0.00"; }
+                .total-row { font-weight: bold; background-color: #f2f2f2; }
+                .year-header { text-align: center; }
+            </style>
+        </head>
+        <body>
+            <h2>Branch Revenue Growth Report</h2>
+            <p>Period: ' . $startYear . ' - ' . $endYear . ' | Branch: ' . htmlspecialchars($branchDisplay) . ' | Category: ' . htmlspecialchars($category) . '</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th rowspan="2">No</th>
+                        <th rowspan="2">Month</th>';
+
+        // Year headers
+        for ($year = $startYear; $year <= $endYear; $year++) {
+            $html .= '<th class="year-header">' . $year . '</th>';
+        }
+
+        $html .= '
+                    </tr>
+                </thead>
+                <tbody>';
+
+        $no = 1;
+        $yearTotals = [];
+        for ($year = $startYear; $year <= $endYear; $year++) {
+            $yearTotals[$year] = 0;
+        }
+
+        // Month rows
+        for ($month = 1; $month <= 12; $month++) {
+            $html .= '<tr>
+                <td>' . $no++ . '</td>
+                <td>' . $monthLabels[$month - 1] . '</td>';
+
+            for ($year = $startYear; $year <= $endYear; $year++) {
+                $monthKey = 'b' . str_pad($month, 2, '0', STR_PAD_LEFT);
+                $value = isset($data[$year]) && isset($data[$year]->$monthKey) ? $data[$year]->$monthKey : 0;
+                $yearTotals[$year] += $value;
+                $html .= '<td class="number">' . number_format($value, 2, '.', ',') . '</td>';
+            }
+
+            $html .= '</tr>';
+        }
+
+        // Total row
+        $html .= '
+                    <tr class="total-row">
+                        <td colspan="2" style="text-align: right;"><strong>TOTAL</strong></td>';
+
+        for ($year = $startYear; $year <= $endYear; $year++) {
+            $html .= '<td class="number"><strong>' . number_format($yearTotals[$year], 2, '.', ',') . '</strong></td>';
+        }
+
+        $html .= '
+                    </tr>
+                </tbody>
+            </table>
+        </body>
+        </html>';
+
+        return response($html, 200, $headers);
+    }
+
+    public function exportPdf(Request $request)
+    {
+        $startYear = $request->input('start_year', 2024);
+        $endYear = $request->input('end_year', 2025);
+        $category = $request->input('category', 'MIKA');
+        $branch = $request->input('branch', 'National');
+
+        $startDate = $startYear . '-01-01';
+        $endDate = $endYear . '-12-31';
+
+        // Get revenue data
+        $data = $this->getRevenueDataByDateRange($startDate, $endDate, $category, $branch);
+
+        $branchDisplay = $branch === 'National' ? 'National' : ChartHelper::getBranchDisplayName($branch);
+
+        $monthLabels = [
+            'January',
+            'February',
+            'March',
+            'April',
+            'May',
+            'June',
+            'July',
+            'August',
+            'September',
+            'October',
+            'November',
+            'December'
+        ];
+
+        // Create HTML for PDF
+        $html = '
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+            <style>
+                @page { margin: 20px; }
+                body { 
+                    font-family: Arial, sans-serif; 
+                    font-size: 9pt;
+                    margin: 0;
+                    padding: 20px;
+                }
+                .header {
+                    text-align: center;
+                    margin-bottom: 20px;
+                }
+                .title { 
+                    font-size: 16pt; 
+                    font-weight: bold; 
+                    margin-bottom: 5px;
+                }
+                .period { 
+                    font-size: 10pt; 
+                    color: #666;
+                    margin-bottom: 20px;
+                }
+                table { 
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 10px;
+                }
+                th, td { 
+                    border: 1px solid #ddd; 
+                    padding: 6px; 
+                    text-align: left;
+                    font-size: 8pt;
+                }
+                th { 
+                    background-color: rgba(38, 102, 241, 0.9); 
+                    color: white; 
+                    font-weight: bold;
+                }
+                .number { text-align: right; }
+                .total-row { 
+                    font-weight: bold; 
+                    background-color: #f2f2f2;
+                }
+                .total-row td {
+                    border-top: 2px solid #333;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="title">Branch Revenue Growth Report</div>
+                <div class="period">Period: ' . $startYear . ' - ' . $endYear . ' | Branch: ' . htmlspecialchars($branchDisplay) . ' | Category: ' . htmlspecialchars($category) . '</div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">No</th>
+                        <th style="width: 140px;">Month</th>';
+
+        // Year headers
+        $yearCount = $endYear - $startYear + 1;
+        $colWidth = (100 - 50 - 140) / $yearCount;
+        for ($year = $startYear; $year <= $endYear; $year++) {
+            $html .= '<th style="width: ' . $colWidth . '%; text-align: right;">' . $year . '</th>';
+        }
+
+        $html .= '
+                    </tr>
+                </thead>
+                <tbody>';
+
+        $no = 1;
+        $yearTotals = [];
+        for ($year = $startYear; $year <= $endYear; $year++) {
+            $yearTotals[$year] = 0;
+        }
+
+        // Month rows
+        for ($month = 1; $month <= 12; $month++) {
+            $html .= '<tr>
+                <td>' . $no++ . '</td>
+                <td>' . $monthLabels[$month - 1] . '</td>';
+
+            for ($year = $startYear; $year <= $endYear; $year++) {
+                $monthKey = 'b' . str_pad($month, 2, '0', STR_PAD_LEFT);
+                $value = isset($data[$year]) && isset($data[$year]->$monthKey) ? $data[$year]->$monthKey : 0;
+                $yearTotals[$year] += $value;
+                $html .= '<td class="number">' . number_format($value, 2, '.', ',') . '</td>';
+            }
+
+            $html .= '</tr>';
+        }
+
+        // Total row
+        $html .= '
+                    <tr class="total-row">
+                        <td colspan="2" style="text-align: right;"><strong>TOTAL</strong></td>';
+
+        for ($year = $startYear; $year <= $endYear; $year++) {
+            $html .= '<td class="number"><strong>' . number_format($yearTotals[$year], 2, '.', ',') . '</strong></td>';
+        }
+
+        $html .= '
+                    </tr>
+                </tbody>
+            </table>
+        </body>
+        </html>';
+
+        // Use DomPDF to generate PDF
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+        $pdf->setPaper('A4', 'portrait');
+
+        $filename = 'Branch_Revenue_Growth_' . $startYear . '-' . $endYear . '_' . str_replace(' ', '_', $branchDisplay) . '_' . str_replace(' ', '_', $category) . '.pdf';
+
+        return $pdf->download($filename);
+    }
 }

@@ -267,7 +267,6 @@ document.addEventListener('DOMContentLoaded', function () {
             e.stopPropagation();
 
             const currentYear = yearSelect.value;
-            const currentBranch = branchSelect.value;
             const currentCategory = categorySelect.value;
 
             // Close dropdown
@@ -280,8 +279,8 @@ document.addEventListener('DOMContentLoaded', function () {
             exportBtn.disabled = true;
             exportBtn.innerHTML = 'Exporting...';
 
-            // Create download URL with parameters
-            const exportUrl = `/monthly-branch/export-excel?year=${currentYear}&branch=${encodeURIComponent(currentBranch)}&category=${encodeURIComponent(currentCategory)}`;
+            // Create download URL with parameters (no branch - exports all branches)
+            const exportUrl = `/monthly-branch/export-excel?year=${currentYear}&category=${encodeURIComponent(currentCategory)}`;
 
             // Use window.location for direct download
             window.location.href = exportUrl;
@@ -315,7 +314,7 @@ document.addEventListener('DOMContentLoaded', function () {
             exportPdfBtn.disabled = true;
             exportPdfBtn.innerHTML = 'Exporting...';
 
-            // Create download URL with parameters
+            // Create download URL with parameters (includes branch for single branch export)
             const exportPdfUrl = `/monthly-branch/export-pdf?year=${currentYear}&branch=${encodeURIComponent(currentBranch)}&category=${encodeURIComponent(currentCategory)}`;
 
             // Use window.location for direct download

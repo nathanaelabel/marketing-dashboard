@@ -45,8 +45,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/monthly-branch/export-pdf', [MonthlyBranchController::class, 'exportPdf'])->name('monthly-branch.export-pdf');
     Route::get('/branch-growth/data', [BranchGrowthController::class, 'getData'])->name('branch-growth.data');
     Route::get('/branch-growth/branches', [BranchGrowthController::class, 'getBranches'])->name('branch-growth.branches');
+    Route::get('/branch-growth/export-excel', [BranchGrowthController::class, 'exportExcel'])->name('branch-growth.export-excel');
+    Route::get('/branch-growth/export-pdf', [BranchGrowthController::class, 'exportPdf'])->name('branch-growth.export-pdf');
     Route::get('/target-revenue/data', [TargetRevenueController::class, 'getData'])->name('target-revenue.data');
     Route::get('/target-revenue/categories', [TargetRevenueController::class, 'getCategories'])->name('target-revenue.categories');
+    Route::get('/target-revenue/export-excel', [TargetRevenueController::class, 'exportExcel'])->name('target-revenue.export-excel');
+    Route::get('/target-revenue/export-pdf', [TargetRevenueController::class, 'exportPdf'])->name('target-revenue.export-pdf');
     Route::get('/branch-target/input', [BranchTargetController::class, 'showInputForm'])->name('branch-target.input');
     Route::post('/branch-target/save', [BranchTargetController::class, 'saveTargets'])->name('branch-target.save');
     Route::delete('/branch-target/delete', [BranchTargetController::class, 'deleteTargets'])->name('branch-target.delete');

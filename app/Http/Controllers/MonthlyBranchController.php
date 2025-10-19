@@ -204,7 +204,6 @@ class MonthlyBranchController extends Controller
     {
         $year = $request->input('year', date('Y'));
         $category = $request->input('category', 'MIKA');
-        $branch = $request->input('branch', 'National');
         $currentYear = date('Y');
 
         $startDate = $year . '-01-01';
@@ -217,36 +216,75 @@ class MonthlyBranchController extends Controller
 
         $previousYear = $year - 1;
 
-        // Get current year data
-        $currentYearData = $this->getMonthlyRevenueData($startDate, $endDate, $category, $branch);
+        // Get all branches
+        $branches = ChartHelper::getLocations();
 
-        // Get previous year data
+        // Get all data in single query for both years
         $previousStartDate = $previousYear . '-01-01';
         $previousEndDate = $previousYear . '-12-31';
-        $previousYearData = $this->getMonthlyRevenueData($previousStartDate, $previousEndDate, $category, $branch);
 
-        // Month labels
-        $monthLabels = [
-            'January',
-            'February',
-            'March',
-            'April',
-            'May',
-            'June',
-            'July',
-            'August',
-            'September',
-            'October',
-            'November',
-            'December'
-        ];
+        // Optimized single query for all branches and both years
+        $query = "
+            SELECT
+                org.name AS branch_name,
+                EXTRACT(month FROM inv.dateinvoiced) AS month_number,
+                EXTRACT(year FROM inv.dateinvoiced) AS year_number,
+                COALESCE(SUM(invl.linenetamt), 0) AS total_revenue
+            FROM
+                c_invoice inv
+                INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
+                INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+                INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
+                INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
+            WHERE
+                inv.ad_client_id = 1000001
+                AND inv.issotrx = 'Y'
+                AND invl.qtyinvoiced > 0
+                AND invl.linenetamt > 0
+                AND inv.docstatus IN ('CO', 'CL')
+                AND inv.isactive = 'Y'
+                AND (
+                    (DATE(inv.dateinvoiced) BETWEEN ? AND ?)
+                    OR (DATE(inv.dateinvoiced) BETWEEN ? AND ?)
+                )
+                AND inv.documentno LIKE 'INC%'
+                AND pc.name = ?
+            GROUP BY
+                org.name, EXTRACT(month FROM inv.dateinvoiced), EXTRACT(year FROM inv.dateinvoiced)
+            ORDER BY
+                org.name, year_number, month_number
+        ";
 
-        // Map data by month
-        $currentYearMap = collect($currentYearData)->keyBy('month_number');
-        $previousYearMap = collect($previousYearData)->keyBy('month_number');
+        $allData = DB::select($query, [$previousStartDate, $previousEndDate, $startDate, $endDate, $category]);
 
-        $branchDisplay = $branch === 'National' ? 'National' : ChartHelper::getBranchDisplayName($branch);
-        $filename = 'Monthly_Branch_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $branchDisplay) . '_' . str_replace(' ', '_', $category) . '.xls';
+        // Organize data by branch
+        $allBranchesData = [];
+        foreach ($branches as $branch) {
+            $branchData = [
+                'branch' => $branch,
+                'code' => ChartHelper::getBranchAbbreviation($branch),
+                'current_year' => array_fill(1, 12, 0),
+                'previous_year' => array_fill(1, 12, 0)
+            ];
+
+            // Fill data from query results
+            foreach ($allData as $row) {
+                if ($row->branch_name === $branch) {
+                    $month = (int)$row->month_number;
+                    $year_num = (int)$row->year_number;
+
+                    if ($year_num == $year) {
+                        $branchData['current_year'][$month] = $row->total_revenue;
+                    } elseif ($year_num == $previousYear) {
+                        $branchData['previous_year'][$month] = $row->total_revenue;
+                    }
+                }
+            }
+
+            $allBranchesData[] = $branchData;
+        }
+
+        $filename = 'Monthly_Branch_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '.xls';
 
         // Create XLS content using HTML table format
         $headers = [
@@ -256,6 +294,8 @@ class MonthlyBranchController extends Controller
             'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
             'Expires' => '0'
         ];
+
+        $monthLabels = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
         $html = '
         <html xmlns:x="urn:schemas-microsoft-com:office:excel">
@@ -297,66 +337,107 @@ class MonthlyBranchController extends Controller
                 .period { font-size: 10pt; margin-bottom: 10px; }
                 .total-row { font-weight: bold; background-color: #f2f2f2; }
                 .number { text-align: right; }
-                .col-no { width: 90px; }
-                .col-month { width: 200px; }
-                .col-amount { width: 300px; }
+                .year-header { text-align: center; }
             </style>
         </head>
         <body>
             <div class="title">Monthly Branch Revenue Report</div>
-            <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Branch: ' . htmlspecialchars($branchDisplay) . ' | Category: ' . htmlspecialchars($category) . '</div>
+            <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Category: ' . htmlspecialchars($category) . '</div>
             <br>
             <table>
                 <thead>
                     <tr>
-                        <th>No</th>
-                        <th>Month</th>
-                        <th style="text-align: right;">' . $previousYear . ' (Rp)</th>
-                        <th style="text-align: right;">' . $year . ' (Rp)</th>
-                        <th style="text-align: right;">Growth (%)</th>
+                        <th rowspan="2">No</th>
+                        <th rowspan="2">Branch Name</th>
+                        <th rowspan="2">Branch Code</th>
+                        <th colspan="12" class="year-header">' . $previousYear . ' (Rp)</th>
+                        <th colspan="12" class="year-header">' . $year . ' (Rp)</th>
+                        <th rowspan="2">Growth (%)</th>
+                    </tr>
+                    <tr>';
+
+        // Month headers for previous year
+        foreach ($monthLabels as $month) {
+            $html .= '<th style="text-align: right;">' . $month . '</th>';
+        }
+
+        // Month headers for current year
+        foreach ($monthLabels as $month) {
+            $html .= '<th style="text-align: right;">' . $month . '</th>';
+        }
+
+        $html .= '
                     </tr>
                 </thead>
                 <tbody>';
 
         $no = 1;
-        $totalPreviousYear = 0;
-        $totalCurrentYear = 0;
+        $totalPreviousYear = array_fill(1, 12, 0);
+        $totalCurrentYear = array_fill(1, 12, 0);
+        $grandTotalPrevious = 0;
+        $grandTotalCurrent = 0;
 
-        for ($month = 1; $month <= 12; $month++) {
-            $currentRevenue = $currentYearMap->get($month);
-            $previousRevenue = $previousYearMap->get($month);
-
-            $currentValue = $currentRevenue ? $currentRevenue->total_revenue : 0;
-            $previousValue = $previousRevenue ? $previousRevenue->total_revenue : 0;
-
-            $totalPreviousYear += $previousValue;
-            $totalCurrentYear += $currentValue;
-
-            $growth = 0;
-            if ($previousValue > 0) {
-                $growth = (($currentValue - $previousValue) / $previousValue) * 100;
-            }
-
+        foreach ($allBranchesData as $branchData) {
             $html .= '<tr>
                 <td>' . $no++ . '</td>
-                <td>' . $monthLabels[$month - 1] . '</td>
-                <td class="number">' . number_format($previousValue, 2, '.', ',') . '</td>
-                <td class="number">' . number_format($currentValue, 2, '.', ',') . '</td>
-                <td class="number">' . number_format($growth, 2, '.', ',') . '%</td>
-            </tr>';
+                <td>' . htmlspecialchars($branchData['branch']) . '</td>
+                <td>' . htmlspecialchars($branchData['code']) . '</td>';
+
+            $branchTotalPrevious = 0;
+            $branchTotalCurrent = 0;
+
+            // Previous year months
+            for ($month = 1; $month <= 12; $month++) {
+                $value = $branchData['previous_year'][$month];
+                $branchTotalPrevious += $value;
+                $totalPreviousYear[$month] += $value;
+                $html .= '<td class="number">' . number_format($value, 2, '.', ',') . '</td>';
+            }
+
+            // Current year months
+            for ($month = 1; $month <= 12; $month++) {
+                $value = $branchData['current_year'][$month];
+                $branchTotalCurrent += $value;
+                $totalCurrentYear[$month] += $value;
+                $html .= '<td class="number">' . number_format($value, 2, '.', ',') . '</td>';
+            }
+
+            $grandTotalPrevious += $branchTotalPrevious;
+            $grandTotalCurrent += $branchTotalCurrent;
+
+            // Growth percentage
+            $growth = 0;
+            if ($branchTotalPrevious > 0) {
+                $growth = (($branchTotalCurrent - $branchTotalPrevious) / $branchTotalPrevious) * 100;
+            }
+            $html .= '<td class="number">' . number_format($growth, 2, '.', ',') . '%</td>';
+
+            $html .= '</tr>';
         }
 
-        $totalGrowth = 0;
-        if ($totalPreviousYear > 0) {
-            $totalGrowth = (($totalCurrentYear - $totalPreviousYear) / $totalPreviousYear) * 100;
-        }
-
+        // Total row
         $html .= '
                     <tr class="total-row">
-                        <td colspan="2" style="text-align: right;"><strong>TOTAL</strong></td>
-                        <td class="number"><strong>' . number_format($totalPreviousYear, 2, '.', ',') . '</strong></td>
-                        <td class="number"><strong>' . number_format($totalCurrentYear, 2, '.', ',') . '</strong></td>
-                        <td class="number"><strong>' . number_format($totalGrowth, 2, '.', ',') . '%</strong></td>
+                        <td colspan="3" style="text-align: right;"><strong>TOTAL</strong></td>';
+
+        // Previous year totals
+        foreach ($totalPreviousYear as $total) {
+            $html .= '<td class="number"><strong>' . number_format($total, 2, '.', ',') . '</strong></td>';
+        }
+
+        // Current year totals
+        foreach ($totalCurrentYear as $total) {
+            $html .= '<td class="number"><strong>' . number_format($total, 2, '.', ',') . '</strong></td>';
+        }
+
+        // Total growth
+        $totalGrowth = 0;
+        if ($grandTotalPrevious > 0) {
+            $totalGrowth = (($grandTotalCurrent - $grandTotalPrevious) / $grandTotalPrevious) * 100;
+        }
+        $html .= '<td class="number"><strong>' . number_format($totalGrowth, 2, '.', ',') . '%</strong></td>';
+
+        $html .= '
                     </tr>
                 </tbody>
             </table>
@@ -531,7 +612,7 @@ class MonthlyBranchController extends Controller
 
         // Use DomPDF to generate PDF
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
-        $pdf->setPaper('A4', 'portrait');
+        $pdf->setPaper('A4', 'landscape');
 
         $filename = 'Monthly_Branch_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $branchDisplay) . '_' . str_replace(' ', '_', $category) . '.pdf';
 

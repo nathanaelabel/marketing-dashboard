@@ -337,4 +337,111 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize
     loadBranches();
+
+    // Three-dots menu functionality
+    const menuButton = document.getElementById('bgMenuButton');
+    const dropdownMenu = document.getElementById('bgDropdownMenu');
+
+    if (menuButton && dropdownMenu) {
+        menuButton.addEventListener('click', function (e) {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!menuButton.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                dropdownMenu.classList.add('hidden');
+            }
+        });
+    }
+
+    // Refresh Data functionality
+    const refreshBtn = document.getElementById('bgRefreshDataBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Trigger chart update
+            triggerUpdate();
+        });
+    }
+
+    // Export to Excel functionality
+    const exportBtn = document.getElementById('bgExportExcelBtn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const currentStartYear = startYearSelect.value;
+            const currentEndYear = endYearSelect.value;
+            const currentBranch = branchSelect.value;
+            const currentCategory = categorySelect.value;
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Show loading state
+            const originalContent = exportBtn.innerHTML;
+            exportBtn.disabled = true;
+            exportBtn.innerHTML = 'Exporting...';
+
+            // Create download URL with parameters
+            const exportUrl = `/branch-growth/export-excel?start_year=${currentStartYear}&end_year=${currentEndYear}&branch=${encodeURIComponent(currentBranch)}&category=${encodeURIComponent(currentCategory)}`;
+
+            // Use window.location for direct download
+            window.location.href = exportUrl;
+
+            // Reset button state after a short delay
+            setTimeout(() => {
+                exportBtn.disabled = false;
+                exportBtn.innerHTML = originalContent;
+            }, 2000);
+        });
+    }
+
+    // Export to PDF functionality
+    const exportPdfBtn = document.getElementById('bgExportPdfBtn');
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const currentStartYear = startYearSelect.value;
+            const currentEndYear = endYearSelect.value;
+            const currentBranch = branchSelect.value;
+            const currentCategory = categorySelect.value;
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Show loading state
+            const originalContent = exportPdfBtn.innerHTML;
+            exportPdfBtn.disabled = true;
+            exportPdfBtn.innerHTML = 'Exporting...';
+
+            // Create download URL with parameters
+            const exportPdfUrl = `/branch-growth/export-pdf?start_year=${currentStartYear}&end_year=${currentEndYear}&branch=${encodeURIComponent(currentBranch)}&category=${encodeURIComponent(currentCategory)}`;
+
+            // Use window.location for direct download
+            window.location.href = exportPdfUrl;
+
+            // Reset button state after a short delay
+            setTimeout(() => {
+                exportPdfBtn.disabled = false;
+                exportPdfBtn.innerHTML = originalContent;
+            }, 2000);
+        });
+    }
 });
