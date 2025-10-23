@@ -257,6 +257,26 @@ class MonthlyBranchController extends Controller
 
         $allData = DB::select($query, [$previousStartDate, $previousEndDate, $startDate, $endDate, $category]);
 
+        // Detect last available month in current year data
+        $lastAvailableMonth = 0;
+        foreach ($allData as $row) {
+            if ((int)$row->year_number == $year) {
+                $lastAvailableMonth = max($lastAvailableMonth, (int)$row->month_number);
+            }
+        }
+
+        // If no data for current year, default to 12 (full year)
+        if ($lastAvailableMonth == 0) {
+            $lastAvailableMonth = 12;
+        }
+
+        // For comparison between complete years (e.g., 2023-2024), always use 12 months
+        // For incomplete years (e.g., 2024-2025 where 2025 is current year), use detected last month
+        $monthsToShow = 12;
+        if ($year == $currentYear && $lastAvailableMonth < 12) {
+            $monthsToShow = $lastAvailableMonth;
+        }
+
         // Organize data by branch
         $allBranchesData = [];
         foreach ($branches as $branch) {
@@ -295,7 +315,7 @@ class MonthlyBranchController extends Controller
             'Expires' => '0'
         ];
 
-        $monthLabels = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        $monthLabels = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
         $html = '
         <html xmlns:x="urn:schemas-microsoft-com:office:excel">
@@ -318,60 +338,93 @@ class MonthlyBranchController extends Controller
             </xml>
             <![endif]-->
             <style>
-                body { font-family: Calibri, Arial, sans-serif; font-size: 10pt; }
+                body { font-family: Verdana, sans-serif; }
                 table { border-collapse: collapse; }
                 th, td { 
-                    border: 1px solid #ddd; 
-                    padding: 4px 8px; 
+                    border: 1px solid #000; 
+                    padding: 6px 8px; 
                     text-align: left; 
-                    font-size: 10pt;
-                    white-space: nowrap;
+                    font-family: Verdana, sans-serif;
+                    font-size: 12pt;
                 }
                 th { 
-                    background-color: #4CAF50; 
-                    color: white; 
+                    background-color: #D3D3D3; 
+                    color: #000; 
                     font-weight: bold; 
-                    font-size: 10pt;
+                    text-align: center;
+                    vertical-align: middle;
                 }
-                .title { font-size: 10pt; font-weight: bold; margin-bottom: 5px; }
-                .period { font-size: 10pt; margin-bottom: 10px; }
-                .total-row { font-weight: bold; background-color: #f2f2f2; }
+                .title { 
+                    font-family: Verdana, sans-serif; 
+                    font-size: 20pt; 
+                    font-weight: bold; 
+                    margin-bottom: 8px; 
+                }
+                .period { 
+                    font-family: Verdana, sans-serif; 
+                    font-size: 16pt; 
+                    margin-bottom: 15px; 
+                }
+                .total-row { 
+                    font-weight: bold; 
+                    background-color: #E8E8E8; 
+                }
                 .number { text-align: right; }
-                .year-header { text-align: center; }
+                .month-header { 
+                    font-family: Verdana, sans-serif;
+                    font-size: 14pt; 
+                    font-weight: bold;
+                    text-align: center;
+                }
+                .year-subheader {
+                    font-family: Verdana, sans-serif;
+                    font-size: 12pt;
+                    text-align: center;
+                }
+                .branch-code {
+                    text-align: center;
+                    font-weight: bold;
+                }
             </style>
         </head>
         <body>
-            <div class="title">Monthly Branch Revenue Report</div>
+            <div class="title">MONTHLY BRANCH REVENUE REPORT</div>
             <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Category: ' . htmlspecialchars($category) . '</div>
             <br>
             <table>
                 <thead>
                     <tr>
-                        <th rowspan="2">No</th>
-                        <th rowspan="2">Branch Name</th>
-                        <th rowspan="2">Branch Code</th>
-                        <th colspan="12" class="year-header">' . $previousYear . ' (Rp)</th>
-                        <th colspan="12" class="year-header">' . $year . ' (Rp)</th>
-                        <th rowspan="2">Growth (%)</th>
+                        <th rowspan="2" style="font-size: 12pt;">CAB</th>';
+
+        // Dynamic month headers based on monthsToShow
+        for ($month = 1; $month <= $monthsToShow; $month++) {
+            $html .= '<th colspan="3" class="month-header">' . $monthLabels[$month - 1] . '</th>';
+        }
+
+        // TOTAL header
+        $html .= '<th colspan="3" class="month-header">TOTAL</th>';
+
+        $html .= '
                     </tr>
                     <tr>';
 
-        // Month headers for previous year
-        foreach ($monthLabels as $month) {
-            $html .= '<th style="text-align: right;">' . $month . '</th>';
+        // Year subheaders for each month (2024, 2025, GROWTH)
+        for ($month = 1; $month <= $monthsToShow; $month++) {
+            $html .= '<th class="year-subheader">' . $previousYear . '</th>';
+            $html .= '<th class="year-subheader">' . $year . '</th>';
+            $html .= '<th class="year-subheader">GROWTH %</th>';
         }
 
-        // Month headers for current year
-        foreach ($monthLabels as $month) {
-            $html .= '<th style="text-align: right;">' . $month . '</th>';
-        }
+        // TOTAL subheaders
+        $html .= '<th class="year-subheader">' . $previousYear . '</th>';
+        $html .= '<th class="year-subheader">' . $year . '</th>';
+        $html .= '<th class="year-subheader">GROWTH %</th>';
 
         $html .= '
                     </tr>
                 </thead>
                 <tbody>';
 
-        $no = 1;
         $totalPreviousYear = array_fill(1, 12, 0);
         $totalCurrentYear = array_fill(1, 12, 0);
         $grandTotalPrevious = 0;
@@ -379,68 +432,85 @@ class MonthlyBranchController extends Controller
 
         foreach ($allBranchesData as $branchData) {
             $html .= '<tr>
-                <td>' . $no++ . '</td>
-                <td>' . htmlspecialchars($branchData['branch']) . '</td>
-                <td>' . htmlspecialchars($branchData['code']) . '</td>';
+                <td class="branch-code">' . htmlspecialchars($branchData['code']) . '</td>';
 
             $branchTotalPrevious = 0;
             $branchTotalCurrent = 0;
 
-            // Previous year months
-            for ($month = 1; $month <= 12; $month++) {
-                $value = $branchData['previous_year'][$month];
-                $branchTotalPrevious += $value;
-                $totalPreviousYear[$month] += $value;
-                $html .= '<td class="number">' . number_format($value, 2, '.', ',') . '</td>';
+            // Data for each month (only up to monthsToShow)
+            for ($month = 1; $month <= $monthsToShow; $month++) {
+                $prevValue = $branchData['previous_year'][$month];
+                $currValue = $branchData['current_year'][$month];
+
+                $branchTotalPrevious += $prevValue;
+                $branchTotalCurrent += $currValue;
+                $totalPreviousYear[$month] += $prevValue;
+                $totalCurrentYear[$month] += $currValue;
+
+                // Growth percentage for this month
+                $monthGrowth = 0;
+                if ($prevValue > 0) {
+                    $monthGrowth = (($currValue - $prevValue) / $prevValue) * 100;
+                }
+
+                $html .= '<td class="number">' . number_format($prevValue, 0, '.', ',') . '</td>';
+                $html .= '<td class="number">' . number_format($currValue, 0, '.', ',') . '</td>';
+                $html .= '<td class="number">' . number_format($monthGrowth, 2, '.', ',') . '</td>';
             }
 
-            // Current year months
-            for ($month = 1; $month <= 12; $month++) {
-                $value = $branchData['current_year'][$month];
-                $branchTotalCurrent += $value;
-                $totalCurrentYear[$month] += $value;
-                $html .= '<td class="number">' . number_format($value, 2, '.', ',') . '</td>';
-            }
-
+            // Calculate total for months shown only
             $grandTotalPrevious += $branchTotalPrevious;
             $grandTotalCurrent += $branchTotalCurrent;
 
-            // Growth percentage
-            $growth = 0;
+            // TOTAL column for this branch
+            $branchTotalGrowth = 0;
             if ($branchTotalPrevious > 0) {
-                $growth = (($branchTotalCurrent - $branchTotalPrevious) / $branchTotalPrevious) * 100;
+                $branchTotalGrowth = (($branchTotalCurrent - $branchTotalPrevious) / $branchTotalPrevious) * 100;
             }
-            $html .= '<td class="number">' . number_format($growth, 2, '.', ',') . '%</td>';
+
+            $html .= '<td class="number">' . number_format($branchTotalPrevious, 0, '.', ',') . '</td>';
+            $html .= '<td class="number">' . number_format($branchTotalCurrent, 0, '.', ',') . '</td>';
+            $html .= '<td class="number">' . number_format($branchTotalGrowth, 2, '.', ',') . '</td>';
 
             $html .= '</tr>';
         }
 
-        // Total row
+        // TOTAL row
         $html .= '
                     <tr class="total-row">
-                        <td colspan="3" style="text-align: right;"><strong>TOTAL</strong></td>';
+                        <td class="branch-code"><strong>TOTAL</strong></td>';
 
-        // Previous year totals
-        foreach ($totalPreviousYear as $total) {
-            $html .= '<td class="number"><strong>' . number_format($total, 2, '.', ',') . '</strong></td>';
+        // Totals for each month
+        for ($month = 1; $month <= $monthsToShow; $month++) {
+            $prevTotal = $totalPreviousYear[$month];
+            $currTotal = $totalCurrentYear[$month];
+
+            $monthTotalGrowth = 0;
+            if ($prevTotal > 0) {
+                $monthTotalGrowth = (($currTotal - $prevTotal) / $prevTotal) * 100;
+            }
+
+            $html .= '<td class="number"><strong>' . number_format($prevTotal, 0, '.', ',') . '</strong></td>';
+            $html .= '<td class="number"><strong>' . number_format($currTotal, 0, '.', ',') . '</strong></td>';
+            $html .= '<td class="number"><strong>' . number_format($monthTotalGrowth, 2, '.', ',') . '</strong></td>';
         }
 
-        // Current year totals
-        foreach ($totalCurrentYear as $total) {
-            $html .= '<td class="number"><strong>' . number_format($total, 2, '.', ',') . '</strong></td>';
-        }
-
-        // Total growth
-        $totalGrowth = 0;
+        // Grand TOTAL column
+        $grandTotalGrowth = 0;
         if ($grandTotalPrevious > 0) {
-            $totalGrowth = (($grandTotalCurrent - $grandTotalPrevious) / $grandTotalPrevious) * 100;
+            $grandTotalGrowth = (($grandTotalCurrent - $grandTotalPrevious) / $grandTotalPrevious) * 100;
         }
-        $html .= '<td class="number"><strong>' . number_format($totalGrowth, 2, '.', ',') . '%</strong></td>';
+
+        $html .= '<td class="number"><strong>' . number_format($grandTotalPrevious, 0, '.', ',') . '</strong></td>';
+        $html .= '<td class="number"><strong>' . number_format($grandTotalCurrent, 0, '.', ',') . '</strong></td>';
+        $html .= '<td class="number"><strong>' . number_format($grandTotalGrowth, 2, '.', ',') . '</strong></td>';
 
         $html .= '
                     </tr>
                 </tbody>
             </table>
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 10pt; font-style: italic;">Janesia (07.05.25 - 18.00 WIB)</div>
         </body>
         </html>';
 
