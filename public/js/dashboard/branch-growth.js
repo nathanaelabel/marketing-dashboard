@@ -113,6 +113,25 @@ document.addEventListener('DOMContentLoaded', function () {
                                         }).format(context.parsed.y);
                                     }
                                     return label;
+                                },
+                                afterLabel: function (context) {
+                                    // Calculate growth percentage compared to previous year
+                                    const currentDatasetIndex = context.datasetIndex;
+                                    const monthIndex = context.dataIndex;
+                                    
+                                    // Only show growth if there's a previous year dataset
+                                    if (currentDatasetIndex > 0) {
+                                        const currentValue = context.parsed.y;
+                                        const previousDataset = context.chart.data.datasets[currentDatasetIndex - 1];
+                                        const previousValue = previousDataset.data[monthIndex];
+                                        
+                                        if (previousValue > 0 && currentValue !== null) {
+                                            const growth = ((currentValue - previousValue) / previousValue) * 100;
+                                            const growthSign = growth >= 0 ? '+' : '';
+                                            return 'Growth: ' + growthSign + growth.toFixed(2) + '%';
+                                        }
+                                    }
+                                    return null;
                                 }
                             }
                         }

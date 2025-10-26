@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use App\Models\MProductCategory;
 use App\Helpers\ChartHelper;
 
@@ -345,7 +346,7 @@ class MonthlyBranchController extends Controller
                     padding: 6px 8px; 
                     text-align: left; 
                     font-family: Verdana, sans-serif;
-                    font-size: 12pt;
+                    font-size: 10pt;
                 }
                 th { 
                     background-color: #D3D3D3; 
@@ -356,13 +357,13 @@ class MonthlyBranchController extends Controller
                 }
                 .title { 
                     font-family: Verdana, sans-serif; 
-                    font-size: 20pt; 
+                    font-size: 16pt; 
                     font-weight: bold; 
                     margin-bottom: 8px; 
                 }
                 .period { 
                     font-family: Verdana, sans-serif; 
-                    font-size: 16pt; 
+                    font-size: 12pt; 
                     margin-bottom: 15px; 
                 }
                 .total-row { 
@@ -372,13 +373,13 @@ class MonthlyBranchController extends Controller
                 .number { text-align: right; }
                 .month-header { 
                     font-family: Verdana, sans-serif;
-                    font-size: 14pt; 
+                    font-size: 12pt; 
                     font-weight: bold;
                     text-align: center;
                 }
                 .year-subheader {
                     font-family: Verdana, sans-serif;
-                    font-size: 12pt;
+                    font-size: 11pt;
                     text-align: center;
                 }
                 .branch-code {
@@ -510,7 +511,8 @@ class MonthlyBranchController extends Controller
                 </tbody>
             </table>
             <br>
-            <div style="font-family: Verdana, sans-serif; font-size: 10pt; font-style: italic;">Janesia (07.05.25 - 18.00 WIB)</div>
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
         </body>
         </html>';
 
