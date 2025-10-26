@@ -48,11 +48,11 @@ class SyncAllAdempiereDataCommand extends Command
         // Tables using fast sync with various filtering strategies
         $fastSyncTables = [
             'MProductprice',    // Full records with m_product_id relationship
-            'CInvoice',         // Date filtered (2024-01-01 to 2025-08-30)
+            'CInvoice',         // Date filtered (2024-01-01 to today)
             'CInvoiceline',     // Full records with c_invoice_id relationship
-            'COrder',           // Date filtered (2024-01-01 to 2025-08-30)
+            'COrder',           // Date filtered (2024-01-01 to today)
             'COrderline',       // Full records with c_order_id relationship
-            'CAllocationhdr',   // Date filtered (2024-01-01 to 2025-08-30)
+            'CAllocationhdr',   // Date filtered (2024-01-01 to today)
             'CAllocationline'   // Full records with c_allocationhdr_id relationship
         ];
 
@@ -137,7 +137,7 @@ class SyncAllAdempiereDataCommand extends Command
         while ($attempts < $retries) {
             try {
                 $this->call($command, $parameters);
-                return true; // Success
+                return true;
             } catch (QueryException $e) {
                 $attempts++;
                 $connectionName = $parameters['--connection'] ?? 'N/A';

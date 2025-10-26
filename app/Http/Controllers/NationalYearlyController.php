@@ -117,17 +117,32 @@ class NationalYearlyController extends Controller
             $previousYearValues[] = $previousRevenue ? $previousRevenue->total_revenue : 0;
         }
 
-        // Get max value for Y-axis scaling
-        $maxValue = max(max($currentYearValues), max($previousYearValues));
+        // If no data at all, ensure we have empty arrays and default values
+        if ($allBranches->isEmpty()) {
+            $labels = [];
+            $currentYearValues = [];
+            $previousYearValues = [];
+            $maxValue = 0;
+        } else {
+            // Get branch abbreviations
+            $labels = $allBranches->map(function ($name) {
+                return ChartHelper::getBranchAbbreviation($name);
+            });
+
+            // Get max value for Y-axis scaling
+            $maxValue = 0;
+            if (!empty($currentYearValues) && !empty($previousYearValues)) {
+                $maxValue = max(max($currentYearValues), max($previousYearValues));
+            } elseif (!empty($currentYearValues)) {
+                $maxValue = max($currentYearValues);
+            } elseif (!empty($previousYearValues)) {
+                $maxValue = max($previousYearValues);
+            }
+        }
 
         // Use ChartHelper for Y-axis configuration
         $yAxisConfig = ChartHelper::getYAxisConfig($maxValue, null, array_merge($currentYearValues, $previousYearValues));
         $suggestedMax = ChartHelper::calculateSuggestedMax($maxValue, $yAxisConfig['divisor']);
-
-        // Get branch abbreviations
-        $labels = $allBranches->map(function ($name) {
-            return ChartHelper::getBranchAbbreviation($name);
-        });
 
         // Get datasets using ChartHelper
         $datasets = ChartHelper::getYearlyComparisonDatasets($year, $previousYear, $currentYearValues, $previousYearValues);

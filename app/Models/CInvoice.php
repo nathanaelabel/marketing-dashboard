@@ -30,6 +30,7 @@ class CInvoice extends Model
         'dateinvoiced',
         'totallines',
         'grandtotal',
+        'ispaid',
         'c_bpartner_id',
     ];
 

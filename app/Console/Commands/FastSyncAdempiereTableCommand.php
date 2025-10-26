@@ -92,7 +92,7 @@ class FastSyncAdempiereTableCommand extends Command
         if (isset($dateFilterTables[$lowerTableName])) {
             $dateColumn = $dateFilterTables[$lowerTableName];
             $startDate = '2024-01-01 00:00:00';
-            $endDate = '2025-08-30 00:00:00';
+            $endDate = now()->format('Y-m-d') . ' 23:59:59'; // Today's date
 
             $this->comment("Fetching records from {$tableName} with {$dateColumn} between {$startDate} and {$endDate}...");
             $query->whereBetween($dateColumn, [$startDate, $endDate]);
@@ -209,6 +209,9 @@ class FastSyncAdempiereTableCommand extends Command
             'm_productprice' => [
                 ['parent_table' => 'm_pricelist_version', 'foreign_key' => 'm_pricelist_version_id'],
                 ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+            ],
+            'c_bpartner_location' => [
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
             ],
             'c_invoice' => [
