@@ -614,7 +614,7 @@ class BranchGrowthController extends Controller
         }
 
         // Function to render a branch table
-        $renderBranchTable = function($branchData, $branchName, $addSpacing = true) use ($startYear, $endYear, $monthsToShow, $monthLabels) {
+        $renderBranchTable = function ($branchData, $branchName, $addSpacing = true) use ($startYear, $endYear, $monthsToShow, $monthLabels) {
             $tableHtml = '';
             if ($addSpacing) {
                 $tableHtml .= '<br>';
@@ -869,7 +869,7 @@ class BranchGrowthController extends Controller
         }
 
         // Function to render a branch table
-        $renderBranchTable = function($branchData, $branchName) use ($startYear, $endYear, $monthsToShow, $monthLabels) {
+        $renderBranchTable = function ($branchData, $branchName) use ($startYear, $endYear, $monthsToShow, $monthLabels) {
             $tableHtml = '<div class="branch-title">CABANG ' . strtoupper($branchName) . '</div>';
             $tableHtml .= '<table>
                 <thead>

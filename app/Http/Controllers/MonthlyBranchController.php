@@ -341,39 +341,39 @@ class MonthlyBranchController extends Controller
             <style>
                 body { font-family: Verdana, sans-serif; }
                 table { border-collapse: collapse; }
-                th, td { 
-                    border: 1px solid #000; 
-                    padding: 6px 8px; 
-                    text-align: left; 
+                th, td {
+                    border: 1px solid #000;
+                    padding: 6px 8px;
+                    text-align: left;
                     font-family: Verdana, sans-serif;
                     font-size: 10pt;
                 }
-                th { 
-                    background-color: #D3D3D3; 
-                    color: #000; 
-                    font-weight: bold; 
+                th {
+                    background-color: #D3D3D3;
+                    color: #000;
+                    font-weight: bold;
                     text-align: center;
                     vertical-align: middle;
                 }
-                .title { 
-                    font-family: Verdana, sans-serif; 
-                    font-size: 16pt; 
-                    font-weight: bold; 
-                    margin-bottom: 8px; 
+                .title {
+                    font-family: Verdana, sans-serif;
+                    font-size: 16pt;
+                    font-weight: bold;
+                    margin-bottom: 8px;
                 }
-                .period { 
-                    font-family: Verdana, sans-serif; 
-                    font-size: 12pt; 
-                    margin-bottom: 15px; 
+                .period {
+                    font-family: Verdana, sans-serif;
+                    font-size: 12pt;
+                    margin-bottom: 15px;
                 }
-                .total-row { 
-                    font-weight: bold; 
-                    background-color: #E8E8E8; 
+                .total-row {
+                    font-weight: bold;
+                    background-color: #E8E8E8;
                 }
                 .number { text-align: right; }
-                .month-header { 
+                .month-header {
                     font-family: Verdana, sans-serif;
-                    font-size: 12pt; 
+                    font-size: 12pt;
                     font-weight: bold;
                     text-align: center;
                 }
@@ -574,8 +574,8 @@ class MonthlyBranchController extends Controller
             <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
             <style>
                 @page { margin: 20px; }
-                body { 
-                    font-family: Arial, sans-serif; 
+                body {
+                    font-family: Verdana, sans-serif;
                     font-size: 9pt;
                     margin: 0;
                     padding: 20px;
@@ -584,36 +584,41 @@ class MonthlyBranchController extends Controller
                     text-align: center;
                     margin-bottom: 20px;
                 }
-                .title { 
-                    font-size: 16pt; 
-                    font-weight: bold; 
+                .title {
+                    font-family: Verdana, sans-serif;
+                    font-size: 16pt;
+                    font-weight: bold;
                     margin-bottom: 5px;
                 }
-                .period { 
-                    font-size: 10pt; 
+                .period {
+                    font-family: Verdana, sans-serif;
+                    font-size: 10pt;
                     color: #666;
                     margin-bottom: 20px;
                 }
-                table { 
+                table {
                     width: 100%;
                     border-collapse: collapse;
                     margin-top: 10px;
                 }
-                th, td { 
-                    border: 1px solid #ddd; 
-                    padding: 6px; 
+                th, td {
+                    border: 1px solid #ddd;
+                    padding: 6px 8px;
                     text-align: left;
+                    font-family: Verdana, sans-serif;
                     font-size: 8pt;
                 }
-                th { 
-                    background-color: rgba(38, 102, 241, 0.9); 
-                    color: white; 
+                th {
+                    background-color: #F5F5F5;
+                    color: #000;
                     font-weight: bold;
+                    text-align: center;
+                    vertical-align: middle;
                 }
                 .number { text-align: right; }
-                .total-row { 
-                    font-weight: bold; 
-                    background-color: #f2f2f2;
+                .total-row {
+                    font-weight: bold;
+                    background-color: #E8E8E8;
                 }
                 .total-row td {
                     border-top: 2px solid #333;
@@ -622,13 +627,13 @@ class MonthlyBranchController extends Controller
         </head>
         <body>
             <div class="header">
-                <div class="title">Monthly Branch Revenue Report</div>
+                <div class="title">MONTHLY BRANCH REVENUE REPORT</div>
                 <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Branch: ' . htmlspecialchars($branchDisplay) . ' | Category: ' . htmlspecialchars($category) . '</div>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 50px;">No</th>
+                        <th style="width: 50px; text-align: right;">No</th>
                         <th style="width: 140px;">Month</th>
                         <th style="width: 200px; text-align: right;">' . $previousYear . '</th>
                         <th style="width: 200px; text-align: right;">' . $year . '</th>
@@ -657,10 +662,10 @@ class MonthlyBranchController extends Controller
             }
 
             $html .= '<tr>
-                <td>' . $no++ . '</td>
+                <td style="text-align: right;">' . $no++ . '</td>
                 <td>' . $monthLabels[$month - 1] . '</td>
-                <td class="number">' . number_format($previousValue, 2, '.', ',') . '</td>
-                <td class="number">' . number_format($currentValue, 2, '.', ',') . '</td>
+                <td class="number">' . number_format($previousValue, 0, '.', ',') . '</td>
+                <td class="number">' . number_format($currentValue, 0, '.', ',') . '</td>
                 <td class="number">' . number_format($growth, 2, '.', ',') . '%</td>
             </tr>';
         }
@@ -673,12 +678,15 @@ class MonthlyBranchController extends Controller
         $html .= '
                     <tr class="total-row">
                         <td colspan="2" style="text-align: right;"><strong>TOTAL</strong></td>
-                        <td class="number"><strong>' . number_format($totalPreviousYear, 2, '.', ',') . '</strong></td>
-                        <td class="number"><strong>' . number_format($totalCurrentYear, 2, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($totalPreviousYear, 0, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($totalCurrentYear, 0, '.', ',') . '</strong></td>
                         <td class="number"><strong>' . number_format($totalGrowth, 2, '.', ',') . '%</strong></td>
                     </tr>
                 </tbody>
             </table>
+            <br>
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
         </body>
         </html>';
 
