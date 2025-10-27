@@ -33,10 +33,11 @@ class NationalYearlyController extends Controller
 
             $previousYear = $year - 1;
             $category = $request->get('category', 'MIKA');
+            $type = $request->get('type', 'BRUTO'); // Default to BRUTO
 
             $dateRanges = ChartHelper::calculateFairComparisonDateRanges($endDate, $previousYear);
-            $currentYearData = $this->getRevenueData($dateRanges['current']['start'], $dateRanges['current']['end'], $category);
-            $previousYearData = $this->getRevenueData($dateRanges['previous']['start'], $dateRanges['previous']['end'], $category);
+            $currentYearData = $this->getRevenueData($dateRanges['current']['start'], $dateRanges['current']['end'], $category, $type);
+            $previousYearData = $this->getRevenueData($dateRanges['previous']['start'], $dateRanges['previous']['end'], $category, $type);
             $formattedData = $this->formatYearlyComparisonData($currentYearData, $previousYearData, $year, $previousYear);
 
             return response()->json($formattedData);
@@ -47,6 +48,7 @@ class NationalYearlyController extends Controller
                 'end_date' => $endDate ?? null,
                 'date_ranges' => $dateRanges ?? null,
                 'category' => $request->get('category'),
+                'type' => $request->get('type'),
                 'trace' => $e->getTraceAsString()
             ]);
 
@@ -61,35 +63,68 @@ class NationalYearlyController extends Controller
         return response()->json($categories);
     }
 
-    private function getRevenueData($startDate, $endDate, $category)
+    private function getRevenueData($startDate, $endDate, $category, $type = 'BRUTO')
     {
-        // Optimized query with direct JOIN and date range filtering
-        $query = "
-            SELECT
-                org.name AS branch_name, 
-                COALESCE(SUM(invl.linenetamt), 0) AS total_revenue
-            FROM
-                c_invoice inv
-                INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
-                INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
-                INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
-                INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
-            WHERE
-                inv.ad_client_id = 1000001
-                AND inv.issotrx = 'Y'
-                AND invl.qtyinvoiced > 0
-                AND invl.linenetamt > 0
-                AND inv.docstatus IN ('CO', 'CL')
-                AND inv.isactive = 'Y'
-                AND org.name NOT LIKE '%HEAD OFFICE%'
-                AND DATE(inv.dateinvoiced) BETWEEN ? AND ?
-                AND inv.documentno LIKE 'INC%'
-                AND pc.name = ?
-            GROUP BY
-                org.name
-            ORDER BY
-                org.name
-        ";
+        if ($type === 'NETTO') {
+            // Netto query - includes returns (CNC documents) as negative values
+            $query = "
+                SELECT
+                    org.name AS branch_name,
+                    COALESCE(SUM(CASE
+                        WHEN SUBSTR(inv.documentno, 1, 3) IN ('INC') THEN invl.linenetamt
+                        WHEN SUBSTR(inv.documentno, 1, 3) IN ('CNC') THEN -invl.linenetamt
+                    END), 0) AS total_revenue
+                FROM
+                    c_invoice inv
+                    INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
+                    INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+                    INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
+                    INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
+                WHERE
+                    inv.ad_client_id = 1000001
+                    AND inv.issotrx = 'Y'
+                    AND invl.qtyinvoiced > 0
+                    AND invl.linenetamt > 0
+                    AND inv.docstatus IN ('CO', 'CL')
+                    AND inv.isactive = 'Y'
+                    AND org.name NOT LIKE '%HEAD OFFICE%'
+                    AND DATE(inv.dateinvoiced) BETWEEN ? AND ?
+                    AND SUBSTR(inv.documentno, 1, 3) IN ('INC', 'CNC')
+                    AND pc.name = ?
+                GROUP BY
+                    org.name
+                ORDER BY
+                    org.name
+            ";
+        } else {
+            // Bruto query - original query (only INC documents)
+            $query = "
+                SELECT
+                    org.name AS branch_name,
+                    COALESCE(SUM(invl.linenetamt), 0) AS total_revenue
+                FROM
+                    c_invoice inv
+                    INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
+                    INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+                    INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
+                    INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
+                WHERE
+                    inv.ad_client_id = 1000001
+                    AND inv.issotrx = 'Y'
+                    AND invl.qtyinvoiced > 0
+                    AND invl.linenetamt > 0
+                    AND inv.docstatus IN ('CO', 'CL')
+                    AND inv.isactive = 'Y'
+                    AND org.name NOT LIKE '%HEAD OFFICE%'
+                    AND DATE(inv.dateinvoiced) BETWEEN ? AND ?
+                    AND inv.documentno LIKE 'INC%'
+                    AND pc.name = ?
+                GROUP BY
+                    org.name
+                ORDER BY
+                    org.name
+            ";
+        }
 
         return DB::select($query, [$startDate, $endDate, $category]);
     }
@@ -161,6 +196,7 @@ class NationalYearlyController extends Controller
     {
         $year = $request->input('year', date('Y'));
         $category = $request->input('category', 'MIKA');
+        $type = $request->input('type', 'BRUTO');
         $today = date('Y-m-d');
         $currentYear = date('Y');
 
@@ -174,8 +210,8 @@ class NationalYearlyController extends Controller
         $previousYear = $year - 1;
 
         $dateRanges = ChartHelper::calculateFairComparisonDateRanges($endDate, $previousYear);
-        $currentYearData = $this->getRevenueData($dateRanges['current']['start'], $dateRanges['current']['end'], $category);
-        $previousYearData = $this->getRevenueData($dateRanges['previous']['start'], $dateRanges['previous']['end'], $category);
+        $currentYearData = $this->getRevenueData($dateRanges['current']['start'], $dateRanges['current']['end'], $category, $type);
+        $previousYearData = $this->getRevenueData($dateRanges['previous']['start'], $dateRanges['previous']['end'], $category, $type);
 
         // Get all unique branches from both datasets
         $allBranches = collect($currentYearData)->pluck('branch_name')
@@ -188,7 +224,7 @@ class NationalYearlyController extends Controller
         $currentYearMap = collect($currentYearData)->keyBy('branch_name');
         $previousYearMap = collect($previousYearData)->keyBy('branch_name');
 
-        $filename = 'National_Yearly_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '.xls';
+        $filename = 'National_Yearly_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
 
         // Create XLS content using HTML table format
         $headers = [
@@ -222,17 +258,17 @@ class NationalYearlyController extends Controller
             <style>
                 body { font-family: Calibri, Arial, sans-serif; font-size: 10pt; }
                 table { border-collapse: collapse; }
-                th, td { 
-                    border: 1px solid #ddd; 
-                    padding: 4px 8px; 
-                    text-align: left; 
+                th, td {
+                    border: 1px solid #ddd;
+                    padding: 4px 8px;
+                    text-align: left;
                     font-size: 10pt;
                     white-space: nowrap;
                 }
-                th { 
-                    background-color: #4CAF50; 
-                    color: white; 
-                    font-weight: bold; 
+                th {
+                    background-color: #4CAF50;
+                    color: white;
+                    font-weight: bold;
                     font-size: 10pt;
                 }
                 .title { font-size: 10pt; font-weight: bold; margin-bottom: 5px; }
@@ -247,7 +283,7 @@ class NationalYearlyController extends Controller
         </head>
         <body>
             <div class="title">National Yearly Revenue Report</div>
-            <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Category: ' . htmlspecialchars($category) . '</div>
+            <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Category: ' . htmlspecialchars($category) . ' | Type: ' . htmlspecialchars($type) . '</div>
             <br>
             <table>
                 <thead>
@@ -315,6 +351,7 @@ class NationalYearlyController extends Controller
     {
         $year = $request->input('year', date('Y'));
         $category = $request->input('category', 'MIKA');
+        $type = $request->input('type', 'BRUTO');
         $today = date('Y-m-d');
         $currentYear = date('Y');
 
@@ -328,8 +365,8 @@ class NationalYearlyController extends Controller
         $previousYear = $year - 1;
 
         $dateRanges = ChartHelper::calculateFairComparisonDateRanges($endDate, $previousYear);
-        $currentYearData = $this->getRevenueData($dateRanges['current']['start'], $dateRanges['current']['end'], $category);
-        $previousYearData = $this->getRevenueData($dateRanges['previous']['start'], $dateRanges['previous']['end'], $category);
+        $currentYearData = $this->getRevenueData($dateRanges['current']['start'], $dateRanges['current']['end'], $category, $type);
+        $previousYearData = $this->getRevenueData($dateRanges['previous']['start'], $dateRanges['previous']['end'], $category, $type);
 
         // Get all unique branches from both datasets
         $allBranches = collect($currentYearData)->pluck('branch_name')
@@ -350,8 +387,8 @@ class NationalYearlyController extends Controller
             <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
             <style>
                 @page { margin: 20px; }
-                body { 
-                    font-family: Arial, sans-serif; 
+                body {
+                    font-family: Arial, sans-serif;
                     font-size: 9pt;
                     margin: 0;
                     padding: 20px;
@@ -360,35 +397,35 @@ class NationalYearlyController extends Controller
                     text-align: center;
                     margin-bottom: 20px;
                 }
-                .title { 
-                    font-size: 16pt; 
-                    font-weight: bold; 
+                .title {
+                    font-size: 16pt;
+                    font-weight: bold;
                     margin-bottom: 5px;
                 }
-                .period { 
-                    font-size: 10pt; 
+                .period {
+                    font-size: 10pt;
                     color: #666;
                     margin-bottom: 20px;
                 }
-                table { 
+                table {
                     width: 100%;
                     border-collapse: collapse;
                     margin-top: 10px;
                 }
-                th, td { 
-                    border: 1px solid #ddd; 
-                    padding: 6px; 
+                th, td {
+                    border: 1px solid #ddd;
+                    padding: 6px;
                     text-align: left;
                     font-size: 8pt;
                 }
-                th { 
-                    background-color: rgba(38, 102, 241, 0.9); 
-                    color: white; 
+                th {
+                    background-color: rgba(38, 102, 241, 0.9);
+                    color: white;
                     font-weight: bold;
                 }
                 .number { text-align: right; }
-                .total-row { 
-                    font-weight: bold; 
+                .total-row {
+                    font-weight: bold;
                     background-color: #f2f2f2;
                 }
                 .total-row td {
@@ -399,7 +436,7 @@ class NationalYearlyController extends Controller
         <body>
             <div class="header">
                 <div class="title">National Yearly Revenue Report</div>
-                <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Category: ' . htmlspecialchars($category) . '</div>
+                <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Category: ' . htmlspecialchars($category) . ' | Type: ' . htmlspecialchars($type) . '</div>
             </div>
             <table>
                 <thead>
@@ -464,7 +501,7 @@ class NationalYearlyController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'portrait');
 
-        $filename = 'National_Yearly_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '.pdf';
+        $filename = 'National_Yearly_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '_' . $type . '.pdf';
 
         return $pdf->download($filename);
     }

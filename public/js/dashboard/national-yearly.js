@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const ctx = document.getElementById('national-yearly-chart');
     const yearSelect = document.getElementById('yearly-year-select');
     const categorySelect = document.getElementById('yearly-category-select');
+    const typeSelect = document.getElementById('yearly-type-select');
     const previousYearLabel = document.getElementById('previous-year-label');
     const currentYearLabel = document.getElementById('current-year-label');
 
@@ -160,9 +161,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function fetchAndUpdateYearlyChart(year, category) {
-        const url = `/national-yearly/data?year=${year}&category=${encodeURIComponent(category)}`;
-        const filterSelectors = ['yearly-year-select', 'yearly-category-select'];
+    function fetchAndUpdateYearlyChart(year, category, type) {
+        const url = `/national-yearly/data?year=${year}&category=${encodeURIComponent(category)}&type=${encodeURIComponent(type)}`;
+        const filterSelectors = ['yearly-year-select', 'yearly-category-select', 'yearly-type-select'];
         const chartContainer = document.getElementById('national-yearly-chart');
 
         // Create a wrapper div around canvas if it doesn't exist
@@ -202,6 +203,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const triggerUpdate = () => {
         const year = yearSelect.value;
         const category = categorySelect.value;
+        const type = typeSelect.value;
 
         // Update year labels (if elements exist; header legend was removed)
         if (previousYearLabel) previousYearLabel.textContent = (year - 1);
@@ -211,12 +213,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const periodDescription = ChartHelper.getFairComparisonPeriodDescription(year);
         console.log(periodDescription); // For debugging - can be displayed in UI if needed
 
-        fetchAndUpdateYearlyChart(year, category);
+        fetchAndUpdateYearlyChart(year, category, type);
     };
 
     // Event listeners
     yearSelect.addEventListener('change', triggerUpdate);
     categorySelect.addEventListener('change', triggerUpdate);
+    typeSelect.addEventListener('change', triggerUpdate);
 
     // Initialize
     triggerUpdate();
@@ -266,6 +269,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const currentYear = yearSelect.value;
             const currentCategory = categorySelect.value;
+            const currentType = typeSelect.value;
 
             // Close dropdown
             if (dropdownMenu) {
@@ -278,7 +282,7 @@ document.addEventListener('DOMContentLoaded', function () {
             exportBtn.innerHTML = 'Exporting...';
 
             // Create download URL with parameters
-            const exportUrl = `/national-yearly/export-excel?year=${currentYear}&category=${encodeURIComponent(currentCategory)}`;
+            const exportUrl = `/national-yearly/export-excel?year=${currentYear}&category=${encodeURIComponent(currentCategory)}&type=${encodeURIComponent(currentType)}`;
 
             // Use window.location for direct download
             window.location.href = exportUrl;
