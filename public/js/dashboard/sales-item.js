@@ -96,4 +96,110 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Set initial title based on default selection
     updateSectionTitle('rp');
+
+    // Three-dots menu toggle
+    const menuButton = document.getElementById('siMenuButton');
+    const dropdownMenu = document.getElementById('siDropdownMenu');
+
+    if (menuButton && dropdownMenu) {
+        // Toggle dropdown on button click
+        menuButton.addEventListener('click', function (e) {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!menuButton.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                dropdownMenu.classList.add('hidden');
+            }
+        });
+    }
+
+    // Refresh Data functionality
+    const refreshBtn = document.getElementById('siRefreshDataBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Refresh the table data
+            salesItemTable.loadData();
+        });
+    }
+
+    // Export to Excel functionality
+    const exportBtn = document.getElementById('siExportExcelBtn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const currentMonth = document.getElementById('month-select').value;
+            const currentYear = document.getElementById('year-select').value;
+            const currentType = document.getElementById('type-select').value;
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Show loading state
+            const originalContent = exportBtn.innerHTML;
+            exportBtn.disabled = true;
+            exportBtn.innerHTML = 'Exporting...';
+
+            // Create download URL with parameters
+            const exportUrl = `/sales-item/export-excel?month=${currentMonth}&year=${currentYear}&type=${currentType}`;
+
+            // Use window.location for direct download
+            window.location.href = exportUrl;
+
+            // Reset button state after a short delay
+            setTimeout(() => {
+                exportBtn.disabled = false;
+                exportBtn.innerHTML = originalContent;
+            }, 2000);
+        });
+    }
+
+    // Export to PDF functionality
+    const exportPdfBtn = document.getElementById('siExportPdfBtn');
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const currentMonth = document.getElementById('month-select').value;
+            const currentYear = document.getElementById('year-select').value;
+            const currentType = document.getElementById('type-select').value;
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Show loading state
+            const originalContent = exportPdfBtn.innerHTML;
+            exportPdfBtn.disabled = true;
+            exportPdfBtn.innerHTML = 'Exporting...';
+
+            // Create download URL with parameters
+            const exportPdfUrl = `/sales-item/export-pdf?month=${currentMonth}&year=${currentYear}&type=${currentType}`;
+
+            // Use window.location for direct download
+            window.location.href = exportPdfUrl;
+
+            // Reset button state after a short delay
+            setTimeout(() => {
+                exportPdfBtn.disabled = false;
+                exportPdfBtn.innerHTML = originalContent;
+            }, 2000);
+        });
+    }
 });

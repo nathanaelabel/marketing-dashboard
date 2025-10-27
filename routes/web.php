@@ -55,7 +55,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/branch-target/save', [BranchTargetController::class, 'saveTargets'])->name('branch-target.save');
     Route::delete('/branch-target/delete', [BranchTargetController::class, 'deleteTargets'])->name('branch-target.delete');
     Route::get('/sales-item/data', [SalesItemController::class, 'getData'])->name('sales-item.data');
+    Route::get('/sales-item/export-excel', [SalesItemController::class, 'exportExcel'])->name('sales-item.export-excel');
+    Route::get('/sales-item/export-pdf', [SalesItemController::class, 'exportPdf'])->name('sales-item.export-pdf');
     Route::get('/sales-family/data', [SalesFamilyController::class, 'getData'])->name('sales-family.data');
+    Route::get('/sales-family/export-excel', [SalesFamilyController::class, 'exportExcel'])->name('sales-family.export-excel');
+    Route::get('/sales-family/export-pdf', [SalesFamilyController::class, 'exportPdf'])->name('sales-family.export-pdf');
 });
 
 require __DIR__ . '/auth.php';
