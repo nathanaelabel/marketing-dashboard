@@ -304,6 +304,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const currentYear = yearSelect.value;
             const currentCategory = categorySelect.value;
+            const currentType = typeSelect.value;
 
             // Close dropdown
             if (dropdownMenu) {
@@ -316,7 +317,7 @@ document.addEventListener('DOMContentLoaded', function () {
             exportPdfBtn.innerHTML = 'Exporting...';
 
             // Create download URL with parameters
-            const exportPdfUrl = `/national-yearly/export-pdf?year=${currentYear}&category=${encodeURIComponent(currentCategory)}`;
+            const exportPdfUrl = `/national-yearly/export-pdf?year=${currentYear}&category=${encodeURIComponent(currentCategory)}&type=${encodeURIComponent(currentType)}`;
 
             // Use window.location for direct download
             window.location.href = exportPdfUrl;
