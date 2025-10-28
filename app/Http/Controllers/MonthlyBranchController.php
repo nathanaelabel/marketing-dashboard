@@ -40,14 +40,15 @@ class MonthlyBranchController extends Controller
             $previousYear = $year - 1;
             $category = $request->get('category', 'MIKA');
             $branch = $request->get('branch', 'National');
+            $type = $request->get('type', 'BRUTO'); // Default to BRUTO
 
             // Get current year data using date range
-            $currentYearData = $this->getMonthlyRevenueData($startDate, $endDate, $category, $branch);
+            $currentYearData = $this->getMonthlyRevenueData($startDate, $endDate, $category, $branch, $type);
 
             // Get previous year data using date range
             $previousStartDate = $previousYear . '-01-01';
             $previousEndDate = $previousYear . '-12-31';
-            $previousYearData = $this->getMonthlyRevenueData($previousStartDate, $previousEndDate, $category, $branch);
+            $previousYearData = $this->getMonthlyRevenueData($previousStartDate, $previousEndDate, $category, $branch, $type);
 
             // Format data for chart
             $formattedData = $this->formatMonthlyComparisonData($currentYearData, $previousYearData, $year, $previousYear);
@@ -60,6 +61,7 @@ class MonthlyBranchController extends Controller
                 'end_date' => $endDate ?? null,
                 'category' => $request->get('category'),
                 'branch' => $request->get('branch'),
+                'type' => $request->get('type'),
                 'trace' => $e->getTraceAsString()
             ]);
 
@@ -103,7 +105,7 @@ class MonthlyBranchController extends Controller
         }
     }
 
-    private function getMonthlyRevenueData($startDate, $endDate, $category, $branch)
+    private function getMonthlyRevenueData($startDate, $endDate, $category, $branch, $type = 'BRUTO')
     {
         // Branch condition - if National, sum all branches, otherwise filter by specific branch
         $branchCondition = '';
@@ -116,33 +118,66 @@ class MonthlyBranchController extends Controller
             $bindings = [$startDate, $endDate, $category];
         }
 
-        // Optimized query with direct JOIN instead of EXISTS subquery for better performance
-        $query = "
-            SELECT
-                EXTRACT(month FROM inv.dateinvoiced) AS month_number,
-                COALESCE(SUM(invl.linenetamt), 0) AS total_revenue
-            FROM
-                c_invoice inv
-                INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
-                INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
-                INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
-                INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
-            WHERE
-                inv.ad_client_id = 1000001
-                AND inv.issotrx = 'Y'
-                AND invl.qtyinvoiced > 0
-                AND invl.linenetamt > 0
-                AND inv.docstatus IN ('CO', 'CL')
-                AND inv.isactive = 'Y'
-                {$branchCondition}
-                AND DATE(inv.dateinvoiced) BETWEEN ? AND ?
-                AND inv.documentno LIKE 'INC%'
-                AND pc.name = ?
-            GROUP BY
-                EXTRACT(month FROM inv.dateinvoiced)
-            ORDER BY
-                month_number
-        ";
+        if ($type === 'NETTO') {
+            // Netto query - includes returns (CNC documents) as negative values
+            $query = "
+                SELECT
+                    EXTRACT(month FROM inv.dateinvoiced) AS month_number,
+                    COALESCE(SUM(CASE
+                        WHEN SUBSTR(inv.documentno, 1, 3) IN ('INC') THEN invl.linenetamt
+                        WHEN SUBSTR(inv.documentno, 1, 3) IN ('CNC') THEN -invl.linenetamt
+                    END), 0) AS total_revenue
+                FROM
+                    c_invoice inv
+                    INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
+                    INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+                    INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
+                    INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
+                WHERE
+                    inv.ad_client_id = 1000001
+                    AND inv.issotrx = 'Y'
+                    AND invl.qtyinvoiced > 0
+                    AND invl.linenetamt > 0
+                    AND inv.docstatus IN ('CO', 'CL')
+                    AND inv.isactive = 'Y'
+                    {$branchCondition}
+                    AND DATE(inv.dateinvoiced) BETWEEN ? AND ?
+                    AND SUBSTR(inv.documentno, 1, 3) IN ('INC', 'CNC')
+                    AND pc.name = ?
+                GROUP BY
+                    EXTRACT(month FROM inv.dateinvoiced)
+                ORDER BY
+                    month_number
+            ";
+        } else {
+            // Bruto query - original query (only INC documents)
+            $query = "
+                SELECT
+                    EXTRACT(month FROM inv.dateinvoiced) AS month_number,
+                    COALESCE(SUM(invl.linenetamt), 0) AS total_revenue
+                FROM
+                    c_invoice inv
+                    INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
+                    INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+                    INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
+                    INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
+                WHERE
+                    inv.ad_client_id = 1000001
+                    AND inv.issotrx = 'Y'
+                    AND invl.qtyinvoiced > 0
+                    AND invl.linenetamt > 0
+                    AND inv.docstatus IN ('CO', 'CL')
+                    AND inv.isactive = 'Y'
+                    {$branchCondition}
+                    AND DATE(inv.dateinvoiced) BETWEEN ? AND ?
+                    AND inv.documentno LIKE 'INC%'
+                    AND pc.name = ?
+                GROUP BY
+                    EXTRACT(month FROM inv.dateinvoiced)
+                ORDER BY
+                    month_number
+            ";
+        }
 
         return DB::select($query, $bindings);
     }
@@ -205,6 +240,7 @@ class MonthlyBranchController extends Controller
     {
         $year = $request->input('year', date('Y'));
         $category = $request->input('category', 'MIKA');
+        $type = $request->input('type', 'BRUTO');
         $currentYear = date('Y');
 
         $startDate = $year . '-01-01';
@@ -225,36 +261,74 @@ class MonthlyBranchController extends Controller
         $previousEndDate = $previousYear . '-12-31';
 
         // Optimized single query for all branches and both years
-        $query = "
-            SELECT
-                org.name AS branch_name,
-                EXTRACT(month FROM inv.dateinvoiced) AS month_number,
-                EXTRACT(year FROM inv.dateinvoiced) AS year_number,
-                COALESCE(SUM(invl.linenetamt), 0) AS total_revenue
-            FROM
-                c_invoice inv
-                INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
-                INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
-                INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
-                INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
-            WHERE
-                inv.ad_client_id = 1000001
-                AND inv.issotrx = 'Y'
-                AND invl.qtyinvoiced > 0
-                AND invl.linenetamt > 0
-                AND inv.docstatus IN ('CO', 'CL')
-                AND inv.isactive = 'Y'
-                AND (
-                    (DATE(inv.dateinvoiced) BETWEEN ? AND ?)
-                    OR (DATE(inv.dateinvoiced) BETWEEN ? AND ?)
-                )
-                AND inv.documentno LIKE 'INC%'
-                AND pc.name = ?
-            GROUP BY
-                org.name, EXTRACT(month FROM inv.dateinvoiced), EXTRACT(year FROM inv.dateinvoiced)
-            ORDER BY
-                org.name, year_number, month_number
-        ";
+        if ($type === 'NETTO') {
+            // Netto query - includes returns (CNC documents) as negative values
+            $query = "
+                SELECT
+                    org.name AS branch_name,
+                    EXTRACT(month FROM inv.dateinvoiced) AS month_number,
+                    EXTRACT(year FROM inv.dateinvoiced) AS year_number,
+                    COALESCE(SUM(CASE
+                        WHEN SUBSTR(inv.documentno, 1, 3) IN ('INC') THEN invl.linenetamt
+                        WHEN SUBSTR(inv.documentno, 1, 3) IN ('CNC') THEN -invl.linenetamt
+                    END), 0) AS total_revenue
+                FROM
+                    c_invoice inv
+                    INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
+                    INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+                    INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
+                    INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
+                WHERE
+                    inv.ad_client_id = 1000001
+                    AND inv.issotrx = 'Y'
+                    AND invl.qtyinvoiced > 0
+                    AND invl.linenetamt > 0
+                    AND inv.docstatus IN ('CO', 'CL')
+                    AND inv.isactive = 'Y'
+                    AND (
+                        (DATE(inv.dateinvoiced) BETWEEN ? AND ?)
+                        OR (DATE(inv.dateinvoiced) BETWEEN ? AND ?)
+                    )
+                    AND SUBSTR(inv.documentno, 1, 3) IN ('INC', 'CNC')
+                    AND pc.name = ?
+                GROUP BY
+                    org.name, EXTRACT(month FROM inv.dateinvoiced), EXTRACT(year FROM inv.dateinvoiced)
+                ORDER BY
+                    org.name, year_number, month_number
+            ";
+        } else {
+            // Bruto query - original query (only INC documents)
+            $query = "
+                SELECT
+                    org.name AS branch_name,
+                    EXTRACT(month FROM inv.dateinvoiced) AS month_number,
+                    EXTRACT(year FROM inv.dateinvoiced) AS year_number,
+                    COALESCE(SUM(invl.linenetamt), 0) AS total_revenue
+                FROM
+                    c_invoice inv
+                    INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
+                    INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+                    INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
+                    INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
+                WHERE
+                    inv.ad_client_id = 1000001
+                    AND inv.issotrx = 'Y'
+                    AND invl.qtyinvoiced > 0
+                    AND invl.linenetamt > 0
+                    AND inv.docstatus IN ('CO', 'CL')
+                    AND inv.isactive = 'Y'
+                    AND (
+                        (DATE(inv.dateinvoiced) BETWEEN ? AND ?)
+                        OR (DATE(inv.dateinvoiced) BETWEEN ? AND ?)
+                    )
+                    AND inv.documentno LIKE 'INC%'
+                    AND pc.name = ?
+                GROUP BY
+                    org.name, EXTRACT(month FROM inv.dateinvoiced), EXTRACT(year FROM inv.dateinvoiced)
+                ORDER BY
+                    org.name, year_number, month_number
+            ";
+        }
 
         $allData = DB::select($query, [$previousStartDate, $previousEndDate, $startDate, $endDate, $category]);
 
@@ -305,7 +379,7 @@ class MonthlyBranchController extends Controller
             $allBranchesData[] = $branchData;
         }
 
-        $filename = 'Monthly_Branch_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '.xls';
+        $filename = 'Monthly_Branch_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
 
         // Create XLS content using HTML table format
         $headers = [
@@ -390,7 +464,7 @@ class MonthlyBranchController extends Controller
         </head>
         <body>
             <div class="title">MONTHLY BRANCH REVENUE REPORT</div>
-            <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Category: ' . htmlspecialchars($category) . '</div>
+            <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Category: ' . htmlspecialchars($category) . ' | Type: ' . htmlspecialchars($type) . '</div>
             <br>
             <table>
                 <thead>
@@ -524,6 +598,7 @@ class MonthlyBranchController extends Controller
         $year = $request->input('year', date('Y'));
         $category = $request->input('category', 'MIKA');
         $branch = $request->input('branch', 'National');
+        $type = $request->input('type', 'BRUTO');
         $currentYear = date('Y');
 
         $startDate = $year . '-01-01';
@@ -537,12 +612,12 @@ class MonthlyBranchController extends Controller
         $previousYear = $year - 1;
 
         // Get current year data
-        $currentYearData = $this->getMonthlyRevenueData($startDate, $endDate, $category, $branch);
+        $currentYearData = $this->getMonthlyRevenueData($startDate, $endDate, $category, $branch, $type);
 
         // Get previous year data
         $previousStartDate = $previousYear . '-01-01';
         $previousEndDate = $previousYear . '-12-31';
-        $previousYearData = $this->getMonthlyRevenueData($previousStartDate, $previousEndDate, $category, $branch);
+        $previousYearData = $this->getMonthlyRevenueData($previousStartDate, $previousEndDate, $category, $branch, $type);
 
         // Month labels
         $monthLabels = [
@@ -628,7 +703,7 @@ class MonthlyBranchController extends Controller
         <body>
             <div class="header">
                 <div class="title">MONTHLY BRANCH REVENUE REPORT</div>
-                <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Branch: ' . htmlspecialchars($branchDisplay) . ' | Category: ' . htmlspecialchars($category) . '</div>
+                <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Branch: ' . htmlspecialchars($branchDisplay) . ' | Category: ' . htmlspecialchars($category) . ' | Type: ' . htmlspecialchars($type) . '</div>
             </div>
             <table>
                 <thead>
@@ -694,7 +769,7 @@ class MonthlyBranchController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'landscape');
 
-        $filename = 'Monthly_Branch_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $branchDisplay) . '_' . str_replace(' ', '_', $category) . '.pdf';
+        $filename = 'Monthly_Branch_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $branchDisplay) . '_' . str_replace(' ', '_', $category) . '_' . $type . '.pdf';
 
         return $pdf->download($filename);
     }

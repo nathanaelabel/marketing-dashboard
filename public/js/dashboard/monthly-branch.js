@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const yearSelect = document.getElementById('monthly-year-select');
     const branchSelect = document.getElementById('monthly-branch-select');
     const categorySelect = document.getElementById('monthly-category-select');
+    const typeSelect = document.getElementById('monthly-type-select');
 
     if (!ctx) return;
 
@@ -139,9 +140,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function fetchAndUpdateMonthlyChart(year, branch, category) {
-        const url = `/monthly-branch/data?year=${year}&branch=${encodeURIComponent(branch)}&category=${encodeURIComponent(category)}`;
-        const filterSelectors = ['monthly-year-select', 'monthly-branch-select', 'monthly-category-select'];
+    function fetchAndUpdateMonthlyChart(year, branch, category, type) {
+        const url = `/monthly-branch/data?year=${year}&branch=${encodeURIComponent(branch)}&category=${encodeURIComponent(category)}&type=${encodeURIComponent(type)}`;
+        const filterSelectors = ['monthly-year-select', 'monthly-branch-select', 'monthly-category-select', 'monthly-type-select'];
         const chartContainer = document.getElementById('monthly-branch-chart');
 
         // Create a wrapper div around canvas if it doesn't exist
@@ -209,9 +210,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const year = yearSelect.value;
         const branch = branchSelect.value;
         const category = categorySelect.value;
+        const type = typeSelect.value;
 
         if (year && branch && category) {
-            fetchAndUpdateMonthlyChart(year, branch, category);
+            fetchAndUpdateMonthlyChart(year, branch, category, type);
         }
     };
 
@@ -219,6 +221,7 @@ document.addEventListener('DOMContentLoaded', function () {
     yearSelect.addEventListener('change', triggerUpdate);
     branchSelect.addEventListener('change', triggerUpdate);
     categorySelect.addEventListener('change', triggerUpdate);
+    typeSelect.addEventListener('change', triggerUpdate);
 
     // Initialize
     loadBranches();
@@ -268,6 +271,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const currentYear = yearSelect.value;
             const currentCategory = categorySelect.value;
+            const currentType = typeSelect.value;
 
             // Close dropdown
             if (dropdownMenu) {
@@ -280,7 +284,7 @@ document.addEventListener('DOMContentLoaded', function () {
             exportBtn.innerHTML = 'Exporting...';
 
             // Create download URL with parameters (no branch - exports all branches)
-            const exportUrl = `/monthly-branch/export-excel?year=${currentYear}&category=${encodeURIComponent(currentCategory)}`;
+            const exportUrl = `/monthly-branch/export-excel?year=${currentYear}&category=${encodeURIComponent(currentCategory)}&type=${encodeURIComponent(currentType)}`;
 
             // Use window.location for direct download
             window.location.href = exportUrl;
@@ -303,6 +307,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const currentYear = yearSelect.value;
             const currentBranch = branchSelect.value;
             const currentCategory = categorySelect.value;
+            const currentType = typeSelect.value;
 
             // Close dropdown
             if (dropdownMenu) {
@@ -315,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function () {
             exportPdfBtn.innerHTML = 'Exporting...';
 
             // Create download URL with parameters (includes branch for single branch export)
-            const exportPdfUrl = `/monthly-branch/export-pdf?year=${currentYear}&branch=${encodeURIComponent(currentBranch)}&category=${encodeURIComponent(currentCategory)}`;
+            const exportPdfUrl = `/monthly-branch/export-pdf?year=${currentYear}&branch=${encodeURIComponent(currentBranch)}&category=${encodeURIComponent(currentCategory)}&type=${encodeURIComponent(currentType)}`;
 
             // Use window.location for direct download
             window.location.href = exportPdfUrl;
