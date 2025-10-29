@@ -11,9 +11,9 @@
             @include('partials.sales-family')
 
             @push('scripts')
-            <script src="{{ asset('js/dashboard/table-helper.js') }}"></script>
-            <script src="{{ asset('js/dashboard/sales-item.js') }}"></script>
-            <script src="{{ asset('js/dashboard/sales-family.js') }}"></script>
+                <script src="{{ asset('js/dashboard/table-helper.js') }}"></script>
+                <script src="{{ asset('js/dashboard/sales-item.js') }}"></script>
+                <script src="{{ asset('js/dashboard/sales-family.js') }}"></script>
             @endpush
 
         </div>
