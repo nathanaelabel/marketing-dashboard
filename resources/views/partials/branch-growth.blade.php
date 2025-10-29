@@ -5,6 +5,16 @@
                 <h3 class="text-2xl font-bold text-gray-900">Branch Revenue Growth</h3>
             </div>
             <div class="flex items-end space-x-3 md:justify-self-end justify-center mt-3 md:mt-0">
+                <!-- Type Selector -->
+                <div>
+                    <label for="growth-type-select" class="block text-xs font-medium text-gray-500 mb-1">Type</label>
+                    <select id="growth-type-select"
+                        class="pl-3 pr-8 py-1.5 w-24 text-sm rounded-md border border-gray-300 shadow-sm focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 focus:ring-opacity-50">
+                        <option value="NETTO">Netto</option>
+                        <option value="BRUTO">Bruto</option>
+                    </select>
+                </div>
+
                 <!-- Start Year Selector -->
                 <div>
                     <label for="growth-start-year-select" class="block text-xs font-medium text-gray-500 mb-1">Start

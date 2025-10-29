@@ -10,8 +10,8 @@
                     <label for="monthly-type-select" class="block text-xs font-medium text-gray-500 mb-1">Type</label>
                     <select id="monthly-type-select"
                         class="pl-3 pr-8 py-1.5 w-24 text-sm rounded-md border border-gray-300 shadow-sm focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 focus:ring-opacity-50">
-                        <option value="BRUTO">Bruto</option>
                         <option value="NETTO">Netto</option>
+                        <option value="BRUTO">Bruto</option>
                     </select>
                 </div>
 

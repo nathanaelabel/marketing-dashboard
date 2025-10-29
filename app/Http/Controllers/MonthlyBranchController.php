@@ -40,7 +40,7 @@ class MonthlyBranchController extends Controller
             $previousYear = $year - 1;
             $category = $request->get('category', 'MIKA');
             $branch = $request->get('branch', 'National');
-            $type = $request->get('type', 'BRUTO'); // Default to BRUTO
+            $type = $request->get('type', 'NETTO'); // Default to NETTO
 
             // Get current year data using date range
             $currentYearData = $this->getMonthlyRevenueData($startDate, $endDate, $category, $branch, $type);

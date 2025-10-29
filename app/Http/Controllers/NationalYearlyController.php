@@ -33,7 +33,7 @@ class NationalYearlyController extends Controller
 
             $previousYear = $year - 1;
             $category = $request->get('category', 'MIKA');
-            $type = $request->get('type', 'BRUTO'); // Default to BRUTO
+            $type = $request->get('type', 'NETTO'); // Default to NETTO
 
             $dateRanges = ChartHelper::calculateFairComparisonDateRanges($endDate, $previousYear);
             $currentYearData = $this->getRevenueData($dateRanges['current']['start'], $dateRanges['current']['end'], $category, $type);

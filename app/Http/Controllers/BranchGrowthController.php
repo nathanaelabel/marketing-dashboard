@@ -31,9 +31,10 @@ class BranchGrowthController extends Controller
 
             $category = $request->get('category', 'MIKA');
             $branch = $request->get('branch', 'National');
+            $type = $request->get('type', 'NETTO'); // Default to NETTO
 
             // Get revenue data using date range filtering like National Revenue
-            $data = $this->getRevenueDataByDateRange($startDate, $endDate, $category, $branch);
+            $data = $this->getRevenueDataByDateRange($startDate, $endDate, $category, $branch, $type);
 
             // Format data for line chart
             $formattedData = $this->formatMonthlyGrowthData($data, $startDate, $endDate);
@@ -47,6 +48,7 @@ class BranchGrowthController extends Controller
                 'end_date' => $endDate ?? null,
                 'category' => $request->get('category'),
                 'branch' => $request->get('branch'),
+                'type' => $request->get('type'),
                 'trace' => $e->getTraceAsString()
             ]);
 
@@ -90,7 +92,7 @@ class BranchGrowthController extends Controller
         }
     }
 
-    private function getRevenueDataByDateRange($startDate, $endDate, $category, $branch)
+    private function getRevenueDataByDateRange($startDate, $endDate, $category, $branch, $type = 'NETTO')
     {
         try {
             // Branch condition - if National, sum all branches, otherwise filter by specific branch
@@ -101,35 +103,65 @@ class BranchGrowthController extends Controller
                 $branchBinding[] = $branch;
             }
 
-            $query = "
-                SELECT
-                    EXTRACT(year FROM h.dateinvoiced) as year,
-                    EXTRACT(month FROM h.dateinvoiced) as month,
-                    SUM(CASE 
-                        WHEN h.documentno LIKE 'INC%' THEN d.linenetamt 
-                        WHEN h.documentno LIKE 'CNC%' THEN -d.linenetamt 
-                        ELSE 0 
-                    END) as net_revenue
-                FROM
-                    c_invoiceline d
-                    INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
-                    INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
-                    INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
-                    INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
-                WHERE
-                    h.issotrx = 'Y'
-                    AND h.ad_client_id = 1000001
-                    AND h.docstatus IN ('CO', 'CL')
-                    AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
-                    AND cat.name = ?
-                    AND DATE(h.dateinvoiced) BETWEEN ? AND ?
-                    {$branchCondition}
-                GROUP BY
-                    EXTRACT(year FROM h.dateinvoiced),
-                    EXTRACT(month FROM h.dateinvoiced)
-                ORDER BY
-                    year, month
-            ";
+            if ($type === 'BRUTO') {
+                // Bruto query - only INC documents
+                $query = "
+                    SELECT
+                        EXTRACT(year FROM h.dateinvoiced) as year,
+                        EXTRACT(month FROM h.dateinvoiced) as month,
+                        COALESCE(SUM(d.linenetamt), 0) as net_revenue
+                    FROM
+                        c_invoiceline d
+                        INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+                        INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                        INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
+                        INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                    WHERE
+                        h.issotrx = 'Y'
+                        AND h.ad_client_id = 1000001
+                        AND h.docstatus IN ('CO', 'CL')
+                        AND h.documentno LIKE 'INC%'
+                        AND cat.name = ?
+                        AND DATE(h.dateinvoiced) BETWEEN ? AND ?
+                        {$branchCondition}
+                    GROUP BY
+                        EXTRACT(year FROM h.dateinvoiced),
+                        EXTRACT(month FROM h.dateinvoiced)
+                    ORDER BY
+                        year, month
+                ";
+            } else {
+                // Netto query - INC minus CNC
+                $query = "
+                    SELECT
+                        EXTRACT(year FROM h.dateinvoiced) as year,
+                        EXTRACT(month FROM h.dateinvoiced) as month,
+                        SUM(CASE
+                            WHEN h.documentno LIKE 'INC%' THEN d.linenetamt
+                            WHEN h.documentno LIKE 'CNC%' THEN -d.linenetamt
+                            ELSE 0
+                        END) as net_revenue
+                    FROM
+                        c_invoiceline d
+                        INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+                        INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                        INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
+                        INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                    WHERE
+                        h.issotrx = 'Y'
+                        AND h.ad_client_id = 1000001
+                        AND h.docstatus IN ('CO', 'CL')
+                        AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
+                        AND cat.name = ?
+                        AND DATE(h.dateinvoiced) BETWEEN ? AND ?
+                        {$branchCondition}
+                    GROUP BY
+                        EXTRACT(year FROM h.dateinvoiced),
+                        EXTRACT(month FROM h.dateinvoiced)
+                    ORDER BY
+                        year, month
+                ";
+            }
 
             $bindings = array_merge([$category, $startDate, $endDate], $branchBinding);
 
@@ -142,6 +174,7 @@ class BranchGrowthController extends Controller
                 'end_date' => $endDate,
                 'category' => $category,
                 'branch' => $branch,
+                'type' => $type,
                 'error' => $e->getMessage()
             ]);
 
@@ -189,7 +222,7 @@ class BranchGrowthController extends Controller
             $datasets = [];
             $defaultColors = [
                 'rgba(59, 130, 246, 0.8)',   // Blue
-                'rgba(16, 185, 129, 0.8)',   // Green  
+                'rgba(16, 185, 129, 0.8)',   // Green
                 'rgba(245, 158, 11, 0.8)',   // Yellow
                 'rgba(239, 68, 68, 0.8)',    // Red
                 'rgba(139, 92, 246, 0.8)'    // Purple
@@ -289,16 +322,16 @@ class BranchGrowthController extends Controller
             $yearSelects = [];
             for ($year = $startYear; $year <= $endYear; $year++) {
                 for ($month = 1; $month <= 12; $month++) {
-                    $yearSelects[] = "SUM(CASE 
-                        WHEN EXTRACT(year FROM h.dateinvoiced) = $year 
-                        AND EXTRACT(month FROM h.dateinvoiced) = $month 
-                        AND h.documentno LIKE 'INC%' 
-                        THEN d.linenetamt 
-                        WHEN EXTRACT(year FROM h.dateinvoiced) = $year 
-                        AND EXTRACT(month FROM h.dateinvoiced) = $month 
-                        AND h.documentno LIKE 'CNC%' 
-                        THEN -d.linenetamt 
-                        ELSE 0 
+                    $yearSelects[] = "SUM(CASE
+                        WHEN EXTRACT(year FROM h.dateinvoiced) = $year
+                        AND EXTRACT(month FROM h.dateinvoiced) = $month
+                        AND h.documentno LIKE 'INC%'
+                        THEN d.linenetamt
+                        WHEN EXTRACT(year FROM h.dateinvoiced) = $year
+                        AND EXTRACT(month FROM h.dateinvoiced) = $month
+                        AND h.documentno LIKE 'CNC%'
+                        THEN -d.linenetamt
+                        ELSE 0
                     END) AS y{$year}_b" . str_pad($month, 2, '0', STR_PAD_LEFT);
                 }
             }
@@ -306,7 +339,7 @@ class BranchGrowthController extends Controller
             $selectClause = implode(",\n                    ", $yearSelects);
 
             $query = "
-                SELECT 
+                SELECT
                     $selectClause
                 FROM
                     c_invoiceline d
@@ -424,6 +457,7 @@ class BranchGrowthController extends Controller
         $startYear = $request->input('start_year', 2024);
         $endYear = $request->input('end_year', 2025);
         $category = $request->input('category', 'MIKA');
+        $type = $request->input('type', 'NETTO');
         $currentYear = date('Y');
 
         $startDate = $startYear . '-01-01';
@@ -433,34 +467,63 @@ class BranchGrowthController extends Controller
         $branches = ChartHelper::getLocations();
 
         // Get revenue data for all branches and all years in range
-        $query = "
-            SELECT
-                org.name AS branch_name,
-                EXTRACT(month FROM h.dateinvoiced) AS month_number,
-                EXTRACT(year FROM h.dateinvoiced) AS year_number,
-                SUM(CASE 
-                    WHEN h.documentno LIKE 'INC%' THEN d.linenetamt 
-                    WHEN h.documentno LIKE 'CNC%' THEN -d.linenetamt 
-                    ELSE 0 
-                END) as net_revenue
-            FROM
-                c_invoiceline d
-                INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
-                INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
-                INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
-                INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
-            WHERE
-                h.issotrx = 'Y'
-                AND h.ad_client_id = 1000001
-                AND h.docstatus IN ('CO', 'CL')
-                AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
-                AND cat.name = ?
-                AND DATE(h.dateinvoiced) BETWEEN ? AND ?
-            GROUP BY
-                org.name, EXTRACT(month FROM h.dateinvoiced), EXTRACT(year FROM h.dateinvoiced)
-            ORDER BY
-                org.name, year_number, month_number
-        ";
+        if ($type === 'BRUTO') {
+            // Bruto query - only INC documents
+            $query = "
+                SELECT
+                    org.name AS branch_name,
+                    EXTRACT(month FROM h.dateinvoiced) AS month_number,
+                    EXTRACT(year FROM h.dateinvoiced) AS year_number,
+                    COALESCE(SUM(d.linenetamt), 0) as net_revenue
+                FROM
+                    c_invoiceline d
+                    INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+                    INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                    INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
+                    INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                WHERE
+                    h.issotrx = 'Y'
+                    AND h.ad_client_id = 1000001
+                    AND h.docstatus IN ('CO', 'CL')
+                    AND h.documentno LIKE 'INC%'
+                    AND cat.name = ?
+                    AND DATE(h.dateinvoiced) BETWEEN ? AND ?
+                GROUP BY
+                    org.name, EXTRACT(month FROM h.dateinvoiced), EXTRACT(year FROM h.dateinvoiced)
+                ORDER BY
+                    org.name, year_number, month_number
+            ";
+        } else {
+            // Netto query - INC minus CNC
+            $query = "
+                SELECT
+                    org.name AS branch_name,
+                    EXTRACT(month FROM h.dateinvoiced) AS month_number,
+                    EXTRACT(year FROM h.dateinvoiced) AS year_number,
+                    SUM(CASE
+                        WHEN h.documentno LIKE 'INC%' THEN d.linenetamt
+                        WHEN h.documentno LIKE 'CNC%' THEN -d.linenetamt
+                        ELSE 0
+                    END) as net_revenue
+                FROM
+                    c_invoiceline d
+                    INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+                    INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                    INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
+                    INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                WHERE
+                    h.issotrx = 'Y'
+                    AND h.ad_client_id = 1000001
+                    AND h.docstatus IN ('CO', 'CL')
+                    AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
+                    AND cat.name = ?
+                    AND DATE(h.dateinvoiced) BETWEEN ? AND ?
+                GROUP BY
+                    org.name, EXTRACT(month FROM h.dateinvoiced), EXTRACT(year FROM h.dateinvoiced)
+                ORDER BY
+                    org.name, year_number, month_number
+            ";
+        }
 
         $allData = DB::select($query, [$category, $startDate, $endDate]);
 
@@ -511,7 +574,7 @@ class BranchGrowthController extends Controller
             $allBranchesData[] = $branchData;
         }
 
-        $filename = 'Branch_Revenue_Growth_' . $startYear . '-' . $endYear . '_' . str_replace(' ', '_', $category) . '.xls';
+        $filename = 'Branch_Revenue_Growth_' . $startYear . '-' . $endYear . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
 
         // Create XLS content using HTML table format
         $headers = [
@@ -546,42 +609,42 @@ class BranchGrowthController extends Controller
             <![endif]-->
             <style>
                 body { font-family: Verdana, sans-serif; }
-                table { 
-                    border-collapse: collapse; 
+                table {
+                    border-collapse: collapse;
                     margin-bottom: 20px;
                 }
-                th, td { 
-                    border: 1px solid #000; 
-                    padding: 6px 8px; 
-                    text-align: left; 
+                th, td {
+                    border: 1px solid #000;
+                    padding: 6px 8px;
+                    text-align: left;
                     font-family: Verdana, sans-serif;
                     font-size: 10pt;
                 }
-                th { 
-                    background-color: #D3D3D3; 
-                    color: #000; 
-                    font-weight: bold; 
+                th {
+                    background-color: #D3D3D3;
+                    color: #000;
+                    font-weight: bold;
                     text-align: center;
                     vertical-align: middle;
                 }
-                .title { 
-                    font-family: Verdana, sans-serif; 
-                    font-size: 16pt; 
-                    font-weight: bold; 
-                    margin-bottom: 8px; 
+                .title {
+                    font-family: Verdana, sans-serif;
+                    font-size: 16pt;
+                    font-weight: bold;
+                    margin-bottom: 8px;
                     text-align: center;
                 }
-                .branch-title { 
-                    font-family: Verdana, sans-serif; 
-                    font-size: 12pt; 
-                    font-weight: bold; 
+                .branch-title {
+                    font-family: Verdana, sans-serif;
+                    font-size: 12pt;
+                    font-weight: bold;
                     margin-top: 15px;
                     margin-bottom: 5px;
                     text-align: center;
                 }
-                .total-row { 
-                    font-weight: bold; 
-                    background-color: #E8E8E8; 
+                .total-row {
+                    font-weight: bold;
+                    background-color: #E8E8E8;
                 }
                 .number { text-align: right; }
                 .year-header {
@@ -593,7 +656,7 @@ class BranchGrowthController extends Controller
             </style>
         </head>
         <body>
-            <div class="title">BRANCH REVENUE GROWTH ' . $startYear . ' - ' . $endYear . ' | Category: ' . htmlspecialchars($category) . '</div>
+            <div class="title">BRANCH REVENUE GROWTH ' . $startYear . ' - ' . $endYear . ' | Category: ' . htmlspecialchars($category) . ' | Type: ' . htmlspecialchars($type) . '</div>
             <br>';
 
         // Calculate NATIONAL totals first
@@ -703,6 +766,7 @@ class BranchGrowthController extends Controller
         $startYear = $request->input('start_year', 2024);
         $endYear = $request->input('end_year', 2025);
         $category = $request->input('category', 'MIKA');
+        $type = $request->input('type', 'NETTO');
         $currentYear = date('Y');
 
         $startDate = $startYear . '-01-01';
@@ -712,34 +776,63 @@ class BranchGrowthController extends Controller
         $branches = ChartHelper::getLocations();
 
         // Get revenue data for all branches and all years in range
-        $query = "
-            SELECT
-                org.name AS branch_name,
-                EXTRACT(month FROM h.dateinvoiced) AS month_number,
-                EXTRACT(year FROM h.dateinvoiced) AS year_number,
-                SUM(CASE 
-                    WHEN h.documentno LIKE 'INC%' THEN d.linenetamt 
-                    WHEN h.documentno LIKE 'CNC%' THEN -d.linenetamt 
-                    ELSE 0 
-                END) as net_revenue
-            FROM
-                c_invoiceline d
-                INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
-                INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
-                INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
-                INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
-            WHERE
-                h.issotrx = 'Y'
-                AND h.ad_client_id = 1000001
-                AND h.docstatus IN ('CO', 'CL')
-                AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
-                AND cat.name = ?
-                AND DATE(h.dateinvoiced) BETWEEN ? AND ?
-            GROUP BY
-                org.name, EXTRACT(month FROM h.dateinvoiced), EXTRACT(year FROM h.dateinvoiced)
-            ORDER BY
-                org.name, year_number, month_number
-        ";
+        if ($type === 'BRUTO') {
+            // Bruto query - only INC documents
+            $query = "
+                SELECT
+                    org.name AS branch_name,
+                    EXTRACT(month FROM h.dateinvoiced) AS month_number,
+                    EXTRACT(year FROM h.dateinvoiced) AS year_number,
+                    COALESCE(SUM(d.linenetamt), 0) as net_revenue
+                FROM
+                    c_invoiceline d
+                    INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+                    INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                    INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
+                    INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                WHERE
+                    h.issotrx = 'Y'
+                    AND h.ad_client_id = 1000001
+                    AND h.docstatus IN ('CO', 'CL')
+                    AND h.documentno LIKE 'INC%'
+                    AND cat.name = ?
+                    AND DATE(h.dateinvoiced) BETWEEN ? AND ?
+                GROUP BY
+                    org.name, EXTRACT(month FROM h.dateinvoiced), EXTRACT(year FROM h.dateinvoiced)
+                ORDER BY
+                    org.name, year_number, month_number
+            ";
+        } else {
+            // Netto query - INC minus CNC
+            $query = "
+                SELECT
+                    org.name AS branch_name,
+                    EXTRACT(month FROM h.dateinvoiced) AS month_number,
+                    EXTRACT(year FROM h.dateinvoiced) AS year_number,
+                    SUM(CASE
+                        WHEN h.documentno LIKE 'INC%' THEN d.linenetamt
+                        WHEN h.documentno LIKE 'CNC%' THEN -d.linenetamt
+                        ELSE 0
+                    END) as net_revenue
+                FROM
+                    c_invoiceline d
+                    INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+                    INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                    INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
+                    INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                WHERE
+                    h.issotrx = 'Y'
+                    AND h.ad_client_id = 1000001
+                    AND h.docstatus IN ('CO', 'CL')
+                    AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
+                    AND cat.name = ?
+                    AND DATE(h.dateinvoiced) BETWEEN ? AND ?
+                GROUP BY
+                    org.name, EXTRACT(month FROM h.dateinvoiced), EXTRACT(year FROM h.dateinvoiced)
+                ORDER BY
+                    org.name, year_number, month_number
+            ";
+        }
 
         $allData = DB::select($query, [$category, $startDate, $endDate]);
 
@@ -800,39 +893,39 @@ class BranchGrowthController extends Controller
             <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
             <style>
                 @page { margin: 15px; }
-                body { 
-                    font-family: Arial, sans-serif; 
+                body {
+                    font-family: Arial, sans-serif;
                     font-size: 7pt;
                     margin: 0;
                     padding: 10px;
                 }
-                .title { 
-                    font-size: 14pt; 
-                    font-weight: bold; 
+                .title {
+                    font-size: 14pt;
+                    font-weight: bold;
                     text-align: center;
                     margin-bottom: 15px;
                 }
-                .branch-title { 
-                    font-size: 10pt; 
-                    font-weight: bold; 
+                .branch-title {
+                    font-size: 10pt;
+                    font-weight: bold;
                     text-align: center;
                     margin-top: 10px;
                     margin-bottom: 5px;
                 }
-                table { 
+                table {
                     width: 100%;
                     border-collapse: collapse;
                     margin-bottom: 15px;
                 }
-                th, td { 
-                    border: 1px solid #000; 
-                    padding: 4px; 
+                th, td {
+                    border: 1px solid #000;
+                    padding: 4px;
                     text-align: left;
                     font-size: 7pt;
                 }
-                th { 
-                    background-color: #D3D3D3; 
-                    color: #000; 
+                th {
+                    background-color: #D3D3D3;
+                    color: #000;
                     font-weight: bold;
                     text-align: center;
                 }
@@ -849,7 +942,7 @@ class BranchGrowthController extends Controller
             </style>
         </head>
         <body>
-            <div class="title">BRANCH REVENUE GROWTH ' . $startYear . ' - ' . $endYear . ' | Category: ' . htmlspecialchars($category) . '</div>';
+            <div class="title">BRANCH REVENUE GROWTH ' . $startYear . ' - ' . $endYear . ' | Category: ' . htmlspecialchars($category) . ' | Type: ' . htmlspecialchars($type) . '</div>';
 
         // Calculate NATIONAL totals first
         $nationalData = [
@@ -948,7 +1041,7 @@ class BranchGrowthController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'landscape');
 
-        $filename = 'Branch_Revenue_Growth_' . $startYear . '-' . $endYear . '_' . str_replace(' ', '_', $category) . '.pdf';
+        $filename = 'Branch_Revenue_Growth_' . $startYear . '-' . $endYear . '_' . str_replace(' ', '_', $category) . '_' . $type . '.pdf';
 
         return $pdf->download($filename);
     }
