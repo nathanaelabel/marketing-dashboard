@@ -9,11 +9,15 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @include('partials.sales-item')
             @include('partials.sales-family')
+            @include('partials.return-comparison')
+            @include('partials.sales-comparison')
 
             @push('scripts')
                 <script src="{{ asset('js/dashboard/table-helper.js') }}"></script>
                 <script src="{{ asset('js/dashboard/sales-item.js') }}"></script>
                 <script src="{{ asset('js/dashboard/sales-family.js') }}"></script>
+                <script src="{{ asset('js/dashboard/return-comparison.js') }}"></script>
+                <script src="{{ asset('js/dashboard/sales-comparison.js') }}"></script>
             @endpush
 
         </div>

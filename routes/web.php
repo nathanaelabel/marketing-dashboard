@@ -13,6 +13,8 @@ use App\Http\Controllers\TargetRevenueController;
 use App\Http\Controllers\BranchTargetController;
 use App\Http\Controllers\SalesItemController;
 use App\Http\Controllers\SalesFamilyController;
+use App\Http\Controllers\ReturnComparisonController;
+use App\Http\Controllers\SalesComparisonController;
 use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
 
@@ -60,6 +62,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales-family/data', [SalesFamilyController::class, 'getData'])->name('sales-family.data');
     Route::get('/sales-family/export-excel', [SalesFamilyController::class, 'exportExcel'])->name('sales-family.export-excel');
     Route::get('/sales-family/export-pdf', [SalesFamilyController::class, 'exportPdf'])->name('sales-family.export-pdf');
+    Route::get('/return-comparison/data', [ReturnComparisonController::class, 'getData'])->name('return-comparison.data');
+    Route::get('/return-comparison/export-excel', [ReturnComparisonController::class, 'exportExcel'])->name('return-comparison.export-excel');
+    Route::get('/return-comparison/export-pdf', [ReturnComparisonController::class, 'exportPdf'])->name('return-comparison.export-pdf');
+    Route::get('/sales-comparison/data', [SalesComparisonController::class, 'getData'])->name('sales-comparison.data');
+    Route::get('/sales-comparison/export-excel', [SalesComparisonController::class, 'exportExcel'])->name('sales-comparison.export-excel');
+    Route::get('/sales-comparison/export-pdf', [SalesComparisonController::class, 'exportPdf'])->name('sales-comparison.export-pdf');
 });
 
 require __DIR__ . '/auth.php';

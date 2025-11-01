@@ -1,12 +1,13 @@
-<!-- Sales Family Section -->
+<!-- Sales Comparison Section -->
 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
     <div class="p-6 text-gray-900">
         <div class="flex items-center justify-between mb-4">
-            <h3 id="family-section-title" class="text-lg font-medium text-gray-900">Penjualan Per Family (Rp)</h3>
+            <h3 id="sales-comp-section-title" class="text-lg font-medium text-gray-900">Perbandingan Sales, Stok, dan BDP
+            </h3>
 
             <!-- Three-dots Menu -->
             <div class="relative">
-                <button type="button" id="sfMenuButton"
+                <button type="button" id="scMenuButton"
                     class="inline-flex items-center justify-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="currentColor"
                         viewBox="0 0 24 24">
@@ -16,10 +17,10 @@
                     </svg>
                 </button>
                 <!-- Dropdown Menu -->
-                <div id="sfDropdownMenu"
+                <div id="scDropdownMenu"
                     class="hidden absolute right-0 mt-2 min-w-max rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
                     <div class="py-1" role="menu">
-                        <button type="button" id="sfRefreshDataBtn"
+                        <button type="button" id="scRefreshDataBtn"
                             class="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 whitespace-nowrap"
                             role="menuitem">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-gray-700" fill="none"
@@ -29,14 +30,14 @@
                             </svg>
                             Refresh Data
                         </button>
-                        <button type="button" id="sfExportExcelBtn"
+                        <button type="button" id="scExportExcelBtn"
                             class="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 whitespace-nowrap"
                             role="menuitem">
                             <i class="bi bi-file-excel text-gray-700"
                                 style="font-size: 1.25rem; margin-right: 0.75rem;"></i>
                             Export to Excel
                         </button>
-                        <button type="button" id="sfExportPdfBtn"
+                        <button type="button" id="scExportPdfBtn"
                             class="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 whitespace-nowrap"
                             role="menuitem">
                             <i class="bi bi-file-pdf text-gray-700"
@@ -50,61 +51,21 @@
 
         <!-- Filters -->
         <div class="flex flex-wrap gap-4 mb-6">
-            <div class="flex-1 min-w-[120px]">
-                <label for="family-type-select" class="block text-sm font-medium text-gray-700 mb-1">Jenis</label>
-                <select id="family-type-select"
-                    class="block w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                    <option value="rp">Rupiah</option>
-                    <option value="pcs">Pieces</option>
-                </select>
-            </div>
-
-            <div class="flex-1 min-w-[120px]">
-                <label for="family-month-select" class="block text-sm font-medium text-gray-700 mb-1">Bulan</label>
-                <select id="family-month-select"
-                    class="block w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                    <option value="1" {{ date('n') == 1 ? 'selected' : '' }}>Januari</option>
-                    <option value="2" {{ date('n') == 2 ? 'selected' : '' }}>Februari</option>
-                    <option value="3" {{ date('n') == 3 ? 'selected' : '' }}>Maret</option>
-                    <option value="4" {{ date('n') == 4 ? 'selected' : '' }}>April</option>
-                    <option value="5" {{ date('n') == 5 ? 'selected' : '' }}>Mei</option>
-                    <option value="6" {{ date('n') == 6 ? 'selected' : '' }}>Juni</option>
-                    <option value="7" {{ date('n') == 7 ? 'selected' : '' }}>Juli</option>
-                    <option value="8" {{ date('n') == 8 ? 'selected' : '' }}>Agustus</option>
-                    <option value="9" {{ date('n') == 9 ? 'selected' : '' }}>September</option>
-                    <option value="10" {{ date('n') == 10 ? 'selected' : '' }}>Oktober</option>
-                    <option value="11" {{ date('n') == 11 ? 'selected' : '' }}>November</option>
-                    <option value="12" {{ date('n') == 12 ? 'selected' : '' }}>Desember</option>
-                </select>
-            </div>
-
-            <div class="flex-1 min-w-[120px]">
-                <label for="family-year-select" class="block text-sm font-medium text-gray-700 mb-1">Tahun</label>
-                <select id="family-year-select"
-                    class="block w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                    <option value="2021" {{ date('Y') == 2021 ? 'selected' : '' }}>2021</option>
-                    <option value="2022" {{ date('Y') == 2022 ? 'selected' : '' }}>2022</option>
-                    <option value="2023" {{ date('Y') == 2023 ? 'selected' : '' }}>2023</option>
-                    <option value="2024" {{ date('Y') == 2024 ? 'selected' : '' }}>2024</option>
-                    <option value="2025" {{ date('Y') == 2025 ? 'selected' : '' }}>2025</option>
-                </select>
-            </div>
-
             <div class="flex-1 min-w-[200px]">
-                <label for="family-search-input" class="block text-sm font-medium text-gray-700 mb-1">Search</label>
-                <input type="text" id="family-search-input" placeholder="Search family name..."
-                    class="block w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <label for="sales-comp-date-select" class="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
+                <input type="date" id="sales-comp-date-select" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}"
+                    class="block w-full pl-3 pr-3 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
             </div>
         </div>
 
         <!-- Loading Indicator -->
-        <div id="family-loading-indicator" class="flex items-center justify-center py-8 hidden">
+        <div id="sales-comp-loading-indicator" class="flex items-center justify-center py-8 hidden">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             <span class="ml-2 text-gray-600">Loading table data...</span>
         </div>
 
         <!-- Error Message -->
-        <div id="family-error-message" class="bg-red-50 border border-red-200 rounded-md p-4 mb-4 hidden">
+        <div id="sales-comp-error-message" class="bg-red-50 border border-red-200 rounded-md p-4 mb-4 hidden">
             <div class="flex">
                 <div class="flex-shrink-0">
                     <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -118,30 +79,30 @@
                         Error
                     </h3>
                     <div class="mt-2 text-sm text-red-700">
-                        <p id="family-error-text">An error occurred while loading data.</p>
+                        <p id="sales-comp-error-text">An error occurred while loading data.</p>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- No Data Message -->
-        <div id="family-no-data-message" class="text-center py-8 text-gray-500 hidden">
+        <div id="sales-comp-no-data-message" class="text-center py-8 text-gray-500 hidden">
             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
             <h3 class="mt-2 text-sm font-medium text-gray-900">No Data Available</h3>
-            <p class="mt-1 text-sm text-gray-500">No data found for the selected period.</p>
+            <p class="mt-1 text-sm text-gray-500">No data found for the selected date.</p>
         </div>
 
         <!-- Table Container -->
-        <div id="family-table-container" class="hidden">
+        <div id="sales-comp-table-container" class="hidden">
             <!-- Period Info and Show Entries -->
             <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between">
                 <div class="flex items-center gap-4">
                     <div class="flex items-center gap-2">
                         <span class="text-sm text-blue-800">Show</span>
-                        <select id="family-entries-per-page"
+                        <select id="sales-comp-entries-per-page"
                             class="pl-2 pr-6 py-1 text-sm border border-blue-300 rounded bg-white text-blue-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
                             <option value="10" selected>10</option>
                             <option value="25">25</option>
@@ -153,8 +114,8 @@
                 </div>
                 <div>
                     <p class="text-sm text-blue-800">
-                        <span class="font-medium">Period:</span>
-                        <span id="family-period-info">-</span>
+                        <span class="font-medium">Date:</span>
+                        <span id="sales-comp-period-info">-</span>
                     </p>
                 </div>
             </div>
@@ -164,69 +125,77 @@
                 <table class="min-w-full divide-y divide-gray-200 border border-gray-300">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th
-                                class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                            <th rowspan="2"
+                                class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
                                 No.</th>
-                            <th
-                                class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                Family Name</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                MDN</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                MKS</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                PLB</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                DPS</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                SBY</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                PKU</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                CRB</th>
+                            <th rowspan="2"
+                                class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                Cabang</th>
+                            <th colspan="3"
+                                class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                Sales Per <span id="sales-date-header">-</span></th>
+                            <th colspan="3"
+                                class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                Stok Per Sales Per <span id="stok-date-header">-</span></th>
+                            <th colspan="3"
+                                class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                BDP Per <span id="bdp-date-header">-</span></th>
+                            <th colspan="3"
+                                class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                Stok+BDP Per <span id="stok-bdp-date-header">-</span></th>
+                            <th colspan="3"
+                                class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Sales+Stok+BDP Per <span id="total-date-header">-</span></th>
+                        </tr>
+                        <tr>
                             <th
                                 class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                TGR</th>
+                                Mika</th>
                             <th
                                 class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                BKS</th>
+                                Sparepart</th>
                             <th
                                 class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                SMG</th>
+                                Total Sales</th>
                             <th
                                 class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                BJM</th>
+                                Mika</th>
                             <th
                                 class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                BDG</th>
+                                Sparepart</th>
                             <th
                                 class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                LMP</th>
+                                Total Stok</th>
                             <th
                                 class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                JKT</th>
+                                Mika</th>
                             <th
                                 class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                PTK</th>
+                                Sparepart</th>
                             <th
                                 class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                PWT</th>
+                                Total BDP</th>
                             <th
                                 class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                PDG</th>
+                                Mika</th>
                             <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50">
-                                Nasional</th>
+                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                Sparepart</th>
+                            <th
+                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                Total Stok+BDP</th>
+                            <th
+                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                Mika</th>
+                            <th
+                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                Sparepart</th>
+                            <th
+                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Total Stok+BDP+Sales</th>
                         </tr>
                     </thead>
-                    <tbody id="family-table-body" class="bg-white divide-y divide-gray-200">
+                    <tbody id="sales-comp-table-body" class="bg-white divide-y divide-gray-200">
                         <!-- Table rows will be populated by JavaScript -->
                     </tbody>
                 </table>
@@ -235,18 +204,18 @@
             <!-- Pagination -->
             <div class="mt-4 flex items-center justify-between">
                 <div class="text-sm text-gray-700">
-                    <span id="family-pagination-info">-</span>
+                    <span id="sales-comp-pagination-info">-</span>
                 </div>
                 <div class="flex space-x-2">
-                    <button id="family-prev-page"
+                    <button id="sales-comp-prev-page"
                         class="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         disabled>
                         Previous
                     </button>
-                    <div id="family-page-numbers" class="flex space-x-1">
+                    <div id="sales-comp-page-numbers" class="flex space-x-1">
                         <!-- Page numbers will be populated by JavaScript -->
                     </div>
-                    <button id="family-next-page"
+                    <button id="sales-comp-next-page"
                         class="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         disabled>
                         Next
