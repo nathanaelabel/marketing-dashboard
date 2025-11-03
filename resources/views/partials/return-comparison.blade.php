@@ -121,27 +121,12 @@
 
         <!-- Table Container -->
         <div id="return-table-container" class="hidden">
-            <!-- Period Info and Show Entries -->
-            <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm text-blue-800">Show</span>
-                        <select id="return-entries-per-page"
-                            class="pl-2 pr-6 py-1 text-sm border border-blue-300 rounded bg-white text-blue-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="10" selected>10</option>
-                            <option value="25">25</option>
-                            <option value="50">50</option>
-                            <option value="100">100</option>
-                        </select>
-                        <span class="text-sm text-blue-800">entries</span>
-                    </div>
-                </div>
-                <div>
-                    <p class="text-sm text-blue-800">
-                        <span class="font-medium">Period:</span>
-                        <span id="return-period-info">-</span>
-                    </p>
-                </div>
+            <!-- Period Info Only (No pagination for all 17 branches) -->
+            <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p class="text-sm text-blue-800">
+                    <span class="font-medium">Period:</span>
+                    <span id="return-period-info">-</span>
+                </p>
             </div>
 
             <!-- Table -->
@@ -208,28 +193,6 @@
                         <!-- Table rows will be populated by JavaScript -->
                     </tbody>
                 </table>
-            </div>
-
-            <!-- Pagination -->
-            <div class="mt-4 flex items-center justify-between">
-                <div class="text-sm text-gray-700">
-                    <span id="return-pagination-info">-</span>
-                </div>
-                <div class="flex space-x-2">
-                    <button id="return-prev-page"
-                        class="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled>
-                        Previous
-                    </button>
-                    <div id="return-page-numbers" class="flex space-x-1">
-                        <!-- Page numbers will be populated by JavaScript -->
-                    </div>
-                    <button id="return-next-page"
-                        class="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled>
-                        Next
-                    </button>
-                </div>
             </div>
         </div>
     </div>

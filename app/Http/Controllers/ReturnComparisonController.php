@@ -150,7 +150,7 @@ class ReturnComparisonController extends Controller
             INNER JOIN m_inout mio ON miol.m_inout_id = mio.m_inout_id
             INNER JOIN c_orderline col ON miol.c_orderline_id = col.c_orderline_id
             INNER JOIN c_order co ON col.c_order_id = co.c_order_id
-            LEFT OUTER JOIN c_invoiceline cil ON col.c_orderline_id = cil.c_orderline_id
+            LEFT OUTER JOIN c_invoiceline cil ON col.c_orderline_id = col.c_orderline_id
             INNER JOIN ad_org org ON miol.ad_org_id = org.ad_org_id
             WHERE org.name = ?
                 AND co.documentno LIKE 'SOC%'

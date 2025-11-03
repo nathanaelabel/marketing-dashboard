@@ -26,12 +26,15 @@ document.addEventListener('DOMContentLoaded', function () {
         updateDateHeaders(dateInput.value);
     }
 
-    // Initialize TableHelper for Sales Comparison
+    // Initialize TableHelper for Sales Comparison (No pagination - show all 17 branches)
     const salesComparisonTable = new TableHelper({
         apiEndpoint: '/sales-comparison/data',
 
-        // Configure entries per page selector
-        entriesPerPageSelector: '#sales-comp-entries-per-page',
+        // Set longer timeout for complex queries (90 seconds)
+        requestTimeout: 90000,
+
+        // Disable pagination for this table
+        disablePagination: true,
 
         // Override selectors to use sales-comp- prefixed IDs
         tableBodySelector: '#sales-comp-table-body',
@@ -40,13 +43,9 @@ document.addEventListener('DOMContentLoaded', function () {
         errorTextSelector: '#sales-comp-error-text',
         noDataSelector: '#sales-comp-no-data-message',
         tableContainerSelector: '#sales-comp-table-container',
-        paginationInfoSelector: '#sales-comp-pagination-info',
         periodInfoSelector: '#sales-comp-period-info',
-        prevPageBtnSelector: '#sales-comp-prev-page',
-        nextPageBtnSelector: '#sales-comp-next-page',
-        pageNumbersSelector: '#sales-comp-page-numbers',
 
-        // Override getAdditionalFilters to include date
+        // Override getAdditionalFilters to include ONLY date (not month/year)
         getAdditionalFilters: function () {
             const dateSelect = document.getElementById('sales-comp-date-select');
             return {

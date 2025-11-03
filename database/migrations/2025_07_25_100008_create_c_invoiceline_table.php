@@ -18,6 +18,7 @@ return new class extends Migration
             $table->char('isactive', 1)->default('Y');
             $table->integer('c_invoice_id');
             $table->integer('m_product_id');
+            $table->integer('m_inoutline_id')->nullable();
             $table->decimal('qtyinvoiced', 16, 4);
             $table->decimal('priceactual', 16, 4);
             $table->decimal('linenetamt', 16, 2);
@@ -27,6 +28,7 @@ return new class extends Migration
             $table->foreign('ad_org_id')->references('ad_org_id')->on('ad_org');
             $table->foreign('c_invoice_id')->references('c_invoice_id')->on('c_invoice');
             $table->foreign('m_product_id')->references('m_product_id')->on('m_product');
+            $table->foreign('m_inoutline_id')->references('m_inoutline_id')->on('m_inoutline');
         });
     }
 

@@ -21,6 +21,10 @@ document.addEventListener('DOMContentLoaded', function () {
         // Configure entries per page selector
         entriesPerPageSelector: '#entries-per-page',
 
+        // Explicitly configure month and year selectors
+        monthSelectSelector: '#month-select',
+        yearSelectSelector: '#year-select',
+
         // Add type filter selector
         typeSelectSelector: '#type-select',
 

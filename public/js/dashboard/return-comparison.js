@@ -1,10 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
-    // Initialize TableHelper for Return Comparison
+    // Initialize TableHelper for Return Comparison (No pagination - show all 17 branches)
     const returnComparisonTable = new TableHelper({
         apiEndpoint: '/return-comparison/data',
-
-        // Configure entries per page selector
-        entriesPerPageSelector: '#return-entries-per-page',
 
         // Override selectors to use return- prefixed IDs
         monthSelectSelector: '#return-month-select',
@@ -15,11 +12,10 @@ document.addEventListener('DOMContentLoaded', function () {
         errorTextSelector: '#return-error-text',
         noDataSelector: '#return-no-data-message',
         tableContainerSelector: '#return-table-container',
-        paginationInfoSelector: '#return-pagination-info',
         periodInfoSelector: '#return-period-info',
-        prevPageBtnSelector: '#return-prev-page',
-        nextPageBtnSelector: '#return-next-page',
-        pageNumbersSelector: '#return-page-numbers',
+
+        // Disable pagination for this table
+        disablePagination: true,
 
         renderTable: function (data) {
             if (!data.data || data.data.length === 0) {
