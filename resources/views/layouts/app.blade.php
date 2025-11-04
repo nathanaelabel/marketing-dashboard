@@ -23,6 +23,16 @@
 </head>
 
 <body class="font-sans antialiased">
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('lang', {
+                current: 'id',
+                toggle() {
+                    this.current = this.current === 'id' ? 'en' : 'id';
+                }
+            });
+        });
+    </script>
     <div class="min-h-screen bg-gray-100">
         @include('layouts.navigation')
 

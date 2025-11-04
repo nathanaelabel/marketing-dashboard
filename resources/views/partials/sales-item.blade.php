@@ -2,7 +2,7 @@
 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
     <div class="p-6 text-gray-900">
         <div class="flex items-center justify-between mb-4">
-            <h3 id="section-title" class="text-lg font-medium text-gray-900" x-text="$root.lang === 'id' ? 'Penjualan Per Item (Rp)' : 'Sales Per Item (Rp)'"></h3>
+            <h3 id="section-title" class="text-lg font-medium text-gray-900" x-text="$store.lang.current === 'id' ? 'Penjualan Per Item (Rp)' : 'Sales Per Item (Rp)'"></h3>
 
             <!-- Three-dots Menu -->
             <div class="relative">

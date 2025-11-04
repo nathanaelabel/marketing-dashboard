@@ -2,7 +2,7 @@
     <div class="p-6 bg-white rounded-lg shadow-md">
         <div class="flex justify-between items-start mb-4">
             <div>
-                <h3 class="text-2xl font-bold text-gray-900" x-text="$root.lang === 'id' ? 'Piutang Jatuh Tempo' : 'Accounts Receivable'"></h3>
+                <h3 class="text-2xl font-bold text-gray-900" x-text="$store.lang.current === 'id' ? 'Piutang Jatuh Tempo' : 'Accounts Receivable'"></h3>
                 <p id="arTotal" class="mt-2 mb-2 text-1xl font-bold text-gray-700">Loading...</p>
             </div>
             <div class="flex items-center space-x-3">
