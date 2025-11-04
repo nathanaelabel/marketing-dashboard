@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Artisan;
 
 class SyncAllAdempiereDataCommand extends Command
 {
-    protected $signature = 'app:sync-all-adempiere-data 
+    protected $signature = 'app:sync-all-adempiere-data
                            {--connection= : The specific connection to process}
                            {--type=full : The type of sync to perform (full|incremental)}
                            {--skip-step1 : Skip Step 1 (single-source tables sync)}
@@ -53,7 +53,10 @@ class SyncAllAdempiereDataCommand extends Command
             'COrder',           // Date filtered (2024-01-01 to today)
             'COrderline',       // Full records with c_order_id relationship
             'CAllocationhdr',   // Date filtered (2024-01-01 to today)
-            'CAllocationline'   // Full records with c_allocationhdr_id relationship
+            'CAllocationline',  // Full records with c_allocationhdr_id relationship
+            'MInout',           // Date filtered (2024-01-01 to today) - movementdate
+            'MInoutline',       // Full records with m_inout_id relationship
+            'MMatchinv'         // Date filtered (2024-01-01 to today) - datetrx
         ];
 
         if (!$targetConnection && !$skipStep1) {
