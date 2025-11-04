@@ -49,13 +49,13 @@ class SyncAllAdempiereDataCommand extends Command
         $fastSyncTables = [
             'MProductprice',    // Full records with m_product_id relationship
             'CInvoice',         // Date filtered (2024-01-01 to today)
-            'CInvoiceline',     // Full records with c_invoice_id relationship
             'COrder',           // Date filtered (2024-01-01 to today)
             'COrderline',       // Full records with c_order_id relationship
             'CAllocationhdr',   // Date filtered (2024-01-01 to today)
             'CAllocationline',  // Full records with c_allocationhdr_id relationship
             'MInout',           // Date filtered (2024-01-01 to today) - movementdate
             'MInoutline',       // Full records with m_inout_id relationship
+            'CInvoiceline',     // Full records with c_invoice_id relationship
             'MMatchinv'         // Date filtered (2024-01-01 to today) - datetrx
         ];
 
