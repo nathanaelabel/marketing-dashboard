@@ -1,7 +1,21 @@
-<div class="mt-10 bg-white overflow-hidden shadow-sm sm:rounded-lg">
+<div class="mt-10 bg-white overflow-hidden shadow-sm sm:rounded-lg" x-data="{
+    currentLang: localStorage.getItem('language') || 'id',
+    translations: {
+        title: {
+            id: 'Kontribusi Kategori Barang',
+            en: 'Category Item Revenue'
+        }
+    },
+    init() {
+        window.addEventListener('language-changed', (e) => {
+            this.currentLang = e.detail.language;
+        });
+    }
+}">
     <div class="px-6 pt-2 pb-6 bg-white rounded-lg shadow-md">
         <div class="flex justify-between items-center mb-8">
-            <h3 class="text-2xl font-bold text-gray-900" x-text="$store.lang.current === 'id' ? 'Kontribusi Kategori Barang' : 'Category Item Revenue'"></h3>
+            <h3 class="text-2xl font-bold text-gray-900" x-text="translations.title[currentLang]">Category Item Revenue
+            </h3>
             <form id="categoryItemDateFilterForm" class="flex items-end space-x-3 pt-2">
                 <!-- Type Selector -->
                 <div>

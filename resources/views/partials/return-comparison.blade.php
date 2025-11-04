@@ -1,8 +1,22 @@
 <!-- Return Comparison Section -->
-<div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+<div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6" x-data="{
+    currentLang: localStorage.getItem('language') || 'id',
+    translations: {
+        title: {
+            id: 'Perbandingan Retur Rusak',
+            en: 'Comparison of Damaged Returns'
+        }
+    },
+    init() {
+        window.addEventListener('language-changed', (e) => {
+            this.currentLang = e.detail.language;
+        });
+    }
+}">
     <div class="p-6 text-gray-900">
         <div class="flex items-center justify-between mb-4">
-            <h3 id="return-section-title" class="text-lg font-medium text-gray-900" x-text="$store.lang.current === 'id' ? 'Perbandingan Retur Rusak' : 'Comparison of Damaged Returns'"></h3>
+            <h3 id="return-section-title" class="text-lg font-medium text-gray-900"
+                x-text="translations.title[currentLang]">Perbandingan Retur Rusak</h3>
 
             <!-- Three-dots Menu -->
             <div class="relative">
