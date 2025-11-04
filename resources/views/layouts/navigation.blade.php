@@ -25,18 +25,14 @@
             <!-- Language Toggle -->
             <div class="hidden sm:flex sm:items-center sm:ms-6">
                 <button @click="lang = lang === 'id' ? 'en' : 'id'" class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition ease-in-out duration-150">
-                    <template x-if="lang === 'id'">
-                        <div class="flex items-center">
-                            <span class="mr-2">🇮🇩</span>
-                            <span>Bahasa</span>
-                        </div>
-                    </template>
-                    <template x-if="lang === 'en'">
-                        <div class="flex items-center">
-                            <span class="mr-2">🇬🇧</span>
-                            <span>English</span>
-                        </div>
-                    </template>
+                    <div class="flex items-center" x-show="lang === 'id'">
+                        <span class="mr-2">🇮🇩</span>
+                        <span>Bahasa</span>
+                    </div>
+                    <div class="flex items-center" x-show="lang === 'en'">
+                        <span class="mr-2">🇬🇧</span>
+                        <span>English</span>
+                    </div>
                 </button>
             </div>
 
@@ -77,18 +73,14 @@
             <!-- Language Toggle Mobile -->
             <div class="flex items-center sm:hidden">
                 <button @click="lang = lang === 'id' ? 'en' : 'id'" class="inline-flex items-center px-2 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition ease-in-out duration-150 mr-2">
-                    <template x-if="lang === 'id'">
-                        <div class="flex items-center">
-                            <span class="mr-1">🇮🇩</span>
-                            <span class="text-xs">ID</span>
-                        </div>
-                    </template>
-                    <template x-if="lang === 'en'">
-                        <div class="flex items-center">
-                            <span class="mr-1">🇬🇧</span>
-                            <span class="text-xs">EN</span>
-                        </div>
-                    </template>
+                    <div class="flex items-center" x-show="lang === 'id'">
+                        <span class="mr-1">🇮🇩</span>
+                        <span class="text-xs">ID</span>
+                    </div>
+                    <div class="flex items-center" x-show="lang === 'en'">
+                        <span class="mr-1">🇬🇧</span>
+                        <span class="text-xs">EN</span>
+                    </div>
                 </button>
             </div>
 
