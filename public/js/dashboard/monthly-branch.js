@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const yearSelect = document.getElementById('monthly-year-select');
     const branchSelect = document.getElementById('monthly-branch-select');
     const categorySelect = document.getElementById('monthly-category-select');
+    const typeSelect = document.getElementById('monthly-type-select');
 
     if (!ctx) return;
 
@@ -139,9 +140,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function fetchAndUpdateMonthlyChart(year, branch, category) {
-        const url = `/monthly-branch/data?year=${year}&branch=${encodeURIComponent(branch)}&category=${encodeURIComponent(category)}`;
-        const filterSelectors = ['monthly-year-select', 'monthly-branch-select', 'monthly-category-select'];
+    function fetchAndUpdateMonthlyChart(year, branch, category, type) {
+        const url = `/monthly-branch/data?year=${year}&branch=${encodeURIComponent(branch)}&category=${encodeURIComponent(category)}&type=${encodeURIComponent(type)}`;
+        const filterSelectors = ['monthly-year-select', 'monthly-branch-select', 'monthly-category-select', 'monthly-type-select'];
         const chartContainer = document.getElementById('monthly-branch-chart');
 
         // Create a wrapper div around canvas if it doesn't exist
@@ -209,9 +210,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const year = yearSelect.value;
         const branch = branchSelect.value;
         const category = categorySelect.value;
+        const type = typeSelect.value;
 
         if (year && branch && category) {
-            fetchAndUpdateMonthlyChart(year, branch, category);
+            fetchAndUpdateMonthlyChart(year, branch, category, type);
         }
     };
 
@@ -219,7 +221,115 @@ document.addEventListener('DOMContentLoaded', function () {
     yearSelect.addEventListener('change', triggerUpdate);
     branchSelect.addEventListener('change', triggerUpdate);
     categorySelect.addEventListener('change', triggerUpdate);
+    typeSelect.addEventListener('change', triggerUpdate);
 
     // Initialize
     loadBranches();
+
+    // Three-dots menu toggle
+    const menuButton = document.getElementById('mbMenuButton');
+    const dropdownMenu = document.getElementById('mbDropdownMenu');
+
+    if (menuButton && dropdownMenu) {
+        // Toggle dropdown on button click
+        menuButton.addEventListener('click', function (e) {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!menuButton.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                dropdownMenu.classList.add('hidden');
+            }
+        });
+    }
+
+    // Refresh Data functionality
+    const refreshBtn = document.getElementById('mbRefreshDataBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Refresh the chart
+            triggerUpdate();
+        });
+    }
+
+    // Export to Excel functionality
+    const exportBtn = document.getElementById('mbExportExcelBtn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const currentYear = yearSelect.value;
+            const currentCategory = categorySelect.value;
+            const currentType = typeSelect.value;
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Show loading state
+            const originalContent = exportBtn.innerHTML;
+            exportBtn.disabled = true;
+            exportBtn.innerHTML = 'Exporting...';
+
+            // Create download URL with parameters (no branch - exports all branches)
+            const exportUrl = `/monthly-branch/export-excel?year=${currentYear}&category=${encodeURIComponent(currentCategory)}&type=${encodeURIComponent(currentType)}`;
+
+            // Use window.location for direct download
+            window.location.href = exportUrl;
+
+            // Reset button state after a short delay
+            setTimeout(() => {
+                exportBtn.disabled = false;
+                exportBtn.innerHTML = originalContent;
+            }, 2000);
+        });
+    }
+
+    // Export to PDF functionality
+    const exportPdfBtn = document.getElementById('mbExportPdfBtn');
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const currentYear = yearSelect.value;
+            const currentBranch = branchSelect.value;
+            const currentCategory = categorySelect.value;
+            const currentType = typeSelect.value;
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Show loading state
+            const originalContent = exportPdfBtn.innerHTML;
+            exportPdfBtn.disabled = true;
+            exportPdfBtn.innerHTML = 'Exporting...';
+
+            // Create download URL with parameters (includes branch for single branch export)
+            const exportPdfUrl = `/monthly-branch/export-pdf?year=${currentYear}&branch=${encodeURIComponent(currentBranch)}&category=${encodeURIComponent(currentCategory)}&type=${encodeURIComponent(currentType)}`;
+
+            // Use window.location for direct download
+            window.location.href = exportPdfUrl;
+
+            // Reset button state after a short delay
+            setTimeout(() => {
+                exportPdfBtn.disabled = false;
+                exportPdfBtn.innerHTML = originalContent;
+            }, 2000);
+        });
+    }
 });

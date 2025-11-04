@@ -296,6 +296,128 @@ document.addEventListener('DOMContentLoaded', function () {
     const currentMonth = new Date().getMonth() + 1;
     monthSelect.value = currentMonth;
 
+    // Three-dots menu toggle
+    const targetMenuButton = document.getElementById('targetMenuButton');
+    const targetDropdownMenu = document.getElementById('targetDropdownMenu');
+
+    if (targetMenuButton && targetDropdownMenu) {
+        // Toggle dropdown on button click
+        targetMenuButton.addEventListener('click', function (e) {
+            e.stopPropagation();
+            targetDropdownMenu.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!targetMenuButton.contains(e.target) && !targetDropdownMenu.contains(e.target)) {
+                targetDropdownMenu.classList.add('hidden');
+            }
+        });
+    }
+
+    // Refresh Data functionality
+    const targetRefreshBtn = document.getElementById('targetRefreshDataBtn');
+    if (targetRefreshBtn) {
+        targetRefreshBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Close dropdown
+            if (targetDropdownMenu) {
+                targetDropdownMenu.classList.add('hidden');
+            }
+
+            // Get current filter values and refresh the chart
+            const month = monthSelect.value;
+            const year = yearSelect.value;
+            const category = categorySelect.value;
+
+            if (month && year && category) {
+                fetchAndUpdateTargetChart(month, year, category);
+            }
+        });
+    }
+
+    // Export to Excel functionality
+    const targetExportBtn = document.getElementById('targetExportExcelBtn');
+    if (targetExportBtn) {
+        targetExportBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const month = monthSelect.value;
+            const year = yearSelect.value;
+            const category = categorySelect.value;
+
+            if (!month || !year || !category) {
+                alert('Please select month, year, and category');
+                return;
+            }
+
+            // Close dropdown
+            if (targetDropdownMenu) {
+                targetDropdownMenu.classList.add('hidden');
+            }
+
+            // Show loading state
+            const originalContent = targetExportBtn.innerHTML;
+            targetExportBtn.disabled = true;
+            targetExportBtn.innerHTML = 'Exporting...';
+
+            // Create download URL with parameters
+            const exportUrl = `/target-revenue/export-excel?month=${month}&year=${year}&category=${encodeURIComponent(category)}`;
+
+            // Use window.location for direct download
+            window.location.href = exportUrl;
+
+            // Reset button state after a short delay
+            setTimeout(() => {
+                targetExportBtn.disabled = false;
+                targetExportBtn.innerHTML = originalContent;
+            }, 2000);
+        });
+    }
+
+    // Export to PDF functionality
+    const targetExportPdfBtn = document.getElementById('targetExportPdfBtn');
+    if (targetExportPdfBtn) {
+        targetExportPdfBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const month = monthSelect.value;
+            const year = yearSelect.value;
+            const category = categorySelect.value;
+
+            if (!month || !year || !category) {
+                alert('Please select month, year, and category');
+                return;
+            }
+
+            // Close dropdown
+            if (targetDropdownMenu) {
+                targetDropdownMenu.classList.add('hidden');
+            }
+
+            // Show loading state
+            const originalContent = targetExportPdfBtn.innerHTML;
+            targetExportPdfBtn.disabled = true;
+            targetExportPdfBtn.innerHTML = 'Exporting...';
+
+            // Create download URL with parameters
+            const exportPdfUrl = `/target-revenue/export-pdf?month=${month}&year=${year}&category=${encodeURIComponent(category)}`;
+
+            // Use window.location for direct download
+            window.location.href = exportPdfUrl;
+
+            // Reset button state after a short delay
+            setTimeout(() => {
+                targetExportPdfBtn.disabled = false;
+                targetExportPdfBtn.innerHTML = originalContent;
+            }, 2000);
+        });
+    }
+
     // Initialize
     triggerUpdate();
 });

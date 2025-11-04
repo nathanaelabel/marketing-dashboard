@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const endYearSelect = document.getElementById('growth-end-year-select');
     const branchSelect = document.getElementById('growth-branch-select');
     const categorySelect = document.getElementById('growth-category-select');
+    const typeSelect = document.getElementById('growth-type-select');
 
     if (!chartContainer) return;
 
@@ -113,6 +114,25 @@ document.addEventListener('DOMContentLoaded', function () {
                                         }).format(context.parsed.y);
                                     }
                                     return label;
+                                },
+                                afterLabel: function (context) {
+                                    // Calculate growth percentage compared to previous year
+                                    const currentDatasetIndex = context.datasetIndex;
+                                    const monthIndex = context.dataIndex;
+
+                                    // Only show growth if there's a previous year dataset
+                                    if (currentDatasetIndex > 0) {
+                                        const currentValue = context.parsed.y;
+                                        const previousDataset = context.chart.data.datasets[currentDatasetIndex - 1];
+                                        const previousValue = previousDataset.data[monthIndex];
+
+                                        if (previousValue > 0 && currentValue !== null) {
+                                            const growth = ((currentValue - previousValue) / previousValue) * 100;
+                                            const growthSign = growth >= 0 ? '+' : '';
+                                            return 'Growth: ' + growthSign + growth.toFixed(2) + '%';
+                                        }
+                                    }
+                                    return null;
                                 }
                             }
                         }
@@ -195,9 +215,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (noDataMessage) noDataMessage.remove();
     }
 
-    function fetchAndUpdateGrowthChart(branch, startYear, endYear, category) {
-        const url = `/branch-growth/data?branch=${encodeURIComponent(branch)}&start_year=${startYear}&end_year=${endYear}&category=${encodeURIComponent(category)}`;
-        const filterSelectors = ['growth-start-year-select', 'growth-end-year-select', 'growth-branch-select', 'growth-category-select'];
+    function fetchAndUpdateGrowthChart(branch, startYear, endYear, category, type) {
+        const url = `/branch-growth/data?branch=${encodeURIComponent(branch)}&start_year=${startYear}&end_year=${endYear}&category=${encodeURIComponent(category)}&type=${encodeURIComponent(type)}`;
+        const filterSelectors = ['growth-start-year-select', 'growth-end-year-select', 'growth-branch-select', 'growth-category-select', 'growth-type-select'];
 
         // Create a wrapper div around canvas if it doesn't exist
         if (!chartContainer.parentElement.classList.contains('chart-wrapper')) {
@@ -314,9 +334,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const startYear = startYearSelect.value;
         const endYear = endYearSelect.value;
         const category = categorySelect.value;
+        const type = typeSelect.value;
 
         if (branch && startYear && endYear && category) {
-            fetchAndUpdateGrowthChart(branch, startYear, endYear, category);
+            fetchAndUpdateGrowthChart(branch, startYear, endYear, category, type);
         }
     };
 
@@ -331,10 +352,120 @@ document.addEventListener('DOMContentLoaded', function () {
         triggerUpdate();
     });
     categorySelect.addEventListener('change', triggerUpdate);
+    typeSelect.addEventListener('change', triggerUpdate);
 
     // Initialize year validation
     validateYearRange();
 
     // Initialize
     loadBranches();
+
+    // Three-dots menu functionality
+    const menuButton = document.getElementById('bgMenuButton');
+    const dropdownMenu = document.getElementById('bgDropdownMenu');
+
+    if (menuButton && dropdownMenu) {
+        menuButton.addEventListener('click', function (e) {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!menuButton.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                dropdownMenu.classList.add('hidden');
+            }
+        });
+    }
+
+    // Refresh Data functionality
+    const refreshBtn = document.getElementById('bgRefreshDataBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Trigger chart update
+            triggerUpdate();
+        });
+    }
+
+    // Export to Excel functionality
+    const exportBtn = document.getElementById('bgExportExcelBtn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const currentStartYear = startYearSelect.value;
+            const currentEndYear = endYearSelect.value;
+            const currentBranch = branchSelect.value;
+            const currentCategory = categorySelect.value;
+            const currentType = typeSelect.value;
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Show loading state
+            const originalContent = exportBtn.innerHTML;
+            exportBtn.disabled = true;
+            exportBtn.innerHTML = 'Exporting...';
+
+            // Create download URL with parameters
+            const exportUrl = `/branch-growth/export-excel?start_year=${currentStartYear}&end_year=${currentEndYear}&branch=${encodeURIComponent(currentBranch)}&category=${encodeURIComponent(currentCategory)}&type=${encodeURIComponent(currentType)}`;
+
+            // Use window.location for direct download
+            window.location.href = exportUrl;
+
+            // Reset button state after a short delay
+            setTimeout(() => {
+                exportBtn.disabled = false;
+                exportBtn.innerHTML = originalContent;
+            }, 2000);
+        });
+    }
+
+    // Export to PDF functionality
+    const exportPdfBtn = document.getElementById('bgExportPdfBtn');
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const currentStartYear = startYearSelect.value;
+            const currentEndYear = endYearSelect.value;
+            const currentBranch = branchSelect.value;
+            const currentCategory = categorySelect.value;
+            const currentType = typeSelect.value;
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Show loading state
+            const originalContent = exportPdfBtn.innerHTML;
+            exportPdfBtn.disabled = true;
+            exportPdfBtn.innerHTML = 'Exporting...';
+
+            // Create download URL with parameters
+            const exportPdfUrl = `/branch-growth/export-pdf?start_year=${currentStartYear}&end_year=${currentEndYear}&branch=${encodeURIComponent(currentBranch)}&category=${encodeURIComponent(currentCategory)}&type=${encodeURIComponent(currentType)}`;
+
+            // Use window.location for direct download
+            window.location.href = exportPdfUrl;
+
+            // Reset button state after a short delay
+            setTimeout(() => {
+                exportPdfBtn.disabled = false;
+                exportPdfBtn.innerHTML = originalContent;
+            }, 2000);
+        });
+    }
 });

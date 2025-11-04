@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const ctx = document.getElementById('national-yearly-chart');
     const yearSelect = document.getElementById('yearly-year-select');
     const categorySelect = document.getElementById('yearly-category-select');
+    const typeSelect = document.getElementById('yearly-type-select');
     const previousYearLabel = document.getElementById('previous-year-label');
     const currentYearLabel = document.getElementById('current-year-label');
 
@@ -160,9 +161,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function fetchAndUpdateYearlyChart(year, category) {
-        const url = `/national-yearly/data?year=${year}&category=${encodeURIComponent(category)}`;
-        const filterSelectors = ['yearly-year-select', 'yearly-category-select'];
+    function fetchAndUpdateYearlyChart(year, category, type) {
+        const url = `/national-yearly/data?year=${year}&category=${encodeURIComponent(category)}&type=${encodeURIComponent(type)}`;
+        const filterSelectors = ['yearly-year-select', 'yearly-category-select', 'yearly-type-select'];
         const chartContainer = document.getElementById('national-yearly-chart');
 
         // Create a wrapper div around canvas if it doesn't exist
@@ -202,6 +203,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const triggerUpdate = () => {
         const year = yearSelect.value;
         const category = categorySelect.value;
+        const type = typeSelect.value;
 
         // Update year labels (if elements exist; header legend was removed)
         if (previousYearLabel) previousYearLabel.textContent = (year - 1);
@@ -211,13 +213,120 @@ document.addEventListener('DOMContentLoaded', function () {
         const periodDescription = ChartHelper.getFairComparisonPeriodDescription(year);
         console.log(periodDescription); // For debugging - can be displayed in UI if needed
 
-        fetchAndUpdateYearlyChart(year, category);
+        fetchAndUpdateYearlyChart(year, category, type);
     };
 
     // Event listeners
     yearSelect.addEventListener('change', triggerUpdate);
     categorySelect.addEventListener('change', triggerUpdate);
+    typeSelect.addEventListener('change', triggerUpdate);
 
     // Initialize
     triggerUpdate();
+
+    // Three-dots menu toggle
+    const menuButton = document.getElementById('nyMenuButton');
+    const dropdownMenu = document.getElementById('nyDropdownMenu');
+
+    if (menuButton && dropdownMenu) {
+        // Toggle dropdown on button click
+        menuButton.addEventListener('click', function (e) {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!menuButton.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                dropdownMenu.classList.add('hidden');
+            }
+        });
+    }
+
+    // Refresh Data functionality
+    const refreshBtn = document.getElementById('nyRefreshDataBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Refresh the chart
+            triggerUpdate();
+        });
+    }
+
+    // Export to Excel functionality
+    const exportBtn = document.getElementById('nyExportExcelBtn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const currentYear = yearSelect.value;
+            const currentCategory = categorySelect.value;
+            const currentType = typeSelect.value;
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Show loading state
+            const originalContent = exportBtn.innerHTML;
+            exportBtn.disabled = true;
+            exportBtn.innerHTML = 'Exporting...';
+
+            // Create download URL with parameters
+            const exportUrl = `/national-yearly/export-excel?year=${currentYear}&category=${encodeURIComponent(currentCategory)}&type=${encodeURIComponent(currentType)}`;
+
+            // Use window.location for direct download
+            window.location.href = exportUrl;
+
+            // Reset button state after a short delay
+            setTimeout(() => {
+                exportBtn.disabled = false;
+                exportBtn.innerHTML = originalContent;
+            }, 2000);
+        });
+    }
+
+    // Export to PDF functionality
+    const exportPdfBtn = document.getElementById('nyExportPdfBtn');
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const currentYear = yearSelect.value;
+            const currentCategory = categorySelect.value;
+            const currentType = typeSelect.value;
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Show loading state
+            const originalContent = exportPdfBtn.innerHTML;
+            exportPdfBtn.disabled = true;
+            exportPdfBtn.innerHTML = 'Exporting...';
+
+            // Create download URL with parameters
+            const exportPdfUrl = `/national-yearly/export-pdf?year=${currentYear}&category=${encodeURIComponent(currentCategory)}&type=${encodeURIComponent(currentType)}`;
+
+            // Use window.location for direct download
+            window.location.href = exportPdfUrl;
+
+            // Reset button state after a short delay
+            setTimeout(() => {
+                exportPdfBtn.disabled = false;
+                exportPdfBtn.innerHTML = originalContent;
+            }, 2000);
+        });
+    }
 });

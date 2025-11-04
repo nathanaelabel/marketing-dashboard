@@ -92,42 +92,72 @@ class SalesMetricsController extends Controller
             }
             $storeReturnsData = DB::selectOne($storeReturnsQuery, $srBindings);
 
-            // 4. Accounts Receivable Pie Chart Query
-            $paymentsSubquery = "
-                SELECT
-                    c_invoice_id,
-                    SUM(amount + discountamt + writeoffamt) as paidamt
-                FROM c_allocationline
-                GROUP BY c_invoice_id
-            ";
-
-            $overdueQuery = "
-                SELECT
-                    inv.ad_org_id,
-                    inv.grandtotal - COALESCE(p.paidamt, 0) as open_amount,
-                    DATE_PART('day', NOW() - inv.dateinvoiced::date) as age
-                FROM c_invoice as inv
-                LEFT JOIN ({$paymentsSubquery}) as p ON inv.c_invoice_id = p.c_invoice_id
-                WHERE inv.issotrx = 'Y'
-                AND inv.docstatus = 'CO'
-                AND (inv.grandtotal - COALESCE(p.paidamt, 0)) > 0.01
-            ";
+            // 4. Accounts Receivable Pie Chart Query (using CTE for better performance)
+            $currentDate = now()->toDateString();
 
             $arPieQuery = "
-                SELECT
-                    SUM(CASE WHEN overdue.age BETWEEN 1 AND 30 THEN overdue.open_amount ELSE 0 END) as days_1_30,
-                    SUM(CASE WHEN overdue.age BETWEEN 31 AND 60 THEN overdue.open_amount ELSE 0 END) as days_31_60,
-                    SUM(CASE WHEN overdue.age BETWEEN 61 AND 90 THEN overdue.open_amount ELSE 0 END) as days_61_90,
-                    SUM(CASE WHEN overdue.age > 90 THEN overdue.open_amount ELSE 0 END) as days_90_plus
-                FROM ad_org as org
-                JOIN ({$overdueQuery}) as overdue ON org.ad_org_id = overdue.ad_org_id
-                WHERE overdue.age > 0
+                WITH payment_summary AS (
+                    SELECT 
+                        alocln.c_invoice_id,
+                        SUM(alocln.amount + alocln.writeoffamt + alocln.discountamt) as bayar
+                    FROM c_allocationline alocln
+                    INNER JOIN c_allocationhdr alochdr ON alocln.c_allocationhdr_id = alochdr.c_allocationhdr_id
+                    WHERE alochdr.docstatus IN ('CO', 'IN')
+                        AND alochdr.ad_client_id = 1000001
+                        AND alochdr.datetrx <= ?
+                    GROUP BY alocln.c_invoice_id
+                ),
+                invoice_data AS (
+                    SELECT 
+                        inv.c_invoice_id,
+                        inv.totallines,
+                        inv.dateinvoiced,
+                        org.name as branch_name,
+                        COALESCE(ps.bayar, 0) as bayar,
+                        CASE 
+                            WHEN SUBSTR(inv.documentno, 1, 3) IN ('INC', 'NDC') THEN 1
+                            ELSE -1 
+                        END as pengali,
+                        (CURRENT_DATE - inv.dateinvoiced::date) as age
+                    FROM c_invoice inv
+                    INNER JOIN c_bpartner bp ON inv.c_bpartner_id = bp.c_bpartner_id
+                    INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+                    LEFT JOIN payment_summary ps ON ps.c_invoice_id = inv.c_invoice_id
+                    WHERE SUBSTR(inv.documentno, 1, 3) IN ('INC', 'NCC', 'CNC', 'NDC')
+                        AND inv.isactive = 'Y'
+                        AND inv.ad_client_id = 1000001
+                        AND bp.isactive = 'Y'
+                        AND inv.issotrx = 'Y'
+                        AND inv.docstatus IN ('CO', 'CL')
+                        AND bp.iscustomer = 'Y'
+                        AND inv.dateinvoiced <= ?
+                        AND inv.c_bpartner_id IS NOT NULL
+                        AND inv.totallines IS NOT NULL
             ";
-            $arBindings = [];
+
+            $arBindings = [$currentDate, $currentDate];
+
+            // Add location filter if not National
             if ($location !== 'National') {
                 $arPieQuery .= " AND org.name LIKE ?";
                 $arBindings[] = $locationFilter;
             }
+
+            $arPieQuery .= "
+                )
+                SELECT
+                    SUM(CASE WHEN age >= 1 AND age <= 30 AND (totallines - (bayar * pengali)) <> 0 
+                        THEN (totallines - (bayar * pengali)) ELSE 0 END) as days_1_30,
+                    SUM(CASE WHEN age >= 31 AND age <= 60 AND (totallines - (bayar * pengali)) <> 0 
+                        THEN (totallines - (bayar * pengali)) ELSE 0 END) as days_31_60,
+                    SUM(CASE WHEN age >= 61 AND age <= 90 AND (totallines - (bayar * pengali)) <> 0 
+                        THEN (totallines - (bayar * pengali)) ELSE 0 END) as days_61_90,
+                    SUM(CASE WHEN age > 90 AND (totallines - (bayar * pengali)) <> 0 
+                        THEN (totallines - (bayar * pengali)) ELSE 0 END) as days_90_plus
+                FROM invoice_data
+                WHERE (totallines - (bayar * pengali)) <> 0
+                    AND age >= 1
+            ";
 
             $arPieData = DB::selectOne($arPieQuery, $arBindings);
 

@@ -17,9 +17,12 @@ class TableHelper {
             prevPageBtnSelector: config.prevPageBtnSelector || '#prev-page',
             nextPageBtnSelector: config.nextPageBtnSelector || '#next-page',
             pageNumbersSelector: config.pageNumbersSelector || '#page-numbers',
-            monthSelectSelector: config.monthSelectSelector || '#month-select',
-            yearSelectSelector: config.yearSelectSelector || '#year-select',
+            // Don't set defaults for monthSelect and yearSelect - only use if explicitly configured
+            monthSelectSelector: config.monthSelectSelector || null,
+            yearSelectSelector: config.yearSelectSelector || null,
             perPage: config.perPage || 50,
+            disablePagination: config.disablePagination || false, // Option to disable pagination
+            requestTimeout: config.requestTimeout || 60000, // Default 60s timeout for complex queries
             ...config
         };
 
@@ -38,7 +41,7 @@ class TableHelper {
     initializeElements() {
         this.elements = {};
         Object.keys(this.config).forEach(key => {
-            if (key.endsWith('Selector')) {
+            if (key.endsWith('Selector') && this.config[key]) {
                 const elementKey = key.replace('Selector', '');
                 this.elements[elementKey] = document.querySelector(this.config[key]);
             }
@@ -108,11 +111,13 @@ class TableHelper {
     }
 
     setDefaultValues() {
-        const currentDate = new Date();
-        if (this.elements.monthSelect) {
+        // Only set default values for month/year if those selectors are configured
+        if (this.config.monthSelectSelector && this.elements.monthSelect) {
+            const currentDate = new Date();
             this.elements.monthSelect.value = currentDate.getMonth() + 1;
         }
-        if (this.elements.yearSelect) {
+        if (this.config.yearSelectSelector && this.elements.yearSelect) {
+            const currentDate = new Date();
             this.elements.yearSelect.value = currentDate.getFullYear();
         }
     }
@@ -252,10 +257,11 @@ class TableHelper {
             page: this.currentPage
         };
 
-        if (this.elements.monthSelect) {
+        // Only include month/year if those selectors were explicitly configured
+        if (this.config.monthSelectSelector && this.elements.monthSelect) {
             filters.month = this.elements.monthSelect.value;
         }
-        if (this.elements.yearSelect) {
+        if (this.config.yearSelectSelector && this.elements.yearSelect) {
             filters.year = this.elements.yearSelect.value;
         }
 
@@ -293,7 +299,7 @@ class TableHelper {
         url.searchParams.append('_', Date.now());
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+        const timeoutId = setTimeout(() => controller.abort(), this.config.requestTimeout); // Configurable timeout
 
         try {
             const response = await fetch(url.toString(), {
@@ -338,9 +344,19 @@ class TableHelper {
         this.currentData = data;
         this.currentPage = 1;
 
-        // Apply filters and render current page
-        this.applyFiltersAndRender();
-        this.updatePeriodInfo(data.period);
+        // Check if pagination is disabled
+        if (this.config.disablePagination) {
+            // Render all data directly without pagination
+            if (this.config.renderTable) {
+                this.config.renderTable.call(this, data);
+            }
+            this.updatePeriodInfo(data.period);
+        } else {
+            // Apply filters and render current page with pagination
+            this.applyFiltersAndRender();
+            this.updatePeriodInfo(data.period);
+        }
+
         this.showTable();
     }
 
