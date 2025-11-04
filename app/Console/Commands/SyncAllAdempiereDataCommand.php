@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Artisan;
 
 class SyncAllAdempiereDataCommand extends Command
 {
-    protected $signature = 'app:sync-all-adempiere-data 
+    protected $signature = 'app:sync-all-adempiere-data
                            {--connection= : The specific connection to process}
                            {--type=full : The type of sync to perform (full|incremental)}
                            {--skip-step1 : Skip Step 1 (single-source tables sync)}
@@ -40,18 +40,23 @@ class SyncAllAdempiereDataCommand extends Command
         $fullSyncTables = [
             ['model' => 'MLocator'],
             ['model' => 'MStorage'],
-            ['model' => 'MPricelistVersion']
+            ['model' => 'MPricelistVersion'],
+            ['model' => 'CBpartner'],
+            ['model' => 'CBpartnerLocation']
         ];
 
         // Tables using fast sync with various filtering strategies
         $fastSyncTables = [
             'MProductprice',    // Full records with m_product_id relationship
-            'CInvoice',         // Date filtered (2024-01-01 to 2025-08-30)
+            'CInvoice',         // Date filtered (2024-01-01 to today)
             'CInvoiceline',     // Full records with c_invoice_id relationship
-            'COrder',           // Date filtered (2024-01-01 to 2025-08-30)
+            'COrder',           // Date filtered (2024-01-01 to today)
             'COrderline',       // Full records with c_order_id relationship
-            'CAllocationhdr',   // Date filtered (2024-01-01 to 2025-08-30)
-            'CAllocationline'   // Full records with c_allocationhdr_id relationship
+            'CAllocationhdr',   // Date filtered (2024-01-01 to today)
+            'CAllocationline',  // Full records with c_allocationhdr_id relationship
+            'MInout',           // Date filtered (2024-01-01 to today) - movementdate
+            'MInoutline',       // Full records with m_inout_id relationship
+            'MMatchinv'         // Date filtered (2024-01-01 to today) - datetrx
         ];
 
         if (!$targetConnection && !$skipStep1) {
@@ -135,7 +140,7 @@ class SyncAllAdempiereDataCommand extends Command
         while ($attempts < $retries) {
             try {
                 $this->call($command, $parameters);
-                return true; // Success
+                return true;
             } catch (QueryException $e) {
                 $attempts++;
                 $connectionName = $parameters['--connection'] ?? 'N/A';

@@ -83,6 +83,9 @@ class SyncAdempiereTableCommand extends Command
                 ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
             ],
+            'c_bpartner_location' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+            ],
             'c_invoice' => [
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
             ],

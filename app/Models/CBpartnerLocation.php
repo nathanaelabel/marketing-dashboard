@@ -4,15 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\CInvoiceline;
-use App\Models\CAllocationline;
 
-class CInvoice extends Model
+class CBpartnerLocation extends Model
 {
     use HasFactory;
 
-    protected $table = 'c_invoice';
-    protected $primaryKey = 'c_invoice_id';
+    protected $table = 'c_bpartner_location';
+    protected $primaryKey = 'c_bpartner_location_id';
     public $incrementing = false;
     protected $keyType = 'integer';
 
@@ -20,33 +18,19 @@ class CInvoice extends Model
     const UPDATED_AT = 'updated';
 
     protected $fillable = [
-        'c_invoice_id',
+        'c_bpartner_location_id',
         'ad_client_id',
         'ad_org_id',
         'isactive',
-        'issotrx',
-        'documentno',
-        'docstatus',
-        'dateinvoiced',
-        'totallines',
-        'grandtotal',
-        'ispaid',
         'c_bpartner_id',
+        'name',
+        'isshipto',
+        'isbillto',
     ];
 
     public function organization()
     {
         return $this->belongsTo(AdOrg::class, 'ad_org_id', 'ad_org_id');
-    }
-
-    public function invoiceLines()
-    {
-        return $this->hasMany(CInvoiceline::class, 'c_invoice_id', 'c_invoice_id');
-    }
-
-    public function allocationLines()
-    {
-        return $this->hasMany(CAllocationline::class, 'c_invoice_id', 'c_invoice_id');
     }
 
     public function businessPartner()

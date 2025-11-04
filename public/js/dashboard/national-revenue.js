@@ -223,4 +223,123 @@ document.addEventListener('DOMContentLoaded', function () {
     if (initialStartDate && initialEndDate) {
         fetchAndUpdateNationalRevenueChart(initialStartDate, initialEndDate);
     }
+
+    // Three-dots menu toggle
+    const menuButton = document.getElementById('menuButton');
+    const dropdownMenu = document.getElementById('dropdownMenu');
+
+    if (menuButton && dropdownMenu) {
+        // Toggle dropdown on button click
+        menuButton.addEventListener('click', function (e) {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!menuButton.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                dropdownMenu.classList.add('hidden');
+            }
+        });
+    }
+
+    // Refresh Data functionality
+    const refreshBtn = document.getElementById('refreshDataBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Get current date values and refresh the chart
+            const currentStartDate = startDateInput.value;
+            const currentEndDate = endDateInput.value;
+
+            if (currentStartDate && currentEndDate) {
+                fetchAndUpdateNationalRevenueChart(currentStartDate, currentEndDate);
+            }
+        });
+    }
+
+    // Export to Excel functionality
+    const exportBtn = document.getElementById('exportExcelBtn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const currentStartDate = startDateInput.value;
+            const currentEndDate = endDateInput.value;
+
+            if (!currentStartDate || !currentEndDate) {
+                alert('Please select both start and end dates');
+                return;
+            }
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Show loading state
+            const originalContent = exportBtn.innerHTML;
+            exportBtn.disabled = true;
+            exportBtn.innerHTML = 'Exporting...';
+
+            // Create download URL with parameters
+            const exportUrl = `/national-revenue/export-excel?start_date=${currentStartDate}&end_date=${currentEndDate}`;
+
+            // Use window.location for direct download (more reliable than creating link)
+            window.location.href = exportUrl;
+
+            // Reset button state after a short delay
+            setTimeout(() => {
+                exportBtn.disabled = false;
+                exportBtn.innerHTML = originalContent;
+            }, 2000);
+        });
+    }
+
+    // Export to PDF functionality
+    const exportPdfBtn = document.getElementById('exportPdfBtn');
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const currentStartDate = startDateInput.value;
+            const currentEndDate = endDateInput.value;
+
+            if (!currentStartDate || !currentEndDate) {
+                alert('Please select both start and end dates');
+                return;
+            }
+
+            // Close dropdown
+            if (dropdownMenu) {
+                dropdownMenu.classList.add('hidden');
+            }
+
+            // Show loading state
+            const originalContent = exportPdfBtn.innerHTML;
+            exportPdfBtn.disabled = true;
+            exportPdfBtn.innerHTML = 'Exporting...';
+
+            // Create download URL with parameters
+            const exportPdfUrl = `/national-revenue/export-pdf?start_date=${currentStartDate}&end_date=${currentEndDate}`;
+
+            // Use window.location for direct download
+            window.location.href = exportPdfUrl;
+
+            // Reset button state after a short delay
+            setTimeout(() => {
+                exportPdfBtn.disabled = false;
+                exportPdfBtn.innerHTML = originalContent;
+            }, 2000);
+        });
+    }
 });

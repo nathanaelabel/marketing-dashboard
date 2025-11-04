@@ -24,6 +24,7 @@ class CInvoiceline extends Model
         'isactive',
         'c_invoice_id',
         'm_product_id',
+        'm_inoutline_id',
         'qtyinvoiced',
         'priceactual',
         'linenetamt',
@@ -42,5 +43,15 @@ class CInvoiceline extends Model
     public function organization()
     {
         return $this->belongsTo(AdOrg::class, 'ad_org_id', 'ad_org_id');
+    }
+
+    public function inoutLine()
+    {
+        return $this->belongsTo(MInoutline::class, 'm_inoutline_id', 'm_inoutline_id');
+    }
+
+    public function matchInvoices()
+    {
+        return $this->hasMany(MMatchinv::class, 'c_invoiceline_id', 'c_invoiceline_id');
     }
 }

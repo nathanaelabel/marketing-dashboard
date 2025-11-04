@@ -64,6 +64,8 @@ class FastSyncAdempiereTableCommand extends Command
             'm_storage',
             'm_pricelist_version',
             'm_productprice',
+            'c_bpartner',
+            'c_bpartner_location',
             'c_invoiceline',
             'c_orderline',
             'c_allocationline'
@@ -73,7 +75,9 @@ class FastSyncAdempiereTableCommand extends Command
         $dateFilterTables = [
             'c_invoice' => 'dateinvoiced',
             'c_order' => 'dateordered',
-            'c_allocationhdr' => 'datetrx'
+            'c_allocationhdr' => 'datetrx',
+            'm_inout' => 'movementdate',
+            'm_matchinv' => 'datetrx'
         ];
 
         // Define tables with relationship filtering
@@ -81,7 +85,8 @@ class FastSyncAdempiereTableCommand extends Command
             'm_productprice' => ['m_product_id'],
             'c_invoiceline' => ['c_invoice_id'],
             'c_orderline' => ['c_order_id'],
-            'c_allocationline' => ['c_allocationhdr_id']
+            'c_allocationline' => ['c_allocationhdr_id'],
+            'm_inoutline' => ['m_inout_id']
         ];
 
         $query = DB::connection($connectionName)->table($tableName);
@@ -90,7 +95,7 @@ class FastSyncAdempiereTableCommand extends Command
         if (isset($dateFilterTables[$lowerTableName])) {
             $dateColumn = $dateFilterTables[$lowerTableName];
             $startDate = '2024-01-01 00:00:00';
-            $endDate = '2025-08-30 00:00:00';
+            $endDate = now()->format('Y-m-d') . ' 23:59:59'; // Today's date
 
             $this->comment("Fetching records from {$tableName} with {$dateColumn} between {$startDate} and {$endDate}...");
             $query->whereBetween($dateColumn, [$startDate, $endDate]);
@@ -209,6 +214,9 @@ class FastSyncAdempiereTableCommand extends Command
                 ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
             ],
+            'c_bpartner_location' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+            ],
             'c_invoice' => [
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
             ],
@@ -232,6 +240,23 @@ class FastSyncAdempiereTableCommand extends Command
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
                 ['parent_table' => 'c_allocationhdr', 'foreign_key' => 'c_allocationhdr_id'],
                 ['parent_table' => 'c_invoice', 'foreign_key' => 'c_invoice_id'],
+            ],
+            'm_inout' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+                ['parent_table' => 'c_order', 'foreign_key' => 'c_order_id', 'optional' => true],
+                ['parent_table' => 'c_invoice', 'foreign_key' => 'c_invoice_id', 'optional' => true],
+            ],
+            'm_inoutline' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+                ['parent_table' => 'm_inout', 'foreign_key' => 'm_inout_id'],
+                ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
+                ['parent_table' => 'c_orderline', 'foreign_key' => 'c_orderline_id', 'optional' => true],
+            ],
+            'm_matchinv' => [
+                ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
+                ['parent_table' => 'c_invoiceline', 'foreign_key' => 'c_invoiceline_id'],
+                ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
+                ['parent_table' => 'm_inoutline', 'foreign_key' => 'm_inoutline_id', 'optional' => true],
             ],
         ];
 
@@ -329,7 +354,8 @@ class FastSyncAdempiereTableCommand extends Command
             'm_product_id' => 'm_product',
             'c_invoice_id' => 'c_invoice',
             'c_order_id' => 'c_order',
-            'c_allocationhdr_id' => 'c_allocationhdr'
+            'c_allocationhdr_id' => 'c_allocationhdr',
+            'm_inout_id' => 'm_inout'
         ];
 
         return $parentTableMap[$foreignKey] ?? null;
