@@ -59,15 +59,28 @@ document.addEventListener('DOMContentLoaded', function () {
         clearMessages();
         const startDate = document.getElementById('categoryItemStartDate').value;
         const endDate = document.getElementById('categoryItemEndDate').value;
+        const type = document.getElementById('categoryItemTypeSelect').value;
         const url = new URL(ctx.dataset.url);
         url.searchParams.append('start_date', startDate);
         url.searchParams.append('end_date', endDate);
+        url.searchParams.append('type', type);
         url.searchParams.append('page', page);
+
+        // Get filter selectors for disabling during load
+        const filterSelectors = ['categoryItemTypeSelect', 'categoryItemStartDate', 'categoryItemEndDate', 'ci-prev-page', 'ci-next-page'];
+        const chartContainer = document.getElementById('category-item-chart-container');
+
+        // Disable filters and show loading on chart area only
+        ChartHelper.disableFilters(filterSelectors);
+        ChartHelper.showChartLoadingIndicator(chartContainer);
 
         try {
             const response = await fetch(url);
             if (!response.ok) throw new Error('Network response was not ok.');
             const data = await response.json();
+
+            ChartHelper.hideChartLoadingIndicator(chartContainer);
+            ChartHelper.enableFilters(filterSelectors);
 
             console.log('Received data:', data);
 
@@ -78,6 +91,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Check if we have valid chart data
             if (!data.chartData || !data.chartData.labels || data.chartData.labels.length === 0 || !data.chartData.datasets || data.chartData.datasets.length === 0) {
+                ChartHelper.hideChartLoadingIndicator(chartContainer);
+                ChartHelper.enableFilters(filterSelectors);
                 showNoDataMessage('No data available for the selected date range. Please try another date range.');
                 prevButton.disabled = currentPage <= 1;
                 nextButton.disabled = !data.pagination.hasMorePages;
@@ -302,6 +317,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error('Error fetching or rendering chart:', error);
+            ChartHelper.hideChartLoadingIndicator(chartContainer);
+            ChartHelper.enableFilters(filterSelectors);
             ChartHelper.showErrorMessage(chart, ctx, 'Failed to load chart data. Please try again.');
         }
     }
@@ -324,6 +341,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const startDateInput = document.getElementById('categoryItemStartDate');
     const endDateInput = document.getElementById('categoryItemEndDate');
+    const typeSelect = document.getElementById('categoryItemTypeSelect');
+
+    // Add change listener for type selector
+    if (typeSelect) {
+        typeSelect.addEventListener('change', function () {
+            triggerUpdate();
+        });
+    }
 
     startDatePicker = flatpickr(startDateInput, {
         altInput: true,
@@ -401,6 +426,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const currentStartDate = startDateInput.value;
             const currentEndDate = endDateInput.value;
+            const currentType = typeSelect ? typeSelect.value : 'BRUTO';
 
             if (!currentStartDate || !currentEndDate) {
                 alert('Please select both start and end dates');
@@ -418,7 +444,7 @@ document.addEventListener('DOMContentLoaded', function () {
             exportBtn.innerHTML = 'Exporting...';
 
             // Create download URL with parameters
-            const exportUrl = `/category-item/export-excel?start_date=${currentStartDate}&end_date=${currentEndDate}`;
+            const exportUrl = `/category-item/export-excel?start_date=${currentStartDate}&end_date=${currentEndDate}&type=${currentType}`;
 
             // Use window.location for direct download
             window.location.href = exportUrl;
@@ -440,6 +466,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const currentStartDate = startDateInput.value;
             const currentEndDate = endDateInput.value;
+            const currentType = typeSelect ? typeSelect.value : 'BRUTO';
 
             if (!currentStartDate || !currentEndDate) {
                 alert('Please select both start and end dates');
@@ -457,7 +484,7 @@ document.addEventListener('DOMContentLoaded', function () {
             exportPdfBtn.innerHTML = 'Exporting...';
 
             // Create download URL with parameters
-            const exportPdfUrl = `/category-item/export-pdf?start_date=${currentStartDate}&end_date=${currentEndDate}`;
+            const exportPdfUrl = `/category-item/export-pdf?start_date=${currentStartDate}&end_date=${currentEndDate}&type=${currentType}`;
 
             // Use window.location for direct download
             window.location.href = exportPdfUrl;

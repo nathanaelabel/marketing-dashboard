@@ -13,18 +13,28 @@ class CategoryItemController extends Controller
     {
         $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', Carbon::now()->toDateString());
+        $type = $request->input('type', 'NETTO');
         $page = (int)$request->input('page', 1);
         $perPage = $page === 1 ? 9 : 8;
 
         // Base query to get all branches with invoices in the date range for pagination
+        // Must filter by document type to match the main query
         $baseQuery = DB::table('c_invoice as h')
             ->join('ad_org as org', 'h.ad_org_id', '=', 'org.ad_org_id')
             ->where('h.ad_client_id', 1000001)
             ->where('h.issotrx', 'Y')
             ->whereIn('h.docstatus', ['CO', 'CL'])
             ->where('h.isactive', 'Y')
-            ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate])
-            ->select('org.name as branch')
+            ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate]);
+
+        // Apply document type filter based on revenue type
+        if ($type === 'NETTO') {
+            $baseQuery->whereRaw('SUBSTR(h.documentno, 1, 3) IN (?, ?)', ['INC', 'CNC']);
+        } else {
+            $baseQuery->whereRaw('h.documentno LIKE ?', ['INC%']);
+        }
+
+        $baseQuery->select('org.name as branch')
             ->groupBy('org.name')
             ->orderBy('org.name');
 
@@ -53,20 +63,40 @@ class CategoryItemController extends Controller
             ->join('ad_org as org', 'h.ad_org_id', '=', 'org.ad_org_id')
             ->join('m_product as prd', 'd.m_product_id', '=', 'prd.m_product_id')
             ->join('m_product_category as cat', 'prd.m_product_category_id', '=', 'cat.m_product_category_id')
-            ->select(
+            ->where('h.ad_client_id', 1000001)
+            ->where('h.issotrx', 'Y')
+            ->where('d.qtyinvoiced', '>', 0)
+            ->whereIn('h.docstatus', ['CO', 'CL'])
+            ->where('h.isactive', 'Y')
+            ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate])
+            ->whereIn('org.name', $paginatedBranches);
+
+        // Apply different calculation based on type
+        if ($type === 'NETTO') {
+            // Netto: INC adds, CNC subtracts
+            $dataQuery->select(
+                'org.name as branch',
+                'cat.name as category',
+                DB::raw('SUM(CASE
+                    WHEN SUBSTR(h.documentno, 1, 3) IN (\'INC\') THEN d.linenetamt
+                    WHEN SUBSTR(h.documentno, 1, 3) IN (\'CNC\') THEN -d.linenetamt
+                    ELSE 0
+                END) as total_revenue')
+            )
+                ->where('d.linenetamt', '>', 0)
+                ->whereRaw('SUBSTR(h.documentno, 1, 3) IN (?, ?)', ['INC', 'CNC']);
+        } else {
+            // Bruto: simple sum (only INC documents)
+            $dataQuery->select(
                 'org.name as branch',
                 'cat.name as category',
                 DB::raw('SUM(d.linenetamt) as total_revenue')
             )
-            ->where('h.ad_client_id', 1000001)
-            ->where('h.issotrx', 'Y')
-            ->where('d.qtyinvoiced', '>', 0)
-            ->where('d.linenetamt', '>', 0)
-            ->whereIn('h.docstatus', ['CO', 'CL'])
-            ->where('h.isactive', 'Y')
-            ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate])
-            ->whereIn('org.name', $paginatedBranches)
-            ->groupBy('org.name', 'cat.name');
+                ->where('d.linenetamt', '>', 0)
+                ->whereRaw('h.documentno LIKE ?', ['INC%']);
+        }
+
+        $dataQuery->groupBy('org.name', 'cat.name');
 
         $data = $dataQuery->get();
 
@@ -136,6 +166,7 @@ class CategoryItemController extends Controller
     {
         $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', Carbon::now()->toDateString());
+        $type = $request->input('type', 'BRUTO'); // BRUTO or NETTO
 
         // Main data query based on the provided SQL
         $dataQuery = DB::table('c_invoiceline as d')
@@ -143,19 +174,39 @@ class CategoryItemController extends Controller
             ->join('ad_org as org', 'h.ad_org_id', '=', 'org.ad_org_id')
             ->join('m_product as prd', 'd.m_product_id', '=', 'prd.m_product_id')
             ->join('m_product_category as cat', 'prd.m_product_category_id', '=', 'cat.m_product_category_id')
-            ->select(
+            ->where('h.ad_client_id', 1000001)
+            ->where('h.issotrx', 'Y')
+            ->where('d.qtyinvoiced', '>', 0)
+            ->whereIn('h.docstatus', ['CO', 'CL'])
+            ->where('h.isactive', 'Y')
+            ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate]);
+
+        // Apply different calculation based on type
+        if ($type === 'NETTO') {
+            // Netto: INC adds, CNC subtracts
+            $dataQuery->select(
+                'org.name as branch',
+                'cat.name as category',
+                DB::raw('SUM(CASE
+                    WHEN SUBSTR(h.documentno, 1, 3) IN (\'INC\') THEN d.linenetamt
+                    WHEN SUBSTR(h.documentno, 1, 3) IN (\'CNC\') THEN -d.linenetamt
+                    ELSE 0
+                END) as total_revenue')
+            )
+                ->where('d.linenetamt', '>', 0)
+                ->whereRaw('SUBSTR(h.documentno, 1, 3) IN (?, ?)', ['INC', 'CNC']);
+        } else {
+            // Bruto: simple sum (only INC documents)
+            $dataQuery->select(
                 'org.name as branch',
                 'cat.name as category',
                 DB::raw('SUM(d.linenetamt) as total_revenue')
             )
-            ->where('h.ad_client_id', 1000001)
-            ->where('h.issotrx', 'Y')
-            ->where('d.qtyinvoiced', '>', 0)
-            ->where('d.linenetamt', '>', 0)
-            ->whereIn('h.docstatus', ['CO', 'CL'])
-            ->where('h.isactive', 'Y')
-            ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate])
-            ->groupBy('org.name', 'cat.name')
+                ->where('d.linenetamt', '>', 0)
+                ->whereRaw('h.documentno LIKE ?', ['INC%']);
+        }
+
+        $dataQuery->groupBy('org.name', 'cat.name')
             ->orderBy('org.name');
 
         $data = $dataQuery->get();
@@ -178,7 +229,8 @@ class CategoryItemController extends Controller
         $formattedEndDate = Carbon::parse($endDate)->format('d F Y');
         $fileStartDate = Carbon::parse($startDate)->format('d-m-Y');
         $fileEndDate = Carbon::parse($endDate)->format('d-m-Y');
-        $filename = 'Category_Item_Revenue_' . $fileStartDate . '_to_' . $fileEndDate . '.xls';
+        $typeLabel = $type === 'NETTO' ? 'Netto' : 'Bruto';
+        $filename = 'Category_Item_Revenue_' . $typeLabel . '_' . $fileStartDate . '_to_' . $fileEndDate . '.xls';
 
         // Create XLS content using HTML table format
         $headers = [
@@ -212,17 +264,17 @@ class CategoryItemController extends Controller
             <style>
                 body { font-family: Calibri, Arial, sans-serif; font-size: 10pt; }
                 table { border-collapse: collapse; }
-                th, td { 
-                    border: 1px solid #ddd; 
-                    padding: 4px 8px; 
-                    text-align: left; 
+                th, td {
+                    border: 1px solid #ddd;
+                    padding: 4px 8px;
+                    text-align: left;
                     font-size: 10pt;
                     white-space: nowrap;
                 }
-                th { 
-                    background-color: #4CAF50; 
-                    color: white; 
-                    font-weight: bold; 
+                th {
+                    background-color: #4CAF50;
+                    color: white;
+                    font-weight: bold;
                     font-size: 10pt;
                 }
                 .title { font-size: 10pt; font-weight: bold; margin-bottom: 5px; }
@@ -236,7 +288,7 @@ class CategoryItemController extends Controller
             </style>
         </head>
         <body>
-            <div class="title">Category Item Revenue Report</div>
+            <div class="title">Category Item Revenue Report (' . $typeLabel . ')</div>
             <div class="period">Period: ' . $formattedStartDate . ' to ' . $formattedEndDate . '</div>
             <br>
             <table>
@@ -307,6 +359,7 @@ class CategoryItemController extends Controller
     {
         $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', Carbon::now()->toDateString());
+        $type = $request->input('type', 'BRUTO'); // BRUTO or NETTO
 
         // Main data query based on the provided SQL
         $dataQuery = DB::table('c_invoiceline as d')
@@ -314,19 +367,39 @@ class CategoryItemController extends Controller
             ->join('ad_org as org', 'h.ad_org_id', '=', 'org.ad_org_id')
             ->join('m_product as prd', 'd.m_product_id', '=', 'prd.m_product_id')
             ->join('m_product_category as cat', 'prd.m_product_category_id', '=', 'cat.m_product_category_id')
-            ->select(
+            ->where('h.ad_client_id', 1000001)
+            ->where('h.issotrx', 'Y')
+            ->where('d.qtyinvoiced', '>', 0)
+            ->whereIn('h.docstatus', ['CO', 'CL'])
+            ->where('h.isactive', 'Y')
+            ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate]);
+
+        // Apply different calculation based on type
+        if ($type === 'NETTO') {
+            // Netto: INC adds, CNC subtracts
+            $dataQuery->select(
+                'org.name as branch',
+                'cat.name as category',
+                DB::raw('SUM(CASE
+                    WHEN SUBSTR(h.documentno, 1, 3) IN (\'INC\') THEN d.linenetamt
+                    WHEN SUBSTR(h.documentno, 1, 3) IN (\'CNC\') THEN -d.linenetamt
+                    ELSE 0
+                END) as total_revenue')
+            )
+                ->where('d.linenetamt', '>', 0)
+                ->whereRaw('SUBSTR(h.documentno, 1, 3) IN (?, ?)', ['INC', 'CNC']);
+        } else {
+            // Bruto: simple sum (only INC documents)
+            $dataQuery->select(
                 'org.name as branch',
                 'cat.name as category',
                 DB::raw('SUM(d.linenetamt) as total_revenue')
             )
-            ->where('h.ad_client_id', 1000001)
-            ->where('h.issotrx', 'Y')
-            ->where('d.qtyinvoiced', '>', 0)
-            ->where('d.linenetamt', '>', 0)
-            ->whereIn('h.docstatus', ['CO', 'CL'])
-            ->where('h.isactive', 'Y')
-            ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate])
-            ->groupBy('org.name', 'cat.name')
+                ->where('d.linenetamt', '>', 0)
+                ->whereRaw('h.documentno LIKE ?', ['INC%']);
+        }
+
+        $dataQuery->groupBy('org.name', 'cat.name')
             ->orderBy('org.name');
 
         $data = $dataQuery->get();
@@ -349,6 +422,7 @@ class CategoryItemController extends Controller
         $formattedEndDate = Carbon::parse($endDate)->format('d F Y');
         $fileStartDate = Carbon::parse($startDate)->format('d-m-Y');
         $fileEndDate = Carbon::parse($endDate)->format('d-m-Y');
+        $typeLabel = $type === 'NETTO' ? 'Netto' : 'Bruto';
 
         // Create HTML for PDF
         $html = '
@@ -358,8 +432,8 @@ class CategoryItemController extends Controller
             <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
             <style>
                 @page { margin: 20px; }
-                body { 
-                    font-family: Arial, sans-serif; 
+                body {
+                    font-family: Arial, sans-serif;
                     font-size: 9pt;
                     margin: 0;
                     padding: 20px;
@@ -368,35 +442,35 @@ class CategoryItemController extends Controller
                     text-align: center;
                     margin-bottom: 20px;
                 }
-                .title { 
-                    font-size: 16pt; 
-                    font-weight: bold; 
+                .title {
+                    font-size: 16pt;
+                    font-weight: bold;
                     margin-bottom: 5px;
                 }
-                .period { 
-                    font-size: 10pt; 
+                .period {
+                    font-size: 10pt;
                     color: #666;
                     margin-bottom: 20px;
                 }
-                table { 
+                table {
                     width: 100%;
                     border-collapse: collapse;
                     margin-top: 10px;
                 }
-                th, td { 
-                    border: 1px solid #ddd; 
-                    padding: 6px; 
+                th, td {
+                    border: 1px solid #ddd;
+                    padding: 6px;
                     text-align: left;
                     font-size: 8pt;
                 }
-                th { 
-                    background-color: rgba(38, 102, 241, 0.9); 
-                    color: white; 
+                th {
+                    background-color: rgba(38, 102, 241, 0.9);
+                    color: white;
                     font-weight: bold;
                 }
                 .number { text-align: right; }
-                .total-row { 
-                    font-weight: bold; 
+                .total-row {
+                    font-weight: bold;
                     background-color: #f2f2f2;
                 }
                 .total-row td {
@@ -406,7 +480,7 @@ class CategoryItemController extends Controller
         </head>
         <body>
             <div class="header">
-                <div class="title">Category Item Revenue Report</div>
+                <div class="title">Category Item Revenue Report (' . $typeLabel . ')</div>
                 <div class="period">Period: ' . $formattedStartDate . ' to ' . $formattedEndDate . '</div>
             </div>
             <table>
@@ -474,7 +548,7 @@ class CategoryItemController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'landscape');
 
-        $filename = 'Category_Item_Revenue_' . $fileStartDate . '_to_' . $fileEndDate . '.pdf';
+        $filename = 'Category_Item_Revenue_' . $typeLabel . '_' . $fileStartDate . '_to_' . $fileEndDate . '.pdf';
 
         return $pdf->download($filename);
     }
