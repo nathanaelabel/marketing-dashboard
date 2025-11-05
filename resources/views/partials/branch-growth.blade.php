@@ -2,8 +2,8 @@
     currentLang: localStorage.getItem('language') || 'id',
     translations: {
         title: {
-            id: 'Pertumbuhan Pendapatan Cabang',
-            en: 'Branch Revenue Growth'
+            id: 'Pertumbuhan Penjualan Cabang',
+            en: 'Branch Sales Growth'
         }
     },
     init() {
