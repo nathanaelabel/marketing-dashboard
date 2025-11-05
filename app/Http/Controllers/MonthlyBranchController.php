@@ -13,6 +13,13 @@ class MonthlyBranchController extends Controller
 {
     public function getData(Request $request)
     {
+        // Increase PHP execution time limit for heavy queries
+        set_time_limit(120); // 2 minutes
+
+        $year = null;
+        $startDate = null;
+        $endDate = null;
+
         try {
             // Handle both year parameters (from frontend) and date parameters (legacy)
             $year = $request->input('year');
@@ -54,18 +61,61 @@ class MonthlyBranchController extends Controller
             $formattedData = $this->formatMonthlyComparisonData($currentYearData, $previousYearData, $year, $previousYear);
 
             return response()->json($formattedData);
-        } catch (\Exception $e) {
-            Log::error('MonthlyBranchController getData error: ' . $e->getMessage(), [
-                'year' => $request->get('year'),
+        } catch (\PDOException $e) {
+            Log::error('MonthlyBranchController getData PDO error: ' . $e->getMessage(), [
+                'year' => $year ?? $request->get('year'),
                 'start_date' => $startDate ?? null,
                 'end_date' => $endDate ?? null,
                 'category' => $request->get('category'),
                 'branch' => $request->get('branch'),
                 'type' => $request->get('type'),
+                'code' => $e->getCode(),
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json(['error' => 'Failed to fetch monthly branch data'], 500);
+            return response()->json([
+                'error' => 'Database connection timeout. Please try again.',
+                'message' => 'The request took too long to process. Please refresh the page.'
+            ], 500);
+        } catch (\Error $e) {
+            // Handle fatal errors like maximum execution time exceeded
+            $errorMessage = $e->getMessage();
+            $isTimeout = strpos($errorMessage, 'Maximum execution time') !== false ||
+                strpos($errorMessage, 'execution time') !== false;
+
+            Log::error('MonthlyBranchController getData Fatal error: ' . $errorMessage, [
+                'year' => $year ?? $request->get('year'),
+                'start_date' => $startDate ?? null,
+                'end_date' => $endDate ?? null,
+                'category' => $request->get('category'),
+                'branch' => $request->get('branch'),
+                'type' => $request->get('type'),
+                'is_timeout' => $isTimeout,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => $isTimeout ? 'Request timeout' : 'Server error',
+                'message' => $isTimeout
+                    ? 'The query is taking too long to execute. Please try again or contact support if the problem persists.'
+                    : 'An unexpected error occurred. Please try again.'
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('MonthlyBranchController getData error: ' . $e->getMessage(), [
+                'year' => $year ?? $request->get('year'),
+                'start_date' => $startDate ?? null,
+                'end_date' => $endDate ?? null,
+                'category' => $request->get('category'),
+                'branch' => $request->get('branch'),
+                'type' => $request->get('type'),
+                'class' => get_class($e),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to fetch monthly branch data',
+                'message' => 'An error occurred while processing your request. Please try again.'
+            ], 500);
         }
     }
 
@@ -107,20 +157,34 @@ class MonthlyBranchController extends Controller
 
     private function getMonthlyRevenueData($startDate, $endDate, $category, $branch, $type = 'BRUTO')
     {
-        // Branch condition - if National, sum all branches, otherwise filter by specific branch
-        $branchCondition = '';
-        $bindings = [];
+        try {
+            // Set statement timeout for this query (in milliseconds for PostgreSQL)
+            // Only set if using PostgreSQL
+            try {
+                $driver = DB::connection()->getDriverName();
+                if ($driver === 'pgsql') {
+                    // Set statement timeout to 2 minutes (120000 milliseconds)
+                    DB::statement("SET statement_timeout = 120000");
+                }
+            } catch (\Exception $e) {
+                // Ignore if statement timeout is not supported
+                Log::debug('Could not set statement timeout', ['error' => $e->getMessage()]);
+            }
 
-        if ($branch !== 'National') {
-            $branchCondition = 'AND org.name = ?';
-            $bindings = [$branch, $startDate, $endDate, $category];
-        } else {
-            $bindings = [$startDate, $endDate, $category];
-        }
+            // Branch condition - if National, sum all branches, otherwise filter by specific branch
+            $branchCondition = '';
+            $bindings = [];
 
-        if ($type === 'NETTO') {
-            // Netto query - includes returns (CNC documents) as negative values
-            $query = "
+            if ($branch !== 'National') {
+                $branchCondition = 'AND org.name = ?';
+                $bindings = [$branch, $startDate, $endDate, $category];
+            } else {
+                $bindings = [$startDate, $endDate, $category];
+            }
+
+            if ($type === 'NETTO') {
+                // Netto query - includes returns (CNC documents) as negative values
+                $query = "
                 SELECT
                     EXTRACT(month FROM inv.dateinvoiced) AS month_number,
                     COALESCE(SUM(CASE
@@ -149,9 +213,9 @@ class MonthlyBranchController extends Controller
                 ORDER BY
                     month_number
             ";
-        } else {
-            // Bruto query - original query (only INC documents)
-            $query = "
+            } else {
+                // Bruto query - original query (only INC documents)
+                $query = "
                 SELECT
                     EXTRACT(month FROM inv.dateinvoiced) AS month_number,
                     COALESCE(SUM(invl.linenetamt), 0) AS total_revenue
@@ -177,9 +241,65 @@ class MonthlyBranchController extends Controller
                 ORDER BY
                     month_number
             ";
-        }
+            }
 
-        return DB::select($query, $bindings);
+            $result = DB::select($query, $bindings);
+
+            // Reset statement timeout (only for PostgreSQL)
+            try {
+                $driver = DB::connection()->getDriverName();
+                if ($driver === 'pgsql') {
+                    DB::statement("SET statement_timeout = 0");
+                }
+            } catch (\Exception $e) {
+                // Ignore reset error
+            }
+
+            return $result;
+        } catch (\PDOException $e) {
+            // Reset statement timeout on error (only for PostgreSQL)
+            try {
+                $driver = DB::connection()->getDriverName();
+                if ($driver === 'pgsql') {
+                    DB::statement("SET statement_timeout = 0");
+                }
+            } catch (\Exception $resetError) {
+                // Ignore reset error
+            }
+
+            Log::error('MonthlyBranchController getMonthlyRevenueData PDO error', [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'category' => $category,
+                'branch' => $branch,
+                'type' => $type,
+                'error' => $e->getMessage(),
+                'code' => $e->getCode()
+            ]);
+
+            throw $e;
+        } catch (\Exception $e) {
+            // Reset statement timeout on error (only for PostgreSQL)
+            try {
+                $driver = DB::connection()->getDriverName();
+                if ($driver === 'pgsql') {
+                    DB::statement("SET statement_timeout = 0");
+                }
+            } catch (\Exception $resetError) {
+                // Ignore reset error
+            }
+
+            Log::error('MonthlyBranchController getMonthlyRevenueData error', [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'category' => $category,
+                'branch' => $branch,
+                'type' => $type,
+                'error' => $e->getMessage()
+            ]);
+
+            throw $e;
+        }
     }
 
     private function formatMonthlyComparisonData($currentYearData, $previousYearData, $year, $previousYear)

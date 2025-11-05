@@ -140,10 +140,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function fetchAndUpdateMonthlyChart(year, branch, category, type) {
+    function fetchAndUpdateMonthlyChart(year, branch, category, type, retryCount = 0) {
         const url = `/monthly-branch/data?year=${year}&branch=${encodeURIComponent(branch)}&category=${encodeURIComponent(category)}&type=${encodeURIComponent(type)}`;
         const filterSelectors = ['monthly-year-select', 'monthly-branch-select', 'monthly-category-select', 'monthly-type-select'];
         const chartContainer = document.getElementById('monthly-branch-chart');
+        const maxRetries = 2; // Maximum number of retries
+        const retryDelay = 2000; // 2 seconds delay between retries
 
         // Create a wrapper div around canvas if it doesn't exist
         if (!chartContainer.parentElement.classList.contains('chart-wrapper')) {
@@ -159,23 +161,74 @@ document.addEventListener('DOMContentLoaded', function () {
         ChartHelper.disableFilters(filterSelectors);
         ChartHelper.showChartLoadingIndicator(chartContainer.parentElement);
 
-        fetch(url)
+        // Create AbortController for timeout handling
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
+
+        fetch(url, {
+            signal: controller.signal,
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
             .then(response => {
+                clearTimeout(timeoutId);
+
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    // Try to get error message from response
+                    return response.json().then(errorData => {
+                        throw new Error(errorData.message || errorData.error || `HTTP error! status: ${response.status}`);
+                    }).catch(() => {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    });
                 }
                 return response.json();
             })
             .then(data => {
+                clearTimeout(timeoutId);
+
+                // Check if response contains error
+                if (data.error) {
+                    throw new Error(data.message || data.error);
+                }
+
                 ChartHelper.hideChartLoadingIndicator(chartContainer.parentElement);
                 ChartHelper.enableFilters(filterSelectors);
                 updateMonthlyBranchChart(data);
             })
             .catch(error => {
+                clearTimeout(timeoutId);
+
                 console.error('Error fetching Monthly Branch data:', error);
+
+                // Retry logic for timeout or network errors
+                if ((error.name === 'AbortError' || error.message.includes('timeout') || error.message.includes('Failed to fetch')) && retryCount < maxRetries) {
+                    console.log(`Retrying request (attempt ${retryCount + 1}/${maxRetries})...`);
+                    setTimeout(() => {
+                        fetchAndUpdateMonthlyChart(year, branch, category, type, retryCount + 1);
+                    }, retryDelay);
+                    return;
+                }
+
                 ChartHelper.hideChartLoadingIndicator(chartContainer.parentElement);
                 ChartHelper.enableFilters(filterSelectors);
-                ChartHelper.showErrorMessage(monthlyBranchChart, ctx, 'Connection timed out. Try refreshing the page.');
+
+                // Show more specific error message
+                let errorMessage = 'Connection timed out. Try refreshing the page.';
+                if (error.message) {
+                    if (error.message.includes('timeout') || error.message.includes('Request timeout')) {
+                        errorMessage = 'Request timeout. The server is taking too long to respond. Please wait a moment and try again.';
+                    } else if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+                        errorMessage = 'Network error. Please check your connection and try again.';
+                    } else if (error.message.includes('HTTP error! status: 500')) {
+                        errorMessage = 'Server error. The query is taking too long. Please try again in a moment.';
+                    } else {
+                        errorMessage = error.message;
+                    }
+                }
+
+                ChartHelper.showErrorMessage(monthlyBranchChart, ctx, errorMessage);
             });
     }
 
