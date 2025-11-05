@@ -12,8 +12,10 @@ class CategoryItemController extends Controller
 {
     public function getData(Request $request)
     {
-        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', Carbon::now()->toDateString());
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = Carbon::now()->subDay();
+        $startDate = $request->input('start_date', $yesterday->copy()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', $yesterday->toDateString());
         $type = $request->input('type', 'NETTO');
         $page = (int)$request->input('page', 1);
         $perPage = $page === 1 ? 9 : 8;
@@ -165,8 +167,10 @@ class CategoryItemController extends Controller
 
     public function exportExcel(Request $request)
     {
-        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', Carbon::now()->toDateString());
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = Carbon::now()->subDay();
+        $startDate = $request->input('start_date', $yesterday->copy()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', $yesterday->toDateString());
         $type = $request->input('type', 'BRUTO'); // BRUTO or NETTO
 
         // Main data query based on the provided SQL
@@ -371,8 +375,10 @@ class CategoryItemController extends Controller
 
     public function exportPdf(Request $request)
     {
-        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', Carbon::now()->toDateString());
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = Carbon::now()->subDay();
+        $startDate = $request->input('start_date', $yesterday->copy()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', $yesterday->toDateString());
         $type = $request->input('type', 'BRUTO'); // BRUTO or NETTO
 
         // Main data query based on the provided SQL

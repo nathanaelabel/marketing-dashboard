@@ -67,7 +67,8 @@
         <div class="flex flex-wrap gap-4 mb-6">
             <div class="flex-1 min-w-[200px]">
                 <label for="sales-comp-date-select" class="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
-                <input type="date" id="sales-comp-date-select" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}"
+                {{-- Use yesterday (H-1) since dashboard is updated daily at night --}}
+                <input type="date" id="sales-comp-date-select" value="{{ date('Y-m-d', strtotime('-1 day')) }}" max="{{ date('Y-m-d', strtotime('-1 day')) }}"
                     class="block w-full pl-3 pr-3 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
             </div>
         </div>

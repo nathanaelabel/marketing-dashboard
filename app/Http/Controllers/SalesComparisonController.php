@@ -41,7 +41,9 @@ class SalesComparisonController extends Controller
     public function getData(Request $request)
     {
         try {
-            $date = $request->get('date', date('Y-m-d'));
+            // Use yesterday (H-1) since dashboard is updated daily at night
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            $date = $request->get('date', $yesterday);
 
             // Validate date
             if (!strtotime($date)) {

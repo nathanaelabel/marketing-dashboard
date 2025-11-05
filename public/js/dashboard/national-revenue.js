@@ -214,11 +214,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Use yesterday (H-1) as max date since dashboard is updated daily at night
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    
     endDatePicker = flatpickr(endDateInput, {
         altInput: true,
         altFormat: "d-m-Y",
         dateFormat: "Y-m-d",
-        maxDate: "today",
+        maxDate: yesterday,
         onChange: function (selectedDates, dateStr, instance) {
             if (startDatePicker) {
                 startDatePicker.set('maxDate', selectedDates[0]);

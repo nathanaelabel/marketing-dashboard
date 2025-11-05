@@ -8,10 +8,12 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $startDate = now()->startOfMonth()->toDateString();
-        $endDate = now()->toDateString();
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = now()->subDay();
+        $startDate = $yesterday->copy()->startOfMonth()->toDateString();
+        $endDate = $yesterday->toDateString();
 
-        $currentDateFormatted = now()->format('d F Y');
+        $currentDateFormatted = $yesterday->format('d F Y');
 
         return view('dashboard', compact('startDate', 'endDate', 'currentDateFormatted'));
     }

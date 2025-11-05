@@ -25,8 +25,10 @@ class BranchGrowthController extends Controller
                 $endDate = $endYear . '-12-31';
             } else {
                 // Fallback to date parameters or defaults
+                // Use yesterday (H-1) since dashboard is updated daily at night
+                $yesterday = date('Y-m-d', strtotime('-1 day'));
                 $startDate = $startDate ?: '2024-01-01';
-                $endDate = $endDate ?: now()->toDateString();
+                $endDate = $endDate ?: $yesterday;
             }
 
             $category = $request->get('category', 'MIKA');

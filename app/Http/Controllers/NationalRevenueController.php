@@ -12,8 +12,10 @@ class NationalRevenueController extends Controller
 
     public function data(Request $request)
     {
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = date('Y-m-d', strtotime('-1 day'));
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+        $endDate = $request->input('end_date', $yesterday);
         $organization = $request->input('organization', '%');
         $type = $request->input('type', 'BRUTO');
 
@@ -80,8 +82,10 @@ class NationalRevenueController extends Controller
 
     public function exportExcel(Request $request)
     {
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = date('Y-m-d', strtotime('-1 day'));
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+        $endDate = $request->input('end_date', $yesterday);
         $organization = $request->input('organization', '%');
         $type = $request->input('type', 'BRUTO');
 
@@ -267,8 +271,10 @@ class NationalRevenueController extends Controller
 
     public function exportPdf(Request $request)
     {
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = date('Y-m-d', strtotime('-1 day'));
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+        $endDate = $request->input('end_date', $yesterday);
         $organization = $request->input('organization', '%');
         $type = $request->input('type', 'BRUTO');
 
