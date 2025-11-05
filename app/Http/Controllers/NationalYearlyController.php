@@ -25,7 +25,8 @@ class NationalYearlyController extends Controller
             $year = $request->input('year');
             $startDate = $request->input('start_date');
             $endDate = $request->input('end_date');
-            $today = date('Y-m-d');
+            // Use yesterday (H-1) since dashboard is updated daily at night
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
             $currentYear = date('Y');
 
             if ($year) {
@@ -39,11 +40,11 @@ class NationalYearlyController extends Controller
                 $endDate = $year . '-12-31';
 
                 if ($year == $currentYear) {
-                    $endDate = $today;
+                    $endDate = $yesterday;
                 }
             } else {
                 $startDate = $startDate ?: date('Y') . '-01-01';
-                $endDate = $endDate ?: $today;
+                $endDate = $endDate ?: $yesterday;
                 $year = date('Y', strtotime($startDate));
             }
 
@@ -371,14 +372,15 @@ class NationalYearlyController extends Controller
         $year = $request->input('year', date('Y'));
         $category = $request->input('category', 'MIKA');
         $type = $request->input('type', 'BRUTO');
-        $today = date('Y-m-d');
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = date('Y-m-d', strtotime('-1 day'));
         $currentYear = date('Y');
 
         $startDate = $year . '-01-01';
         $endDate = $year . '-12-31';
 
         if ($year == $currentYear) {
-            $endDate = $today;
+            $endDate = $yesterday;
         }
 
         $previousYear = $year - 1;
@@ -401,10 +403,10 @@ class NationalYearlyController extends Controller
         // Generate date range information text
         $currentYearEndDate = date('Y-m-d', strtotime($dateRanges['current']['end']));
         $previousYearEndDate = date('Y-m-d', strtotime($dateRanges['previous']['end']));
-        
+
         // Check if it's a complete year comparison or partial year
         $isCompleteYear = ($currentYearEndDate == $year . '-12-31');
-        
+
         if ($isCompleteYear) {
             // Complete year comparison (e.g., 2023-2024)
             $dateRangeInfo = 'Periode: 1 Januari - 31 Desember ' . $previousYear . ' VS 1 Januari - 31 Desember ' . $year;
@@ -557,14 +559,15 @@ class NationalYearlyController extends Controller
         $year = $request->input('year', date('Y'));
         $category = $request->input('category', 'MIKA');
         $type = $request->input('type', 'BRUTO');
-        $today = date('Y-m-d');
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = date('Y-m-d', strtotime('-1 day'));
         $currentYear = date('Y');
 
         $startDate = $year . '-01-01';
         $endDate = $year . '-12-31';
 
         if ($year == $currentYear) {
-            $endDate = $today;
+            $endDate = $yesterday;
         }
 
         $previousYear = $year - 1;
@@ -587,10 +590,10 @@ class NationalYearlyController extends Controller
         // Generate date range information text
         $currentYearEndDate = date('Y-m-d', strtotime($dateRanges['current']['end']));
         $previousYearEndDate = date('Y-m-d', strtotime($dateRanges['previous']['end']));
-        
+
         // Check if it's a complete year comparison or partial year
         $isCompleteYear = ($currentYearEndDate == $year . '-12-31');
-        
+
         if ($isCompleteYear) {
             // Complete year comparison (e.g., 2023-2024)
             $dateRangeInfo = 'Periode: 1 Januari - 31 Desember ' . $previousYear . ' VS 1 Januari - 31 Desember ' . $year;

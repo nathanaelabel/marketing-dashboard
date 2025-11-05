@@ -17,15 +17,24 @@ class MonthlyBranchController extends Controller
     private function formatIndonesianDate($date)
     {
         $monthNames = [
-            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
-            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
-            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember'
         ];
-        
+
         $dateObj = new \DateTime($date);
         $day = (int)$dateObj->format('j');
         $month = (int)$dateObj->format('n');
-        
+
         return $day . ' ' . $monthNames[$month];
     }
 
@@ -49,16 +58,16 @@ class MonthlyBranchController extends Controller
                 $startDate = $year . '-01-01';
                 $endDate = $year . '-12-31';
 
-                // If it's the current year, limit end date to today to avoid querying future dates
+                // If it's the current year, limit end date to yesterday (H-1) since dashboard is updated daily at night
                 $currentYear = date('Y');
                 if ($year == $currentYear) {
-                    $today = date('Y-m-d');
-                    $endDate = min($endDate, $today);
+                    $yesterday = date('Y-m-d', strtotime('-1 day'));
+                    $endDate = min($endDate, $yesterday);
                 }
             } else {
                 // Fallback to date parameters or defaults
                 $startDate = $startDate ?: date('Y') . '-01-01';
-                $endDate = $endDate ?: date('Y-m-d'); // Use today instead of end of year
+                $endDate = $endDate ?: date('Y-m-d', strtotime('-1 day')); // Use yesterday instead of today
                 $year = date('Y', strtotime($startDate));
             }
 
@@ -389,8 +398,9 @@ class MonthlyBranchController extends Controller
         $endDate = $year . '-12-31';
 
         if ($year == $currentYear) {
-            $today = date('Y-m-d');
-            $endDate = min($endDate, $today);
+            // Use yesterday (H-1) since dashboard is updated daily at night
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            $endDate = min($endDate, $yesterday);
         }
 
         $previousYear = $year - 1;
@@ -526,12 +536,12 @@ class MonthlyBranchController extends Controller
             // Partial year comparison (e.g., 2024-2025 where current year is incomplete)
             // Use actual end date to show specific date (e.g., 5 November instead of just November)
             $currentEndDateFormatted = $this->formatIndonesianDate($endDate);
-            
+
             // For previous year, use same day and month as current year end date
             $currentEndDate = new \DateTime($endDate);
             $previousEndDateStr = $previousYear . $currentEndDate->format('-m-d');
             $previousEndDateFormatted = $this->formatIndonesianDate($previousEndDateStr);
-            
+
             $dateRangeInfo = 'Periode: 1 Januari - ' . $previousEndDateFormatted . ' ' . $previousYear . ' VS 1 Januari - ' . $currentEndDateFormatted . ' ' . $year;
         }
 
@@ -792,8 +802,9 @@ class MonthlyBranchController extends Controller
         $endDate = $year . '-12-31';
 
         if ($year == $currentYear) {
-            $today = date('Y-m-d');
-            $endDate = min($endDate, $today);
+            // Use yesterday (H-1) since dashboard is updated daily at night
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            $endDate = min($endDate, $yesterday);
         }
 
         $previousYear = $year - 1;
@@ -859,12 +870,12 @@ class MonthlyBranchController extends Controller
             // Partial year comparison (e.g., 2024-2025 where current year is incomplete)
             // Use actual end date to show specific date (e.g., 5 November instead of just November)
             $currentEndDateFormatted = $this->formatIndonesianDate($endDate);
-            
+
             // For previous year, use same day and month as current year end date
             $currentEndDate = new \DateTime($endDate);
             $previousEndDateStr = $previousYear . $currentEndDate->format('-m-d');
             $previousEndDateFormatted = $this->formatIndonesianDate($previousEndDateStr);
-            
+
             $dateRangeInfo = 'Periode: 1 Januari - ' . $previousEndDateFormatted . ' ' . $previousYear . ' VS 1 Januari - ' . $currentEndDateFormatted . ' ' . $year;
         }
 
