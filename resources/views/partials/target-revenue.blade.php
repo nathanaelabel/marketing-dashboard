@@ -2,7 +2,7 @@
     currentLang: localStorage.getItem('language') || 'id',
     translations: {
         title: {
-            id: 'Perbandingan Target dan Pendapatan',
+            id: 'Target Penjualan Netto',
             en: 'Target Net Revenue'
         }
     },
