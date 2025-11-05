@@ -337,9 +337,10 @@ class FastSyncAdempiereTableCommand extends Command
             Log::channel('sync')->info('Sample processed data for ' . $modelName . ':', [reset($dataToInsert)]);
         }
 
-        // Chunk the data to avoid hitting the parameter limit in PostgreSQL.
-        collect($dataToInsert)->chunk(500)->each(function ($chunk) use ($model) {
-            $model->insertOrIgnore($chunk->toArray());
+        // Use upsert instead of insertOrIgnore to update existing records with new columns
+        // This ensures that when new columns like m_inoutline_id are added, existing records get updated
+        collect($dataToInsert)->chunk(500)->each(function ($chunk) use ($model, $keyColumns) {
+            $model->upsert($chunk->toArray(), $keyColumns);
         });
 
         $this->line(''); // Add spacing
