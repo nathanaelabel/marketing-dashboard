@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\ChartHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class NationalRevenueController extends Controller
 {
@@ -230,10 +231,10 @@ class NationalRevenueController extends Controller
                 </colgroup>
                 <thead>
                     <tr>
-                        <th>No</th>
-                        <th>Nama Cabang</th>
-                        <th>Kode Cabang</th>
-                        <th style="text-align: right;">Penjualan (Rp)</th>
+                        <th>NO</th>
+                        <th>NAMA CABANG</th>
+                        <th>KODE CABANG</th>
+                        <th style="text-align: right;">PENJUALAN (RP)</th>
                     </tr>
                 </thead>
                 <tbody>';
@@ -255,6 +256,9 @@ class NationalRevenueController extends Controller
                     </tr>
                 </tbody>
             </table>
+            <br>
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
         </body>
         </html>';
 
@@ -403,10 +407,10 @@ class NationalRevenueController extends Controller
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 40px; text-align: left;">No</th>
-                        <th style="width: 200px; text-align: left;">Nama Cabang</th>
-                        <th style="width: 100px; text-align: left;">Kode Cabang</th>
-                        <th style="width: 200px; text-align: right;">Penjualan (Rp)</th>
+                        <th style="width: 40px; text-align: left;">NO</th>
+                        <th style="width: 200px; text-align: left;">NAMA CABANG</th>
+                        <th style="width: 100px; text-align: left;">KODE CABANG</th>
+                        <th style="width: 200px; text-align: right;">PENJUALAN (RP)</th>
                     </tr>
                 </thead>
                 <tbody>';
@@ -428,6 +432,9 @@ class NationalRevenueController extends Controller
                     </tr>
                 </tbody>
             </table>
+            <br>
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
         </body>
         </html>';
 

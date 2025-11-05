@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use App\Helpers\ChartHelper;
 use PDOException;
 
@@ -471,12 +472,12 @@ class NationalYearlyController extends Controller
             <table>
                 <thead>
                     <tr>
-                        <th>No</th>
-                        <th>Nama Cabang</th>
-                        <th>Kode Cabang</th>
-                        <th style="text-align: right;">' . $previousYear . ' (Rp)</th>
-                        <th style="text-align: right;">' . $year . ' (Rp)</th>
-                        <th style="text-align: right;">Growth (%)</th>
+                        <th>NO</th>
+                        <th>NAMA CABANG</th>
+                        <th>KODE CABANG</th>
+                        <th style="text-align: right;">' . $previousYear . ' (RP)</th>
+                        <th style="text-align: right;">' . $year . ' (RP)</th>
+                        <th style="text-align: right;">GROWTH (%)</th>
                     </tr>
                 </thead>
                 <tbody>';
@@ -524,6 +525,9 @@ class NationalYearlyController extends Controller
                     </tr>
                 </tbody>
             </table>
+            <br>
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
         </body>
         </html>';
 
@@ -629,12 +633,12 @@ class NationalYearlyController extends Controller
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 30px;">No</th>
-                        <th style="width: 150px;">Nama Cabang</th>
-                        <th style="width: 50px;">Kode Cabang</th>
+                        <th style="width: 30px;">NO</th>
+                        <th style="width: 150px;">NAMA CABANG</th>
+                        <th style="width: 50px;">KODE CABANG</th>
                         <th style="width: 100px; text-align: right;">' . $previousYear . '</th>
                         <th style="width: 100px; text-align: right;">' . $year . '</th>
-                        <th style="width: 80px; text-align: right;">Growth (%)</th>
+                        <th style="width: 80px; text-align: right;">GROWTH (%)</th>
                     </tr>
                 </thead>
                 <tbody>';
@@ -682,6 +686,9 @@ class NationalYearlyController extends Controller
                     </tr>
                 </tbody>
             </table>
+            <br>
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
         </body>
         </html>';
 

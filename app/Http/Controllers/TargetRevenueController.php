@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Helpers\ChartHelper;
 
@@ -383,12 +384,12 @@ class TargetRevenueController extends Controller
                 </colgroup>
                 <thead>
                     <tr>
-                        <th>No</th>
-                        <th>Nama Cabang</th>
-                        <th>Kode Cabang</th>
-                        <th style="text-align: right;">Target (Rp)</th>
-                        <th style="text-align: right;">Realization (Rp)</th>
-                        <th style="text-align: right;">Achievement (%)</th>
+                        <th>NO</th>
+                        <th>NAMA CABANG</th>
+                        <th>KODE CABANG</th>
+                        <th style="text-align: right;">TARGET (RP)</th>
+                        <th style="text-align: right;">REALIZATION (RP)</th>
+                        <th style="text-align: right;">ACHIEVEMENT (%)</th>
                     </tr>
                 </thead>
                 <tbody>';
@@ -418,6 +419,9 @@ class TargetRevenueController extends Controller
                     </tr>
                 </tbody>
             </table>
+            <br>
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
         </body>
         </html>';
 
@@ -535,12 +539,12 @@ class TargetRevenueController extends Controller
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 30px;">No</th>
-                        <th style="width: 150px;">Nama Cabang</th>
-                        <th style="width: 80px;">Kode Cabang</th>
-                        <th style="width: 120px; text-align: right;">Target (Rp)</th>
-                        <th style="width: 120px; text-align: right;">Realization (Rp)</th>
-                        <th style="width: 80px; text-align: right;">Achievement (%)</th>
+                        <th style="width: 30px;">NO</th>
+                        <th style="width: 150px;">NAMA CABANG</th>
+                        <th style="width: 80px;">KODE CABANG</th>
+                        <th style="width: 120px; text-align: right;">TARGET (RP)</th>
+                        <th style="width: 120px; text-align: right;">REALIZATION (RP)</th>
+                        <th style="width: 80px; text-align: right;">ACHIEVEMENT (%)</th>
                     </tr>
                 </thead>
                 <tbody>';
@@ -570,6 +574,9 @@ class TargetRevenueController extends Controller
                     </tr>
                 </tbody>
             </table>
+            <br>
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
         </body>
         </html>';
 

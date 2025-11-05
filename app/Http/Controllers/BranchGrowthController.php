@@ -690,7 +690,7 @@ class BranchGrowthController extends Controller
 
             // Month headers (only up to monthsToShow)
             for ($month = 1; $month <= $monthsToShow; $month++) {
-                $tableHtml .= '<th>' . $monthLabels[$month - 1] . '</th>';
+                $tableHtml .= '<th>' . strtoupper($monthLabels[$month - 1]) . '</th>';
             }
 
             $tableHtml .= '<th>TOTAL</th>
@@ -971,7 +971,7 @@ class BranchGrowthController extends Controller
 
             // Month headers (only up to monthsToShow)
             for ($month = 1; $month <= $monthsToShow; $month++) {
-                $tableHtml .= '<th>' . $monthLabels[$month - 1] . '</th>';
+                $tableHtml .= '<th>' . strtoupper($monthLabels[$month - 1]) . '</th>';
             }
 
             $tableHtml .= '<th>TOTAL</th>
