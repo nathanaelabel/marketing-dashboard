@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     </svg>
                     <span>${message}</span>
                 </div>`;
-            messageContainer.style.display = 'block';
+            messageContainer.style.display = 'flex';
         }
     }
 

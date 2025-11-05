@@ -3,7 +3,7 @@
     translations: {
         title: {
             id: 'Penjualan Bulanan Cabang',
-            en: 'Monthly Branch Revenue'
+            en: 'Monthly Branch Sales'
         }
     },
     init() {
@@ -16,7 +16,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 items-start mb-4">
             <div class="md:justify-self-start">
                 <h3 class="text-2xl font-bold text-gray-900" x-text="translations.title[currentLang]">Monthly Branch
-                    Revenue</h3>
+                    Sales</h3>
             </div>
             <div class="flex items-end space-x-3 md:justify-self-end justify-center mt-3 md:mt-0">
                 <!-- Type Selector -->

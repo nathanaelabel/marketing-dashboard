@@ -17,7 +17,7 @@
             <div>
                 <h3 class="text-2xl font-bold text-gray-900" x-text="translations.title[currentLang]">Accounts Receivable
                 </h3>
-                <p id="arTotal" class="mt-2 mb-2 text-1xl font-bold text-gray-700">Loading...</p>
+                <p id="arTotal" class="mt-2 mb-2 text-1xl font-bold text-gray-700"></p>
             </div>
             <div class="flex items-center space-x-3">
                 <div class="text-right">
@@ -67,9 +67,8 @@
                 </div>
             </div>
         </div>
-        <div>
-            <canvas id="accountsReceivableChart" data-url="{{ route('accounts-receivable.data') }}"
-                style="max-height: 450px; width: 100%;"></canvas>
+        <div id="ar-chart-container" style="position: relative; height: 450px; width: 100%;">
+            <canvas id="accountsReceivableChart" data-url="{{ route('accounts-receivable.data') }}"></canvas>
         </div>
     </div>
 </div>
