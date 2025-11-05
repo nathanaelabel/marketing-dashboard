@@ -3,8 +3,8 @@
     currentLang: localStorage.getItem('language') || 'id',
     translations: {
         title: {
-            id: 'Perbandingan Sales, Stok, dan BDP',
-            en: 'Comparison of Sales, Stock, and BDP'
+            id: 'Rekap Sales, Stok, dan BDP',
+            en: 'Recap of Sales, Stock, and BDP'
         }
     },
     init() {
