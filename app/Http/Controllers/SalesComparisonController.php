@@ -546,7 +546,7 @@ class SalesComparisonController extends Controller
             $data = $responseData['data'];
             $formattedDate = $responseData['formatted_date'];
 
-            $filename = 'Sales_Comparison_' . str_replace(' ', '_', $formattedDate) . '.xls';
+            $filename = 'Perbandingan_Sales_Stok_dan_BDP_' . str_replace(' ', '_', $formattedDate) . '.xls';
 
             // Create XLS content using HTML table format
             $headers = [
@@ -566,7 +566,7 @@ class SalesComparisonController extends Controller
                     <x:ExcelWorkbook>
                         <x:ExcelWorksheets>
                             <x:ExcelWorksheet>
-                                <x:Name>Sales Comparison</x:Name>
+                                <x:Name>Perbandingan Sales, Stok, dan BDP</x:Name>
                                 <x:WorksheetOptions>
                                     <x:Print>
                                         <x:ValidPrinterInfo/>
@@ -610,7 +610,7 @@ class SalesComparisonController extends Controller
             </head>
             <body>
                 <div class="title">PERBANDINGAN SALES, STOK, DAN BDP</div>
-                <div class="period">Date: ' . htmlspecialchars($formattedDate) . '</div>
+                <div class="period">Periode ' . htmlspecialchars($formattedDate) . '</div>
                 <br>
                 <table>
                     <thead>
@@ -761,7 +761,7 @@ class SalesComparisonController extends Controller
             <body>
                 <div class="header">
                     <div class="title">PERBANDINGAN SALES, STOK, DAN BDP</div>
-                    <div class="period">Date: ' . htmlspecialchars($formattedDate) . '</div>
+                    <div class="period">Periode ' . htmlspecialchars($formattedDate) . '</div>
                 </div>
                 <table>
                     <thead>
@@ -829,7 +829,7 @@ class SalesComparisonController extends Controller
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
             $pdf->setPaper('A4', 'landscape');
 
-            $filename = 'Sales_Comparison_' . str_replace(' ', '_', $formattedDate) . '.pdf';
+            $filename = 'Perbandingan_Sales_Stok_dan_BDP_' . str_replace(' ', '_', $formattedDate) . '.pdf';
 
             return $pdf->download($filename);
         } catch (\Exception $e) {

@@ -66,16 +66,16 @@ class TargetRevenueController extends Controller
         try {
             $query = "
                 SELECT
-                    ss.cabang AS cabang, 
-                    SUM(ss.total_bruto) AS total_bruto, 
-                    SUM(ss.total_retur) AS total_retur, 
+                    ss.cabang AS cabang,
+                    SUM(ss.total_bruto) AS total_bruto,
+                    SUM(ss.total_retur) AS total_retur,
                     (SUM(ss.total_bruto) - SUM(ss.total_retur)) AS netto
                 FROM
                 (
                     --BRUTO
                     SELECT
-                        org.name AS cabang, 
-                        SUM(d.linenetamt) AS total_bruto, 
+                        org.name AS cabang,
+                        SUM(d.linenetamt) AS total_bruto,
                         0 AS total_retur
                     FROM
                         c_invoiceline d
@@ -86,7 +86,7 @@ class TargetRevenueController extends Controller
                     WHERE
                         h.issotrx = 'Y'
                         AND h.ad_client_id = 1000001
-                        AND d.qtyinvoiced > 0 
+                        AND d.qtyinvoiced > 0
                         AND d.linenetamt > 0
                         AND h.docstatus in ('CO', 'CL')
                         AND h.documentno LIKE 'INC%'
@@ -96,12 +96,12 @@ class TargetRevenueController extends Controller
                     GROUP BY
                         org.name
 
-                    UNION ALL 
+                    UNION ALL
 
                     --RETUR
                     SELECT
-                        org.name AS cabang, 
-                        0 AS total_bruto, 
+                        org.name AS cabang,
+                        0 AS total_bruto,
                         SUM(d.linenetamt) AS total_retur
                     FROM
                         c_invoiceline d
@@ -112,7 +112,7 @@ class TargetRevenueController extends Controller
                     WHERE
                         h.issotrx = 'Y'
                         AND h.ad_client_id = 1000001
-                        AND d.qtyinvoiced > 0 
+                        AND d.qtyinvoiced > 0
                         AND d.linenetamt > 0
                         AND h.docstatus in ('CO', 'CL')
                         AND h.documentno LIKE 'CNC%'
@@ -319,7 +319,7 @@ class TargetRevenueController extends Controller
                 <x:ExcelWorkbook>
                     <x:ExcelWorksheets>
                         <x:ExcelWorksheet>
-                            <x:Name>Target Net Revenue</x:Name>
+                            <x:Name>Target Penjualan Netto</x:Name>
                             <x:WorksheetOptions>
                                 <x:Print>
                                     <x:ValidPrinterInfo/>
@@ -333,17 +333,17 @@ class TargetRevenueController extends Controller
             <style>
                 body { font-family: Calibri, Arial, sans-serif; font-size: 10pt; }
                 table { border-collapse: collapse; }
-                th, td { 
-                    border: 1px solid #ddd; 
-                    padding: 4px 8px; 
-                    text-align: left; 
+                th, td {
+                    border: 1px solid #ddd;
+                    padding: 4px 8px;
+                    text-align: left;
                     font-size: 10pt;
                     white-space: nowrap;
                 }
-                th { 
-                    background-color: #4CAF50; 
-                    color: white; 
-                    font-weight: bold; 
+                th {
+                    background-color: #4CAF50;
+                    color: white;
+                    font-weight: bold;
                     font-size: 10pt;
                 }
                 .title { font-size: 10pt; font-weight: bold; margin-bottom: 5px; }
@@ -466,8 +466,8 @@ class TargetRevenueController extends Controller
             <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
             <style>
                 @page { margin: 20px; }
-                body { 
-                    font-family: Arial, sans-serif; 
+                body {
+                    font-family: Arial, sans-serif;
                     font-size: 10pt;
                     margin: 0;
                     padding: 20px;
@@ -476,35 +476,35 @@ class TargetRevenueController extends Controller
                     text-align: center;
                     margin-bottom: 20px;
                 }
-                .title { 
-                    font-size: 16pt; 
-                    font-weight: bold; 
+                .title {
+                    font-size: 16pt;
+                    font-weight: bold;
                     margin-bottom: 5px;
                 }
-                .period { 
-                    font-size: 10pt; 
+                .period {
+                    font-size: 10pt;
                     color: #666;
                     margin-bottom: 20px;
                 }
-                table { 
+                table {
                     width: 100%;
                     border-collapse: collapse;
                     margin-top: 10px;
                 }
-                th, td { 
-                    border: 1px solid #ddd; 
-                    padding: 8px; 
+                th, td {
+                    border: 1px solid #ddd;
+                    padding: 8px;
                     text-align: left;
                     font-size: 10pt;
                 }
-                th { 
-                    background-color: rgba(38, 102, 241, 0.9); 
-                    color: white; 
+                th {
+                    background-color: rgba(38, 102, 241, 0.9);
+                    color: white;
                     font-weight: bold;
                 }
                 .number { text-align: right; }
-                .total-row { 
-                    font-weight: bold; 
+                .total-row {
+                    font-weight: bold;
                     background-color: #f2f2f2;
                 }
                 .total-row td {

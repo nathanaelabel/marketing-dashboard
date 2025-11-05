@@ -397,7 +397,7 @@ class NationalYearlyController extends Controller
         $currentYearMap = collect($currentYearData)->keyBy('branch_name');
         $previousYearMap = collect($previousYearData)->keyBy('branch_name');
 
-        $filename = 'National_Yearly_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
+        $filename = 'Penjualan_Tahunan_Nasional_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
 
         // Create XLS content using HTML table format
         $headers = [
@@ -417,7 +417,7 @@ class NationalYearlyController extends Controller
                 <x:ExcelWorkbook>
                     <x:ExcelWorksheets>
                         <x:ExcelWorksheet>
-                            <x:Name>National Yearly Revenue</x:Name>
+                            <x:Name>Penjualan Tahunan Nasional</x:Name>
                             <x:WorksheetOptions>
                                 <x:Print>
                                     <x:ValidPrinterInfo/>
@@ -455,15 +455,15 @@ class NationalYearlyController extends Controller
             </style>
         </head>
         <body>
-            <div class="title">National Yearly Revenue Report</div>
-            <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Category: ' . htmlspecialchars($category) . ' | Type: ' . htmlspecialchars($type) . '</div>
+            <div class="title">Penjualan Tahunan Nasional</div>
+            <div class="period">Perbandingan Tahun ' . $previousYear . ' vs ' . $year . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>
             <br>
             <table>
                 <thead>
                     <tr>
                         <th>No</th>
-                        <th>Branch Name</th>
-                        <th>Branch Code</th>
+                        <th>Nama Cabang</th>
+                        <th>Kode Cabang</th>
                         <th style="text-align: right;">' . $previousYear . ' (Rp)</th>
                         <th style="text-align: right;">' . $year . ' (Rp)</th>
                         <th style="text-align: right;">Growth (%)</th>
@@ -608,15 +608,15 @@ class NationalYearlyController extends Controller
         </head>
         <body>
             <div class="header">
-                <div class="title">National Yearly Revenue Report</div>
-                <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Category: ' . htmlspecialchars($category) . ' | Type: ' . htmlspecialchars($type) . '</div>
+                <div class="title">Penjualan Tahunan Nasional</div>
+                <div class="period">Perbandingan Tahun ' . $previousYear . ' vs ' . $year . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>
             </div>
             <table>
                 <thead>
                     <tr>
                         <th style="width: 30px;">No</th>
-                        <th style="width: 150px;">Branch</th>
-                        <th style="width: 50px;">Code</th>
+                        <th style="width: 150px;">Nama Cabang</th>
+                        <th style="width: 50px;">Kode Cabang</th>
                         <th style="width: 100px; text-align: right;">' . $previousYear . '</th>
                         <th style="width: 100px; text-align: right;">' . $year . '</th>
                         <th style="width: 80px; text-align: right;">Growth (%)</th>
@@ -674,7 +674,7 @@ class NationalYearlyController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'portrait');
 
-        $filename = 'National_Yearly_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '_' . $type . '.pdf';
+        $filename = 'Penjualan_Tahunan_Nasional_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '_' . $type . '.pdf';
 
         return $pdf->download($filename);
     }

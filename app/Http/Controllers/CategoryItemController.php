@@ -230,7 +230,7 @@ class CategoryItemController extends Controller
         $fileStartDate = Carbon::parse($startDate)->format('d-m-Y');
         $fileEndDate = Carbon::parse($endDate)->format('d-m-Y');
         $typeLabel = $type === 'NETTO' ? 'Netto' : 'Bruto';
-        $filename = 'Category_Item_Revenue_' . $typeLabel . '_' . $fileStartDate . '_to_' . $fileEndDate . '.xls';
+        $filename = 'Kontribusi_Kategori_Barang_' . $typeLabel . '_' . $fileStartDate . '_sampai_' . $fileEndDate . '.xls';
 
         // Create XLS content using HTML table format
         $headers = [
@@ -250,7 +250,7 @@ class CategoryItemController extends Controller
                 <x:ExcelWorkbook>
                     <x:ExcelWorksheets>
                         <x:ExcelWorksheet>
-                            <x:Name>Category Item Revenue</x:Name>
+                            <x:Name>Kontribusi Kategori Barang</x:Name>
                             <x:WorksheetOptions>
                                 <x:Print>
                                     <x:ValidPrinterInfo/>
@@ -288,15 +288,15 @@ class CategoryItemController extends Controller
             </style>
         </head>
         <body>
-            <div class="title">Category Item Revenue Report (' . $typeLabel . ')</div>
-            <div class="period">Period: ' . $formattedStartDate . ' to ' . $formattedEndDate . '</div>
+            <div class="title">Kontribusi Kategori Barang (' . $typeLabel . ')</div>
+            <div class="period">Periode ' . $formattedStartDate . ' sampai ' . $formattedEndDate . '</div>
             <br>
             <table>
                 <thead>
                     <tr>
                         <th>No</th>
-                        <th>Branch Name</th>
-                        <th>Branch Code</th>';
+                        <th>Nama Cabang</th>
+                        <th>Kode Cabang</th>';
 
         foreach ($categories as $category) {
             $html .= '<th style="text-align: right;">' . htmlspecialchars($category) . ' (Rp)</th>';
@@ -480,22 +480,22 @@ class CategoryItemController extends Controller
         </head>
         <body>
             <div class="header">
-                <div class="title">Category Item Revenue Report (' . $typeLabel . ')</div>
-                <div class="period">Period: ' . $formattedStartDate . ' to ' . $formattedEndDate . '</div>
+                <div class="title">Kontribusi Kategori Barang (' . $typeLabel . ')</div>
+                <div class="period">Periode ' . $formattedStartDate . ' sampai ' . $formattedEndDate . '</div>
             </div>
             <table>
                 <thead>
                     <tr>
                         <th style="width: 30px;">No</th>
-                        <th style="width: 120px;">Branch</th>
-                        <th style="width: 50px;">Code</th>';
+                        <th style="width: 120px;">Nama Cabang</th>
+                        <th style="width: 50px;">Kode Cabang</th>';
 
         foreach ($categories as $category) {
-            $html .= '<th style="width: 90px; text-align: right;">' . htmlspecialchars($category) . '</th>';
+            $html .= '<th style="width: 90px; text-align: right;">' . htmlspecialchars($category) . ' (Rp)</th>';
         }
 
         $html .= '
-                        <th style="width: 100px; text-align: right;">Total</th>
+                        <th style="width: 100px; text-align: right;">Total (Rp)</th>
                     </tr>
                 </thead>
                 <tbody>';
@@ -548,7 +548,7 @@ class CategoryItemController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'landscape');
 
-        $filename = 'Category_Item_Revenue_' . $typeLabel . '_' . $fileStartDate . '_to_' . $fileEndDate . '.pdf';
+        $filename = 'Kontribusi_Kategori_Barang_' . $typeLabel . '_' . $fileStartDate . '_sampai_' . $fileEndDate . '.pdf';
 
         return $pdf->download($filename);
     }

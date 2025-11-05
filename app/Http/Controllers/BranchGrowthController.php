@@ -574,7 +574,7 @@ class BranchGrowthController extends Controller
             $allBranchesData[] = $branchData;
         }
 
-        $filename = 'Branch_Revenue_Growth_' . $startYear . '-' . $endYear . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
+        $filename = 'Pertumbuhan_Penjualan_Cabang_' . $startYear . '-' . $endYear . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
 
         // Create XLS content using HTML table format
         $headers = [
@@ -596,7 +596,7 @@ class BranchGrowthController extends Controller
                 <x:ExcelWorkbook>
                     <x:ExcelWorksheets>
                         <x:ExcelWorksheet>
-                            <x:Name>Branch Revenue Growth</x:Name>
+                            <x:Name>Pertumbuhan Penjualan Cabang</x:Name>
                             <x:WorksheetOptions>
                                 <x:Print>
                                     <x:ValidPrinterInfo/>
@@ -656,7 +656,7 @@ class BranchGrowthController extends Controller
             </style>
         </head>
         <body>
-            <div class="title">BRANCH REVENUE GROWTH ' . $startYear . ' - ' . $endYear . ' | Category: ' . htmlspecialchars($category) . ' | Type: ' . htmlspecialchars($type) . '</div>
+            <div class="title">PERTUMBUHAN PENJUALAN CABANG ' . $startYear . ' - ' . $endYear . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>
             <br>';
 
         // Calculate NATIONAL totals first
@@ -942,7 +942,7 @@ class BranchGrowthController extends Controller
             </style>
         </head>
         <body>
-            <div class="title">BRANCH REVENUE GROWTH ' . $startYear . ' - ' . $endYear . ' | Category: ' . htmlspecialchars($category) . ' | Type: ' . htmlspecialchars($type) . '</div>';
+            <div class="title">PERTUMBUHAN PENJUALAN CABANG ' . $startYear . ' - ' . $endYear . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>';
 
         // Calculate NATIONAL totals first
         $nationalData = [
@@ -1041,7 +1041,7 @@ class BranchGrowthController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'landscape');
 
-        $filename = 'Branch_Revenue_Growth_' . $startYear . '-' . $endYear . '_' . str_replace(' ', '_', $category) . '_' . $type . '.pdf';
+        $filename = 'Pertumbuhan_Penjualan_Cabang_' . $startYear . '-' . $endYear . '_' . str_replace(' ', '_', $category) . '_' . $type . '.pdf';
 
         return $pdf->download($filename);
     }

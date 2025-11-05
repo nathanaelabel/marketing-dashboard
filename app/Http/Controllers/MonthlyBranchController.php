@@ -379,7 +379,7 @@ class MonthlyBranchController extends Controller
             $allBranchesData[] = $branchData;
         }
 
-        $filename = 'Monthly_Branch_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
+        $filename = 'Penjualan_Bulanan_Cabang_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
 
         // Create XLS content using HTML table format
         $headers = [
@@ -401,7 +401,7 @@ class MonthlyBranchController extends Controller
                 <x:ExcelWorkbook>
                     <x:ExcelWorksheets>
                         <x:ExcelWorksheet>
-                            <x:Name>Monthly Branch Revenue</x:Name>
+                            <x:Name>Penjualan Bulanan Cabang</x:Name>
                             <x:WorksheetOptions>
                                 <x:Print>
                                     <x:ValidPrinterInfo/>
@@ -463,8 +463,8 @@ class MonthlyBranchController extends Controller
             </style>
         </head>
         <body>
-            <div class="title">MONTHLY BRANCH REVENUE REPORT</div>
-            <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Category: ' . htmlspecialchars($category) . ' | Type: ' . htmlspecialchars($type) . '</div>
+            <div class="title">PENJUALAN BULANAN CABANG</div>
+            <div class="period">Perbandingan Tahun ' . $previousYear . ' vs ' . $year . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>
             <br>
             <table>
                 <thead>
@@ -702,8 +702,8 @@ class MonthlyBranchController extends Controller
         </head>
         <body>
             <div class="header">
-                <div class="title">MONTHLY BRANCH REVENUE REPORT</div>
-                <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Branch: ' . htmlspecialchars($branchDisplay) . ' | Category: ' . htmlspecialchars($category) . ' | Type: ' . htmlspecialchars($type) . '</div>
+                <div class="title">PENJUALAN BULANAN CABANG</div>
+                <div class="period">Perbandingan Tahun ' . $previousYear . ' vs ' . $year . ' | Cabang ' . htmlspecialchars($branchDisplay) . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>
             </div>
             <table>
                 <thead>
@@ -769,7 +769,7 @@ class MonthlyBranchController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'landscape');
 
-        $filename = 'Monthly_Branch_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $branchDisplay) . '_' . str_replace(' ', '_', $category) . '_' . $type . '.pdf';
+        $filename = 'Penjualan_Bulanan_Cabang_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $branchDisplay) . '_' . str_replace(' ', '_', $category) . '_' . $type . '.pdf';
 
         return $pdf->download($filename);
     }

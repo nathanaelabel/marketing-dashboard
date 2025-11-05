@@ -223,7 +223,7 @@ class ReturnComparisonController extends Controller
             $data = $responseData['data'];
             $period = $responseData['period'];
 
-            $filename = 'Return_Comparison_' . str_replace(' ', '_', $period['month_name'] . '_' . $year) . '.xls';
+            $filename = 'Perbandingan_Retur_Rusak_' . str_replace(' ', '_', $period['month_name'] . '_' . $year) . '.xls';
 
             // Create XLS content using HTML table format
             $headers = [
@@ -243,7 +243,7 @@ class ReturnComparisonController extends Controller
                     <x:ExcelWorkbook>
                         <x:ExcelWorksheets>
                             <x:ExcelWorksheet>
-                                <x:Name>Return Comparison</x:Name>
+                                <x:Name>Perbandingan Retur Rusak</x:Name>
                                 <x:WorksheetOptions>
                                     <x:Print>
                                         <x:ValidPrinterInfo/>
@@ -287,7 +287,7 @@ class ReturnComparisonController extends Controller
             </head>
             <body>
                 <div class="title">PERBANDINGAN RETUR RUSAK</div>
-                <div class="period">Period: ' . htmlspecialchars($period['month_name'] . ' ' . $year) . '</div>
+                <div class="period">Periode ' . htmlspecialchars($period['month_name'] . ' ' . $year) . '</div>
                 <br>
                 <table>
                     <thead>
@@ -432,7 +432,7 @@ class ReturnComparisonController extends Controller
             <body>
                 <div class="header">
                     <div class="title">PERBANDINGAN RETUR RUSAK</div>
-                    <div class="period">Period: ' . htmlspecialchars($period['month_name'] . ' ' . $year) . '</div>
+                    <div class="period">Periode ' . htmlspecialchars($period['month_name'] . ' ' . $year) . '</div>
                 </div>
                 <table>
                     <thead>
@@ -491,7 +491,7 @@ class ReturnComparisonController extends Controller
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
             $pdf->setPaper('A4', 'landscape');
 
-            $filename = 'Return_Comparison_' . str_replace(' ', '_', $period['month_name'] . '_' . $year) . '.pdf';
+            $filename = 'Perbandingan_Retur_Rusak_' . str_replace(' ', '_', $period['month_name'] . '_' . $year) . '.pdf';
 
             return $pdf->download($filename);
         } catch (\Exception $e) {
