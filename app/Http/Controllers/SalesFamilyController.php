@@ -127,7 +127,7 @@ class SalesFamilyController extends Controller
             $period = TableHelper::formatPeriodInfo($month, $year);
             $typeLabel = $type === 'pcs' ? 'Pieces' : 'Rupiah';
 
-            $filename = 'Sales_Per_Family_' . str_replace(' ', '_', $period['month_name'] . '_' . $year) . '_' . $typeLabel . '.xls';
+            $filename = 'Penjualan_Per_Family_' . str_replace(' ', '_', $period['month_name'] . '_' . $year) . '_' . $typeLabel . '.xls';
 
             // Create XLS content using HTML table format
             $headers = [
@@ -147,7 +147,7 @@ class SalesFamilyController extends Controller
                     <x:ExcelWorkbook>
                         <x:ExcelWorksheets>
                             <x:ExcelWorksheet>
-                                <x:Name>Sales Per Family</x:Name>
+                                <x:Name>Penjualan Per Family</x:Name>
                                 <x:WorksheetOptions>
                                     <x:Print>
                                         <x:ValidPrinterInfo/>
@@ -190,14 +190,14 @@ class SalesFamilyController extends Controller
                 </style>
             </head>
             <body>
-                <div class="title">SALES PER FAMILY REPORT</div>
-                <div class="period">Period: ' . htmlspecialchars($period['month_name'] . ' ' . $year) . ' | Type: ' . htmlspecialchars($typeLabel) . '</div>
+                <div class="title">PENJUALAN PER FAMILY</div>
+                <div class="period">Periode ' . htmlspecialchars($period['month_name'] . ' ' . $year) . ' | Tipe ' . htmlspecialchars($typeLabel) . '</div>
                 <br>
                 <table>
                     <thead>
                         <tr>
                             <th style="width: 90px; text-align: right;">NO</th>
-                            <th style="width: 400px;">FAMILY NAME</th>
+                            <th style="width: 400px;">NAMA FAMILY</th>
                             <th style="width: 250px;">MDN</th>
                             <th style="width: 250px;">MKS</th>
                             <th style="width: 250px;">PLB</th>
@@ -363,14 +363,14 @@ class SalesFamilyController extends Controller
             </head>
             <body>
                 <div class="header">
-                    <div class="title">SALES PER FAMILY REPORT</div>
-                    <div class="period">Period: ' . htmlspecialchars($period['month_name'] . ' ' . $year) . ' | Type: ' . htmlspecialchars($typeLabel) . '</div>
+                    <div class="title">PENJUALAN PER FAMILY</div>
+                    <div class="period">Periode ' . htmlspecialchars($period['month_name'] . ' ' . $year) . ' | Tipe ' . htmlspecialchars($typeLabel) . '</div>
                 </div>
                 <table>
                     <thead>
                         <tr>
                             <th style="width: 30px; text-align: right;">NO</th>
-                            <th style="width: 200px;">FAMILY NAME</th>
+                            <th style="width: 200px;">NAMA FAMILY</th>
                             <th style="width: 60px;">MDN</th>
                             <th style="width: 60px;">MKS</th>
                             <th style="width: 60px;">PLB</th>
@@ -437,7 +437,7 @@ class SalesFamilyController extends Controller
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
             $pdf->setPaper('A4', 'landscape');
 
-            $filename = 'Sales_Per_Family_' . str_replace(' ', '_', $period['month_name'] . '_' . $year) . '_' . $typeLabel . '.pdf';
+            $filename = 'Penjualan_Per_Family_' . str_replace(' ', '_', $period['month_name'] . '_' . $year) . '_' . $typeLabel . '.pdf';
 
             return $pdf->download($filename);
         } catch (\Exception $e) {

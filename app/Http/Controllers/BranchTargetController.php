@@ -19,7 +19,7 @@ class BranchTargetController extends Controller
 
         // Get all branches
         $branches = ChartHelper::getLocations();
-        
+
         // Get existing targets if any
         $existingTargets = DB::table('branch_targets')
             ->where('month', $month)
@@ -58,7 +58,7 @@ class BranchTargetController extends Controller
 
             // Get all expected branches
             $expectedBranches = ChartHelper::getLocations()->toArray();
-            
+
             // Check if all branches have targets
             $missingBranches = [];
             foreach ($expectedBranches as $branch) {
@@ -110,14 +110,16 @@ class BranchTargetController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'Targets saved successfully',
-                    'redirect_url' => route('dashboard') . '#target-revenue-section'
+                    'redirect_url' => route('dashboard') .
+                        '?month=' . $month .
+                        '&year=' . $year .
+                        '&category=' . urlencode($category) .
+                        '#target-revenue-section'
                 ]);
-
             } catch (\Exception $e) {
                 DB::rollBack();
                 throw $e;
             }
-
         } catch (\Exception $e) {
             Log::error('BranchTargetController saveTargets error: ' . $e->getMessage(), [
                 'month' => $request->input('month'),
@@ -187,12 +189,10 @@ class BranchTargetController extends Controller
                     'deleted_count' => $deletedCount,
                     'redirect_url' => route('dashboard') . '#target-revenue-section'
                 ]);
-
             } catch (\Exception $e) {
                 DB::rollBack();
                 throw $e;
             }
-
         } catch (\Exception $e) {
             Log::error('BranchTargetController deleteTargets error: ' . $e->getMessage(), [
                 'month' => $request->input('month'),
@@ -211,9 +211,18 @@ class BranchTargetController extends Controller
     public function getMonthName($month)
     {
         $months = [
-            1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
-            5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
-            9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+            1 => 'January',
+            2 => 'February',
+            3 => 'March',
+            4 => 'April',
+            5 => 'May',
+            6 => 'June',
+            7 => 'July',
+            8 => 'August',
+            9 => 'September',
+            10 => 'October',
+            11 => 'November',
+            12 => 'December'
         ];
 
         return $months[$month] ?? 'Unknown';

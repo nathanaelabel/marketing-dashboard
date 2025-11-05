@@ -574,7 +574,7 @@ class BranchGrowthController extends Controller
             $allBranchesData[] = $branchData;
         }
 
-        $filename = 'Branch_Revenue_Growth_' . $startYear . '-' . $endYear . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
+        $filename = 'Pertumbuhan_Penjualan_Cabang_' . $startYear . '-' . $endYear . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
 
         // Create XLS content using HTML table format
         $headers = [
@@ -596,7 +596,7 @@ class BranchGrowthController extends Controller
                 <x:ExcelWorkbook>
                     <x:ExcelWorksheets>
                         <x:ExcelWorksheet>
-                            <x:Name>Branch Revenue Growth</x:Name>
+                            <x:Name>Pertumbuhan Penjualan Cabang</x:Name>
                             <x:WorksheetOptions>
                                 <x:Print>
                                     <x:ValidPrinterInfo/>
@@ -656,7 +656,7 @@ class BranchGrowthController extends Controller
             </style>
         </head>
         <body>
-            <div class="title">BRANCH REVENUE GROWTH ' . $startYear . ' - ' . $endYear . ' | Category: ' . htmlspecialchars($category) . ' | Type: ' . htmlspecialchars($type) . '</div>
+            <div class="title">PERTUMBUHAN PENJUALAN CABANG ' . $startYear . ' - ' . $endYear . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>
             <br>';
 
         // Calculate NATIONAL totals first
@@ -894,7 +894,7 @@ class BranchGrowthController extends Controller
             <style>
                 @page { margin: 15px; }
                 body {
-                    font-family: Arial, sans-serif;
+                    font-family: Verdana, sans-serif;
                     font-size: 7pt;
                     margin: 0;
                     padding: 10px;
@@ -918,13 +918,13 @@ class BranchGrowthController extends Controller
                     margin-bottom: 15px;
                 }
                 th, td {
-                    border: 1px solid #000;
+                    border: 1px solid #ddd;
                     padding: 4px;
                     text-align: left;
                     font-size: 7pt;
                 }
                 th {
-                    background-color: #D3D3D3;
+                    background-color: #F5F5F5;
                     color: #000;
                     font-weight: bold;
                     text-align: center;
@@ -942,7 +942,7 @@ class BranchGrowthController extends Controller
             </style>
         </head>
         <body>
-            <div class="title">BRANCH REVENUE GROWTH ' . $startYear . ' - ' . $endYear . ' | Category: ' . htmlspecialchars($category) . ' | Type: ' . htmlspecialchars($type) . '</div>';
+            <div class="title">PERTUMBUHAN PENJUALAN CABANG ' . $startYear . ' - ' . $endYear . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>';
 
         // Calculate NATIONAL totals first
         $nationalData = [
@@ -1041,7 +1041,7 @@ class BranchGrowthController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'landscape');
 
-        $filename = 'Branch_Revenue_Growth_' . $startYear . '-' . $endYear . '_' . str_replace(' ', '_', $category) . '_' . $type . '.pdf';
+        $filename = 'Pertumbuhan_Penjualan_Cabang_' . $startYear . '-' . $endYear . '_' . str_replace(' ', '_', $category) . '_' . $type . '.pdf';
 
         return $pdf->download($filename);
     }

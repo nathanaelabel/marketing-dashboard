@@ -22,7 +22,17 @@ document.addEventListener('DOMContentLoaded', function () {
     function fetchAndUpdateAccountsReceivableChart() {
         const arTotalEl = document.getElementById('arTotal');
         const arDateEl = document.getElementById('arDate');
-        arTotalEl.textContent = 'Loading...';
+        const chartContainer = document.getElementById('ar-chart-container');
+        const refreshBtn = document.getElementById('arRefreshDataBtn');
+
+        // Show loading state
+        arTotalEl.textContent = 'Loading chart data...';
+        if (chartContainer) {
+            ChartHelper.showChartLoadingIndicator(chartContainer);
+        }
+        if (refreshBtn) {
+            refreshBtn.disabled = true;
+        }
 
         const url = arChartCanvas.dataset.url;
         fetch(url)
@@ -35,6 +45,14 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 if (arChart) {
                     arChart.destroy();
+                }
+
+                // Hide loading indicator
+                if (chartContainer) {
+                    ChartHelper.hideChartLoadingIndicator(chartContainer);
+                }
+                if (refreshBtn) {
+                    refreshBtn.disabled = false;
                 }
 
                 arTotalEl.textContent = data.total;
@@ -126,6 +144,12 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => {
                 console.error('Error fetching Accounts Receivable data:', error);
                 if (arTotalEl) arTotalEl.textContent = 'Error loading data.';
+                if (chartContainer) {
+                    ChartHelper.hideChartLoadingIndicator(chartContainer);
+                }
+                if (refreshBtn) {
+                    refreshBtn.disabled = false;
+                }
                 ChartHelper.showErrorMessage(arChart, arChartCanvas, 'Failed to load chart data. Please try again.');
             });
     }

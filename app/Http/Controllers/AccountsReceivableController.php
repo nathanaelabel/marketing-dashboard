@@ -15,7 +15,7 @@ class AccountsReceivableController extends Controller
         // Use CTE for better performance - pre-calculate payments in one pass
         $sql = "
         WITH payment_summary AS (
-            SELECT 
+            SELECT
                 alocln.c_invoice_id,
                 SUM(alocln.amount + alocln.writeoffamt + alocln.discountamt) as bayar
             FROM c_allocationline alocln
@@ -26,15 +26,15 @@ class AccountsReceivableController extends Controller
             GROUP BY alocln.c_invoice_id
         ),
         invoice_data AS (
-            SELECT 
+            SELECT
                 inv.c_invoice_id,
                 inv.totallines,
                 inv.dateinvoiced,
                 org.name as branch_name,
                 COALESCE(ps.bayar, 0) as bayar,
-                CASE 
+                CASE
                     WHEN SUBSTR(inv.documentno, 1, 3) IN ('INC', 'NDC') THEN 1
-                    ELSE -1 
+                    ELSE -1
                 END as pengali,
                 (CURRENT_DATE - inv.dateinvoiced::date) as age
             FROM c_invoice inv
@@ -52,17 +52,17 @@ class AccountsReceivableController extends Controller
                 AND inv.c_bpartner_id IS NOT NULL
                 AND inv.totallines IS NOT NULL
         )
-        SELECT 
+        SELECT
             branch_name,
-            SUM(CASE WHEN age >= 1 AND age <= 30 AND (totallines - (bayar * pengali)) <> 0 
+            SUM(CASE WHEN age >= 1 AND age <= 30 AND (totallines - (bayar * pengali)) <> 0
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_1_30,
-            SUM(CASE WHEN age >= 31 AND age <= 60 AND (totallines - (bayar * pengali)) <> 0 
+            SUM(CASE WHEN age >= 31 AND age <= 60 AND (totallines - (bayar * pengali)) <> 0
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_31_60,
-            SUM(CASE WHEN age >= 61 AND age <= 90 AND (totallines - (bayar * pengali)) <> 0 
+            SUM(CASE WHEN age >= 61 AND age <= 90 AND (totallines - (bayar * pengali)) <> 0
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_61_90,
-            SUM(CASE WHEN age > 90 AND (totallines - (bayar * pengali)) <> 0 
+            SUM(CASE WHEN age > 90 AND (totallines - (bayar * pengali)) <> 0
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_90_plus,
-            SUM(CASE WHEN age >= 1 AND (totallines - (bayar * pengali)) <> 0 
+            SUM(CASE WHEN age >= 1 AND (totallines - (bayar * pengali)) <> 0
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as total_overdue
         FROM invoice_data
         WHERE (totallines - (bayar * pengali)) <> 0
@@ -93,7 +93,7 @@ class AccountsReceivableController extends Controller
         // Use CTE for better performance - pre-calculate payments in one pass
         $sql = "
         WITH payment_summary AS (
-            SELECT 
+            SELECT
                 alocln.c_invoice_id,
                 SUM(alocln.amount + alocln.writeoffamt + alocln.discountamt) as bayar
             FROM c_allocationline alocln
@@ -104,15 +104,15 @@ class AccountsReceivableController extends Controller
             GROUP BY alocln.c_invoice_id
         ),
         invoice_data AS (
-            SELECT 
+            SELECT
                 inv.c_invoice_id,
                 inv.totallines,
                 inv.dateinvoiced,
                 org.name as branch_name,
                 COALESCE(ps.bayar, 0) as bayar,
-                CASE 
+                CASE
                     WHEN SUBSTR(inv.documentno, 1, 3) IN ('INC', 'NDC') THEN 1
-                    ELSE -1 
+                    ELSE -1
                 END as pengali,
                 (CURRENT_DATE - inv.dateinvoiced::date) as age
             FROM c_invoice inv
@@ -130,17 +130,17 @@ class AccountsReceivableController extends Controller
                 AND inv.c_bpartner_id IS NOT NULL
                 AND inv.totallines IS NOT NULL
         )
-        SELECT 
+        SELECT
             branch_name,
-            SUM(CASE WHEN age >= 1 AND age <= 30 AND (totallines - (bayar * pengali)) <> 0 
+            SUM(CASE WHEN age >= 1 AND age <= 30 AND (totallines - (bayar * pengali)) <> 0
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_1_30,
-            SUM(CASE WHEN age >= 31 AND age <= 60 AND (totallines - (bayar * pengali)) <> 0 
+            SUM(CASE WHEN age >= 31 AND age <= 60 AND (totallines - (bayar * pengali)) <> 0
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_31_60,
-            SUM(CASE WHEN age >= 61 AND age <= 90 AND (totallines - (bayar * pengali)) <> 0 
+            SUM(CASE WHEN age >= 61 AND age <= 90 AND (totallines - (bayar * pengali)) <> 0
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_61_90,
-            SUM(CASE WHEN age > 90 AND (totallines - (bayar * pengali)) <> 0 
+            SUM(CASE WHEN age > 90 AND (totallines - (bayar * pengali)) <> 0
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_90_plus,
-            SUM(CASE WHEN age >= 1 AND (totallines - (bayar * pengali)) <> 0 
+            SUM(CASE WHEN age >= 1 AND (totallines - (bayar * pengali)) <> 0
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as total_overdue
         FROM invoice_data
         WHERE (totallines - (bayar * pengali)) <> 0
@@ -169,7 +169,7 @@ class AccountsReceivableController extends Controller
         // Format date for filename and display
         $formattedDate = \Carbon\Carbon::parse($currentDate)->format('d F Y');
         $fileDate = \Carbon\Carbon::parse($currentDate)->format('d-m-Y');
-        $filename = 'Accounts_Receivable_' . $fileDate . '.xls';
+        $filename = 'Piutang_Usaha_' . $fileDate . '.xls';
 
         // Create XLS content using HTML table format
         $headers = [
@@ -189,7 +189,7 @@ class AccountsReceivableController extends Controller
                 <x:ExcelWorkbook>
                     <x:ExcelWorksheets>
                         <x:ExcelWorksheet>
-                            <x:Name>Accounts Receivable</x:Name>
+                            <x:Name>Piutang Usaha</x:Name>
                             <x:WorksheetOptions>
                                 <x:Print>
                                     <x:ValidPrinterInfo/>
@@ -201,34 +201,44 @@ class AccountsReceivableController extends Controller
             </xml>
             <![endif]-->
             <style>
-                body { font-family: Calibri, Arial, sans-serif; font-size: 10pt; }
+                body { font-family: Verdana, sans-serif; }
                 table { border-collapse: collapse; }
-                th, td { 
-                    border: 1px solid #ddd; 
-                    padding: 4px 8px; 
-                    text-align: left; 
-                    font-size: 10pt;
-                    white-space: nowrap;
-                }
-                th { 
-                    background-color: #4CAF50; 
-                    color: white; 
-                    font-weight: bold; 
+                th, td {
+                    border: 1px solid #000;
+                    padding: 6px 8px;
+                    text-align: left;
+                    font-family: Verdana, sans-serif;
                     font-size: 10pt;
                 }
-                .title { font-size: 10pt; font-weight: bold; margin-bottom: 5px; }
-                .date { font-size: 10pt; margin-bottom: 10px; }
-                .total-row { font-weight: bold; background-color: #f2f2f2; }
+                th {
+                    background-color: #D3D3D3;
+                    color: #000;
+                    font-weight: bold;
+                    text-align: center;
+                    vertical-align: middle;
+                }
+                .title {
+                    font-family: Verdana, sans-serif;
+                    font-size: 16pt;
+                    font-weight: bold;
+                    margin-bottom: 8px;
+                }
+                .date {
+                    font-family: Verdana, sans-serif;
+                    font-size: 12pt;
+                    margin-bottom: 15px;
+                }
+                .total-row { font-weight: bold; background-color: #E8E8E8; }
                 .number { text-align: right; }
                 .col-no { width: 70px; }
-                .col-branch { width: 250px; }
-                .col-code { width: 160px; }
-                .col-amount { width: 260px; }
+                .col-branch { width: 280px; }
+                .col-code { width: 230px; }
+                .col-amount { width: 350px; }
             </style>
         </head>
         <body>
-            <div class="title">Accounts Receivable Report</div>
-            <div class="date">As of: ' . $formattedDate . '</div>
+            <div class="title">PIUTANG JATUH TEMPO</div>
+            <div class="date">As of ' . $formattedDate . '</div>
             <br>
             <table>
                 <colgroup>
@@ -244,8 +254,8 @@ class AccountsReceivableController extends Controller
                 <thead>
                     <tr>
                         <th>No</th>
-                        <th>Branch Name</th>
-                        <th>Branch Code</th>
+                        <th>Nama Cabang</th>
+                        <th>Kode Cabang</th>
                         <th style="text-align: right;">1-30 Days (Rp)</th>
                         <th style="text-align: right;">31-60 Days (Rp)</th>
                         <th style="text-align: right;">61-90 Days (Rp)</th>
@@ -293,7 +303,7 @@ class AccountsReceivableController extends Controller
         // Use CTE for better performance - pre-calculate payments in one pass
         $sql = "
         WITH payment_summary AS (
-            SELECT 
+            SELECT
                 alocln.c_invoice_id,
                 SUM(alocln.amount + alocln.writeoffamt + alocln.discountamt) as bayar
             FROM c_allocationline alocln
@@ -304,15 +314,15 @@ class AccountsReceivableController extends Controller
             GROUP BY alocln.c_invoice_id
         ),
         invoice_data AS (
-            SELECT 
+            SELECT
                 inv.c_invoice_id,
                 inv.totallines,
                 inv.dateinvoiced,
                 org.name as branch_name,
                 COALESCE(ps.bayar, 0) as bayar,
-                CASE 
+                CASE
                     WHEN SUBSTR(inv.documentno, 1, 3) IN ('INC', 'NDC') THEN 1
-                    ELSE -1 
+                    ELSE -1
                 END as pengali,
                 (CURRENT_DATE - inv.dateinvoiced::date) as age
             FROM c_invoice inv
@@ -330,17 +340,17 @@ class AccountsReceivableController extends Controller
                 AND inv.c_bpartner_id IS NOT NULL
                 AND inv.totallines IS NOT NULL
         )
-        SELECT 
+        SELECT
             branch_name,
-            SUM(CASE WHEN age >= 1 AND age <= 30 AND (totallines - (bayar * pengali)) <> 0 
+            SUM(CASE WHEN age >= 1 AND age <= 30 AND (totallines - (bayar * pengali)) <> 0
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_1_30,
-            SUM(CASE WHEN age >= 31 AND age <= 60 AND (totallines - (bayar * pengali)) <> 0 
+            SUM(CASE WHEN age >= 31 AND age <= 60 AND (totallines - (bayar * pengali)) <> 0
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_31_60,
-            SUM(CASE WHEN age >= 61 AND age <= 90 AND (totallines - (bayar * pengali)) <> 0 
+            SUM(CASE WHEN age >= 61 AND age <= 90 AND (totallines - (bayar * pengali)) <> 0
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_61_90,
-            SUM(CASE WHEN age > 90 AND (totallines - (bayar * pengali)) <> 0 
+            SUM(CASE WHEN age > 90 AND (totallines - (bayar * pengali)) <> 0
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_90_plus,
-            SUM(CASE WHEN age >= 1 AND (totallines - (bayar * pengali)) <> 0 
+            SUM(CASE WHEN age >= 1 AND (totallines - (bayar * pengali)) <> 0
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as total_overdue
         FROM invoice_data
         WHERE (totallines - (bayar * pengali)) <> 0
@@ -378,8 +388,8 @@ class AccountsReceivableController extends Controller
             <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
             <style>
                 @page { margin: 20px; }
-                body { 
-                    font-family: Arial, sans-serif; 
+                body {
+                    font-family: Verdana, sans-serif;
                     font-size: 9pt;
                     margin: 0;
                     padding: 20px;
@@ -388,36 +398,41 @@ class AccountsReceivableController extends Controller
                     text-align: center;
                     margin-bottom: 20px;
                 }
-                .title { 
-                    font-size: 16pt; 
-                    font-weight: bold; 
+                .title {
+                    font-family: Verdana, sans-serif;
+                    font-size: 16pt;
+                    font-weight: bold;
                     margin-bottom: 5px;
                 }
-                .date { 
-                    font-size: 10pt; 
+                .date {
+                    font-family: Verdana, sans-serif;
+                    font-size: 10pt;
                     color: #666;
                     margin-bottom: 20px;
                 }
-                table { 
+                table {
                     width: 100%;
                     border-collapse: collapse;
                     margin-top: 10px;
                 }
-                th, td { 
-                    border: 1px solid #ddd; 
-                    padding: 6px; 
+                th, td {
+                    border: 1px solid #ddd;
+                    padding: 6px 8px;
                     text-align: left;
+                    font-family: Verdana, sans-serif;
                     font-size: 9pt;
                 }
-                th { 
-                    background-color: rgba(38, 102, 241, 0.9); 
-                    color: white; 
+                th {
+                    background-color: #F5F5F5;
+                    color: #000;
                     font-weight: bold;
+                    text-align: center;
+                    vertical-align: middle;
                 }
                 .number { text-align: right; }
-                .total-row { 
-                    font-weight: bold; 
-                    background-color: #f2f2f2;
+                .total-row {
+                    font-weight: bold;
+                    background-color: #E8E8E8;
                 }
                 .total-row td {
                     border-top: 2px solid #333;
@@ -426,15 +441,15 @@ class AccountsReceivableController extends Controller
         </head>
         <body>
             <div class="header">
-                <div class="title">Accounts Receivable Report</div>
-                <div class="date">As of: ' . $formattedDate . '</div>
+                <div class="title">PIUTANG JATUH TEMPO</div>
+                <div class="date">As of ' . $formattedDate . '</div>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 30px;">No</th>
-                        <th style="width: 150px;">Branch Name</th>
-                        <th style="width: 70px;">Code</th>
+                        <th style="width: 30px; text-align: left;">No</th>
+                        <th style="width: 150px; text-align: left;">Nama Cabang</th>
+                        <th style="width: 70px; text-align: left;">Kode Cabang</th>
                         <th style="width: 100px; text-align: right;">1-30 Days</th>
                         <th style="width: 100px; text-align: right;">31-60 Days</th>
                         <th style="width: 100px; text-align: right;">61-90 Days</th>
@@ -476,7 +491,7 @@ class AccountsReceivableController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'landscape');
 
-        $filename = 'Accounts_Receivable_' . $fileDate . '.pdf';
+        $filename = 'Piutang_Jatuh_Tempo_' . $fileDate . '.pdf';
 
         return $pdf->download($filename);
     }

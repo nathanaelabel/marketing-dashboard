@@ -1,8 +1,22 @@
-<div class="mt-10 bg-white overflow-hidden shadow-sm sm:rounded-lg">
+<div class="mt-10 bg-white overflow-hidden shadow-sm sm:rounded-lg" x-data="{
+    currentLang: localStorage.getItem('language') || 'id',
+    translations: {
+        title: {
+            id: 'Pertumbuhan Penjualan Cabang',
+            en: 'Branch Sales Growth'
+        }
+    },
+    init() {
+        window.addEventListener('language-changed', (e) => {
+            this.currentLang = e.detail.language;
+        });
+    }
+}">
     <div class="p-6 text-gray-900">
         <div class="grid grid-cols-1 md:grid-cols-2 items-start mb-4">
             <div class="md:justify-self-start">
-                <h3 class="text-2xl font-bold text-gray-900">Branch Revenue Growth</h3>
+                <h3 class="text-2xl font-bold text-gray-900" x-text="translations.title[currentLang]">Branch Revenue
+                    Growth</h3>
             </div>
             <div class="flex items-end space-x-3 md:justify-self-end justify-center mt-3 md:mt-0">
                 <!-- Type Selector -->
