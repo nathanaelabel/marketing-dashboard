@@ -708,11 +708,11 @@ class MonthlyBranchController extends Controller
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 50px; text-align: right;">No</th>
-                        <th style="width: 140px;">Month</th>
+                        <th style="width: 50px; text-align: right;">NO</th>
+                        <th style="width: 140px;">MONTH</th>
                         <th style="width: 200px; text-align: right;">' . $previousYear . '</th>
                         <th style="width: 200px; text-align: right;">' . $year . '</th>
-                        <th style="width: 160px; text-align: right;">Growth (%)</th>
+                        <th style="width: 160px; text-align: right;">GROWTH (%)</th>
                     </tr>
                 </thead>
                 <tbody>';

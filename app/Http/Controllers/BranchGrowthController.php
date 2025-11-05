@@ -894,7 +894,7 @@ class BranchGrowthController extends Controller
             <style>
                 @page { margin: 15px; }
                 body {
-                    font-family: Arial, sans-serif;
+                    font-family: Verdana, sans-serif;
                     font-size: 7pt;
                     margin: 0;
                     padding: 10px;
@@ -918,13 +918,13 @@ class BranchGrowthController extends Controller
                     margin-bottom: 15px;
                 }
                 th, td {
-                    border: 1px solid #000;
+                    border: 1px solid #ddd;
                     padding: 4px;
                     text-align: left;
                     font-size: 7pt;
                 }
                 th {
-                    background-color: #D3D3D3;
+                    background-color: #F5F5F5;
                     color: #000;
                     font-weight: bold;
                     text-align: center;

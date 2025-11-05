@@ -429,24 +429,34 @@ class NationalYearlyController extends Controller
             </xml>
             <![endif]-->
             <style>
-                body { font-family: Calibri, Arial, sans-serif; font-size: 10pt; }
+                body { font-family: Verdana, sans-serif; }
                 table { border-collapse: collapse; }
                 th, td {
-                    border: 1px solid #ddd;
-                    padding: 4px 8px;
+                    border: 1px solid #000;
+                    padding: 6px 8px;
                     text-align: left;
+                    font-family: Verdana, sans-serif;
                     font-size: 10pt;
-                    white-space: nowrap;
                 }
                 th {
-                    background-color: #4CAF50;
-                    color: white;
+                    background-color: #D3D3D3;
+                    color: #000;
                     font-weight: bold;
-                    font-size: 10pt;
+                    text-align: center;
+                    vertical-align: middle;
                 }
-                .title { font-size: 10pt; font-weight: bold; margin-bottom: 5px; }
-                .period { font-size: 10pt; margin-bottom: 10px; }
-                .total-row { font-weight: bold; background-color: #f2f2f2; }
+                .title {
+                    font-family: Verdana, sans-serif;
+                    font-size: 16pt;
+                    font-weight: bold;
+                    margin-bottom: 8px;
+                }
+                .period {
+                    font-family: Verdana, sans-serif;
+                    font-size: 12pt;
+                    margin-bottom: 15px;
+                }
+                .total-row { font-weight: bold; background-color: #E8E8E8; }
                 .number { text-align: right; }
                 .col-no { width: 90px; }
                 .col-branch { width: 270px; }
@@ -455,7 +465,7 @@ class NationalYearlyController extends Controller
             </style>
         </head>
         <body>
-            <div class="title">Penjualan Tahunan Nasional</div>
+            <div class="title">PENJUALAN TAHUNAN NASIONAL</div>
             <div class="period">Perbandingan Tahun ' . $previousYear . ' vs ' . $year . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>
             <br>
             <table>
@@ -561,7 +571,7 @@ class NationalYearlyController extends Controller
             <style>
                 @page { margin: 20px; }
                 body {
-                    font-family: Arial, sans-serif;
+                    font-family: Verdana, sans-serif;
                     font-size: 9pt;
                     margin: 0;
                     padding: 20px;
@@ -571,11 +581,13 @@ class NationalYearlyController extends Controller
                     margin-bottom: 20px;
                 }
                 .title {
+                    font-family: Verdana, sans-serif;
                     font-size: 16pt;
                     font-weight: bold;
                     margin-bottom: 5px;
                 }
                 .period {
+                    font-family: Verdana, sans-serif;
                     font-size: 10pt;
                     color: #666;
                     margin-bottom: 20px;
@@ -587,19 +599,22 @@ class NationalYearlyController extends Controller
                 }
                 th, td {
                     border: 1px solid #ddd;
-                    padding: 6px;
+                    padding: 6px 8px;
                     text-align: left;
+                    font-family: Verdana, sans-serif;
                     font-size: 8pt;
                 }
                 th {
-                    background-color: rgba(38, 102, 241, 0.9);
-                    color: white;
+                    background-color: #F5F5F5;
+                    color: #000;
                     font-weight: bold;
+                    text-align: center;
+                    vertical-align: middle;
                 }
                 .number { text-align: right; }
                 .total-row {
                     font-weight: bold;
-                    background-color: #f2f2f2;
+                    background-color: #E8E8E8;
                 }
                 .total-row td {
                     border-top: 2px solid #333;
@@ -608,7 +623,7 @@ class NationalYearlyController extends Controller
         </head>
         <body>
             <div class="header">
-                <div class="title">Penjualan Tahunan Nasional</div>
+                <div class="title">PENJUALAN TAHUNAN NASIONAL</div>
                 <div class="period">Perbandingan Tahun ' . $previousYear . ' vs ' . $year . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>
             </div>
             <table>

@@ -299,7 +299,7 @@ class TargetRevenueController extends Controller
         ];
         $monthName = $months[$month] ?? 'Unknown';
         $formattedCategory = ucwords(strtolower($category));
-        $filename = 'Target_Net_Revenue_' . $monthName . '_' . $year . '_' . str_replace(' ', '_', $category) . '.xls';
+        $filename = 'Target_Penjualan_Netto_' . $monthName . '_' . $year . '_' . str_replace(' ', '_', $category) . '.xls';
 
         // Create XLS content using HTML table format
         $headers = [
@@ -331,24 +331,34 @@ class TargetRevenueController extends Controller
             </xml>
             <![endif]-->
             <style>
-                body { font-family: Calibri, Arial, sans-serif; font-size: 10pt; }
+                body { font-family: Verdana, sans-serif; }
                 table { border-collapse: collapse; }
                 th, td {
-                    border: 1px solid #ddd;
-                    padding: 4px 8px;
+                    border: 1px solid #000;
+                    padding: 6px 8px;
                     text-align: left;
+                    font-family: Verdana, sans-serif;
                     font-size: 10pt;
-                    white-space: nowrap;
                 }
                 th {
-                    background-color: #4CAF50;
-                    color: white;
+                    background-color: #D3D3D3;
+                    color: #000;
                     font-weight: bold;
-                    font-size: 10pt;
+                    text-align: center;
+                    vertical-align: middle;
                 }
-                .title { font-size: 10pt; font-weight: bold; margin-bottom: 5px; }
-                .period { font-size: 10pt; margin-bottom: 10px; }
-                .total-row { font-weight: bold; background-color: #f2f2f2; }
+                .title {
+                    font-family: Verdana, sans-serif;
+                    font-size: 16pt;
+                    font-weight: bold;
+                    margin-bottom: 8px;
+                }
+                .period {
+                    font-family: Verdana, sans-serif;
+                    font-size: 12pt;
+                    margin-bottom: 15px;
+                }
+                .total-row { font-weight: bold; background-color: #E8E8E8; }
                 .number { text-align: right; }
                 .col-no { width: 70px; }
                 .col-branch { width: 250px; }
@@ -359,8 +369,8 @@ class TargetRevenueController extends Controller
             </style>
         </head>
         <body>
-            <div class="title">Target Net Revenue Report</div>
-            <div class="period">Period: ' . $monthName . ' ' . $year . ' - ' . $formattedCategory . '</div>
+            <div class="title">TARGET PENJUALAN NETTO</div>
+            <div class="period">Periode ' . $monthName . ' ' . $year . ' - ' . $formattedCategory . '</div>
             <br>
             <table>
                 <colgroup>
@@ -374,8 +384,8 @@ class TargetRevenueController extends Controller
                 <thead>
                     <tr>
                         <th>No</th>
-                        <th>Branch Name</th>
-                        <th>Branch Code</th>
+                        <th>Nama Cabang</th>
+                        <th>Kode Cabang</th>
                         <th style="text-align: right;">Target (Rp)</th>
                         <th style="text-align: right;">Realization (Rp)</th>
                         <th style="text-align: right;">Achievement (%)</th>
@@ -456,7 +466,7 @@ class TargetRevenueController extends Controller
         ];
         $monthName = $months[$month] ?? 'Unknown';
         $formattedCategory = ucwords(strtolower($category));
-        $filename = 'Target_Net_Revenue_' . $monthName . '_' . $year . '_' . str_replace(' ', '_', $category) . '.pdf';
+        $filename = 'Target_Penjualan_Netto_' . $monthName . '_' . $year . '_' . str_replace(' ', '_', $category) . '.pdf';
 
         // Create HTML for PDF
         $html = '
@@ -467,7 +477,7 @@ class TargetRevenueController extends Controller
             <style>
                 @page { margin: 20px; }
                 body {
-                    font-family: Arial, sans-serif;
+                    font-family: Verdana, sans-serif;
                     font-size: 10pt;
                     margin: 0;
                     padding: 20px;
@@ -477,11 +487,13 @@ class TargetRevenueController extends Controller
                     margin-bottom: 20px;
                 }
                 .title {
+                    font-family: Verdana, sans-serif;
                     font-size: 16pt;
                     font-weight: bold;
                     margin-bottom: 5px;
                 }
                 .period {
+                    font-family: Verdana, sans-serif;
                     font-size: 10pt;
                     color: #666;
                     margin-bottom: 20px;
@@ -493,19 +505,22 @@ class TargetRevenueController extends Controller
                 }
                 th, td {
                     border: 1px solid #ddd;
-                    padding: 8px;
+                    padding: 6px 8px;
                     text-align: left;
+                    font-family: Verdana, sans-serif;
                     font-size: 10pt;
                 }
                 th {
-                    background-color: rgba(38, 102, 241, 0.9);
-                    color: white;
+                    background-color: #F5F5F5;
+                    color: #000;
                     font-weight: bold;
+                    text-align: center;
+                    vertical-align: middle;
                 }
                 .number { text-align: right; }
                 .total-row {
                     font-weight: bold;
-                    background-color: #f2f2f2;
+                    background-color: #E8E8E8;
                 }
                 .total-row td {
                     border-top: 2px solid #333;
@@ -514,15 +529,15 @@ class TargetRevenueController extends Controller
         </head>
         <body>
             <div class="header">
-                <div class="title">Target Net Revenue Report</div>
-                <div class="period">Period: ' . $monthName . ' ' . $year . ' - ' . $formattedCategory . '</div>
+                <div class="title">TARGET PENJUALAN NETTO</div>
+                <div class="period">Periode ' . $monthName . ' ' . $year . ' - ' . $formattedCategory . '</div>
             </div>
             <table>
                 <thead>
                     <tr>
                         <th style="width: 30px;">No</th>
-                        <th style="width: 150px;">Branch Name</th>
-                        <th style="width: 80px;">Branch Code</th>
+                        <th style="width: 150px;">Nama Cabang</th>
+                        <th style="width: 80px;">Kode Cabang</th>
                         <th style="width: 120px; text-align: right;">Target (Rp)</th>
                         <th style="width: 120px; text-align: right;">Realization (Rp)</th>
                         <th style="width: 80px; text-align: right;">Achievement (%)</th>
