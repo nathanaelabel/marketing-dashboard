@@ -473,6 +473,19 @@ class MonthlyBranchController extends Controller
         }
 
         // Organize data by branch
+        // Generate date range information text
+        $isCompleteYear = ($year != $currentYear || $lastAvailableMonth == 12);
+        
+        if ($isCompleteYear) {
+            // Complete year comparison (e.g., 2023-2024)
+            $dateRangeInfo = 'Periode: 1 Januari - 31 Desember ' . $previousYear . ' VS 1 Januari - 31 Desember ' . $year;
+        } else {
+            // Partial year comparison (e.g., 2024-2025 where current year is incomplete)
+            $monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            $lastMonthName = $monthNames[$lastAvailableMonth - 1];
+            $dateRangeInfo = 'Periode: 1 Januari - ' . $lastMonthName . ' ' . $previousYear . ' VS 1 Januari - ' . $lastMonthName . ' ' . $year;
+        }
+
         $allBranchesData = [];
         foreach ($branches as $branch) {
             $branchData = [
@@ -585,6 +598,7 @@ class MonthlyBranchController extends Controller
         <body>
             <div class="title">PENJUALAN BULANAN CABANG</div>
             <div class="period">Perbandingan Tahun ' . $previousYear . ' vs ' . $year . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>
+            <div class="period" style="font-size: 10pt; color: #666;">' . htmlspecialchars($dateRangeInfo) . '</div>
             <br>
             <table>
                 <thead>
@@ -761,6 +775,30 @@ class MonthlyBranchController extends Controller
 
         $branchDisplay = $branch === 'National' ? 'National' : ChartHelper::getBranchDisplayName($branch);
 
+        // Generate date range information text
+        // Detect last available month in current year data
+        $lastAvailableMonth = 0;
+        foreach ($currentYearData as $row) {
+            $lastAvailableMonth = max($lastAvailableMonth, (int)$row->month_number);
+        }
+        
+        // If no data for current year, default to 12 (full year)
+        if ($lastAvailableMonth == 0) {
+            $lastAvailableMonth = 12;
+        }
+        
+        $isCompleteYear = ($year != $currentYear || $lastAvailableMonth == 12);
+        
+        if ($isCompleteYear) {
+            // Complete year comparison (e.g., 2023-2024)
+            $dateRangeInfo = 'Periode: 1 Januari - 31 Desember ' . $previousYear . ' VS 1 Januari - 31 Desember ' . $year;
+        } else {
+            // Partial year comparison (e.g., 2024-2025 where current year is incomplete)
+            $monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            $lastMonthName = $monthNames[$lastAvailableMonth - 1];
+            $dateRangeInfo = 'Periode: 1 Januari - ' . $lastMonthName . ' ' . $previousYear . ' VS 1 Januari - ' . $lastMonthName . ' ' . $year;
+        }
+
         // Create HTML for PDF
         $html = '
         <!DOCTYPE html>
@@ -824,6 +862,7 @@ class MonthlyBranchController extends Controller
             <div class="header">
                 <div class="title">PENJUALAN BULANAN CABANG</div>
                 <div class="period">Perbandingan Tahun ' . $previousYear . ' vs ' . $year . ' | Cabang ' . htmlspecialchars($branchDisplay) . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>
+                <div class="period" style="font-size: 9pt; color: #666;">' . htmlspecialchars($dateRangeInfo) . '</div>
             </div>
             <table>
                 <thead>

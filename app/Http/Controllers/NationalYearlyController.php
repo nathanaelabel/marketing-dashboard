@@ -398,6 +398,23 @@ class NationalYearlyController extends Controller
         $currentYearMap = collect($currentYearData)->keyBy('branch_name');
         $previousYearMap = collect($previousYearData)->keyBy('branch_name');
 
+        // Generate date range information text
+        $currentYearEndDate = date('Y-m-d', strtotime($dateRanges['current']['end']));
+        $previousYearEndDate = date('Y-m-d', strtotime($dateRanges['previous']['end']));
+        
+        // Check if it's a complete year comparison or partial year
+        $isCompleteYear = ($currentYearEndDate == $year . '-12-31');
+        
+        if ($isCompleteYear) {
+            // Complete year comparison (e.g., 2023-2024)
+            $dateRangeInfo = 'Periode: 1 Januari - 31 Desember ' . $previousYear . ' VS 1 Januari - 31 Desember ' . $year;
+        } else {
+            // Partial year comparison (e.g., 2024-2025 where current year is incomplete)
+            $currentEndDateFormatted = date('j F', strtotime($currentYearEndDate));
+            $previousEndDateFormatted = date('j F', strtotime($previousYearEndDate));
+            $dateRangeInfo = 'Periode: 1 Januari - ' . $previousEndDateFormatted . ' ' . $previousYear . ' VS 1 Januari - ' . $currentEndDateFormatted . ' ' . $year;
+        }
+
         $filename = 'Penjualan_Tahunan_Nasional_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
 
         // Create XLS content using HTML table format
@@ -468,6 +485,7 @@ class NationalYearlyController extends Controller
         <body>
             <div class="title">PENJUALAN TAHUNAN NASIONAL</div>
             <div class="period">Perbandingan Tahun ' . $previousYear . ' vs ' . $year . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>
+            <div class="period" style="font-size: 10pt; color: #666;">' . htmlspecialchars($dateRangeInfo) . '</div>
             <br>
             <table>
                 <thead>
@@ -566,6 +584,23 @@ class NationalYearlyController extends Controller
         $currentYearMap = collect($currentYearData)->keyBy('branch_name');
         $previousYearMap = collect($previousYearData)->keyBy('branch_name');
 
+        // Generate date range information text
+        $currentYearEndDate = date('Y-m-d', strtotime($dateRanges['current']['end']));
+        $previousYearEndDate = date('Y-m-d', strtotime($dateRanges['previous']['end']));
+        
+        // Check if it's a complete year comparison or partial year
+        $isCompleteYear = ($currentYearEndDate == $year . '-12-31');
+        
+        if ($isCompleteYear) {
+            // Complete year comparison (e.g., 2023-2024)
+            $dateRangeInfo = 'Periode: 1 Januari - 31 Desember ' . $previousYear . ' VS 1 Januari - 31 Desember ' . $year;
+        } else {
+            // Partial year comparison (e.g., 2024-2025 where current year is incomplete)
+            $currentEndDateFormatted = date('j F', strtotime($currentYearEndDate));
+            $previousEndDateFormatted = date('j F', strtotime($previousYearEndDate));
+            $dateRangeInfo = 'Periode: 1 Januari - ' . $previousEndDateFormatted . ' ' . $previousYear . ' VS 1 Januari - ' . $currentEndDateFormatted . ' ' . $year;
+        }
+
         // Create HTML for PDF
         $html = '
         <!DOCTYPE html>
@@ -629,6 +664,7 @@ class NationalYearlyController extends Controller
             <div class="header">
                 <div class="title">PENJUALAN TAHUNAN NASIONAL</div>
                 <div class="period">Perbandingan Tahun ' . $previousYear . ' vs ' . $year . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>
+                <div class="period" style="font-size: 9pt; color: #666;">' . htmlspecialchars($dateRangeInfo) . '</div>
             </div>
             <table>
                 <thead>
