@@ -20,6 +20,15 @@
                 <p id="nationalTotalRevenueDisplay" class="mt-2 mb-2 text-1xl font-bold text-gray-700">Loading...</p>
             </div>
             <form id="dateFilterForm" class="flex items-end space-x-3">
+                <!-- Type Selector -->
+                <div>
+                    <label for="national-type-select" class="block text-xs font-medium text-gray-500 mb-1">Type</label>
+                    <select id="national-type-select"
+                        class="pl-3 pr-8 py-1.5 w-24 text-sm rounded-md border border-gray-300 shadow-sm focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 focus:ring-opacity-50">
+                        <option value="BRUTO">Bruto</option>
+                        <option value="NETTO">Netto</option>
+                    </select>
+                </div>
                 <div>
                     <label for="start_date" class="block text-xs font-medium text-gray-500 mb-1">Start Date</label>
                     <div class="relative">
@@ -35,9 +44,6 @@
                             </svg>
                         </div>
                     </div>
-                </div>
-                <div class="flex items-center h-8 text-gray-400">
-                    <span class="text-xs">to</span>
                 </div>
                 <div>
                     <label for="end_date" class="block text-xs font-medium text-gray-500 mb-1">End Date</label>
