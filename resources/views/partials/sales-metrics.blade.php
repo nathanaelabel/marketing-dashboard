@@ -1,21 +1,4 @@
-<div class="mt-10 bg-white overflow-hidden shadow-sm sm:rounded-lg p-6" x-data="{
-    currentLang: localStorage.getItem('language') || 'id',
-    translations: {
-        storeReturns: {
-            id: 'Retur Toko',
-            en: 'Store Returns'
-        },
-        stockValue: {
-            id: 'Nilai Stok',
-            en: 'Stock Value'
-        }
-    },
-    init() {
-        window.addEventListener('language-changed', (e) => {
-            this.currentLang = e.detail.language;
-        });
-    }
-}">
+<div class="mt-10 bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
     <!-- Filters -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div>
@@ -73,13 +56,11 @@
                 <p class="mt-1 text-2xl font-semibold text-gray-900" id="pending-so-value">-</p>
             </div>
             <div class="bg-gray-50 p-4 rounded-lg shadow">
-                <h3 class="text-sm font-medium text-gray-500" id="store-returns-label"
-                    x-text="translations.storeReturns[currentLang]">Store Returns</h3>
+                <h3 class="text-sm font-medium text-gray-500" id="store-returns-label">Store Returns</h3>
                 <p class="mt-1 text-2xl font-semibold text-gray-900" id="store-returns-value">-</p>
             </div>
             <div class="bg-gray-50 p-4 rounded-lg shadow">
-                <h3 class="text-sm font-medium text-gray-500" id="stock-value-label"
-                    x-text="translations.stockValue[currentLang]">Stock Value</h3>
+                <h3 class="text-sm font-medium text-gray-500" id="stock-value-label">Stock Value</h3>
                 <p class="mt-1 text-2xl font-semibold text-gray-900" id="stock-value-value">-</p>
             </div>
         </div>
