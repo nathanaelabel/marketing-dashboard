@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\ChartHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class AccountsReceivableController extends Controller
 {
@@ -253,14 +254,14 @@ class AccountsReceivableController extends Controller
                 </colgroup>
                 <thead>
                     <tr>
-                        <th>No</th>
-                        <th>Nama Cabang</th>
-                        <th>Kode Cabang</th>
-                        <th style="text-align: right;">1-30 Days (Rp)</th>
-                        <th style="text-align: right;">31-60 Days (Rp)</th>
-                        <th style="text-align: right;">61-90 Days (Rp)</th>
-                        <th style="text-align: right;">&gt; 90 Days (Rp)</th>
-                        <th style="text-align: right;">Total (Rp)</th>
+                        <th>NO</th>
+                        <th>NAMA CABANG</th>
+                        <th>KODE CABANG</th>
+                        <th style="text-align: right;">1-30 DAYS (RP)</th>
+                        <th style="text-align: right;">31-60 DAYS (RP)</th>
+                        <th style="text-align: right;">61-90 DAYS (RP)</th>
+                        <th style="text-align: right;">&gt; 90 DAYS (RP)</th>
+                        <th style="text-align: right;">TOTAL (RP)</th>
                     </tr>
                 </thead>
                 <tbody>';
@@ -290,6 +291,9 @@ class AccountsReceivableController extends Controller
                     </tr>
                 </tbody>
             </table>
+            <br>
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
         </body>
         </html>';
 
@@ -447,14 +451,14 @@ class AccountsReceivableController extends Controller
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 30px; text-align: left;">No</th>
-                        <th style="width: 150px; text-align: left;">Nama Cabang</th>
-                        <th style="width: 70px; text-align: left;">Kode Cabang</th>
-                        <th style="width: 100px; text-align: right;">1-30 Days</th>
-                        <th style="width: 100px; text-align: right;">31-60 Days</th>
-                        <th style="width: 100px; text-align: right;">61-90 Days</th>
-                        <th style="width: 100px; text-align: right;">&gt; 90 Days</th>
-                        <th style="width: 120px; text-align: right;">Total</th>
+                        <th style="width: 30px; text-align: left;">NO</th>
+                        <th style="width: 150px; text-align: left;">NAMA CABANG</th>
+                        <th style="width: 70px; text-align: left;">KODE CABANG</th>
+                        <th style="width: 100px; text-align: right;">1-30 DAYS</th>
+                        <th style="width: 100px; text-align: right;">31-60 DAYS</th>
+                        <th style="width: 100px; text-align: right;">61-90 DAYS</th>
+                        <th style="width: 100px; text-align: right;">&gt; 90 DAYS</th>
+                        <th style="width: 120px; text-align: right;">TOTAL</th>
                     </tr>
                 </thead>
                 <tbody>';
@@ -484,6 +488,9 @@ class AccountsReceivableController extends Controller
                     </tr>
                 </tbody>
             </table>
+            <br>
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
         </body>
         </html>';
 

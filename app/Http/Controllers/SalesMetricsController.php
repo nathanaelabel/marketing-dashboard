@@ -13,8 +13,10 @@ class SalesMetricsController extends Controller
     {
         try {
             $location = $request->input('location', 'National');
-            $startDate = Carbon::parse($request->input('start_date', Carbon::now()->subDays(21)))->format('Y-m-d');
-            $endDate = Carbon::parse($request->input('end_date', Carbon::now()))->format('Y-m-d');
+            // Use yesterday (H-1) since dashboard is updated daily at night
+            $yesterday = Carbon::now()->subDay();
+            $startDate = Carbon::parse($request->input('start_date', $yesterday->copy()->subDays(21)))->format('Y-m-d');
+            $endDate = Carbon::parse($request->input('end_date', $yesterday))->format('Y-m-d');
 
             $locationFilter = ($location === 'National') ? '%' : $location;
 

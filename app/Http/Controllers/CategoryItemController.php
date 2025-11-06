@@ -5,14 +5,17 @@ namespace App\Http\Controllers;
 use App\Helpers\ChartHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class CategoryItemController extends Controller
 {
     public function getData(Request $request)
     {
-        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', Carbon::now()->toDateString());
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = Carbon::now()->subDay();
+        $startDate = $request->input('start_date', $yesterday->copy()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', $yesterday->toDateString());
         $type = $request->input('type', 'NETTO');
         $page = (int)$request->input('page', 1);
         $perPage = $page === 1 ? 9 : 8;
@@ -164,8 +167,10 @@ class CategoryItemController extends Controller
 
     public function exportExcel(Request $request)
     {
-        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', Carbon::now()->toDateString());
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = Carbon::now()->subDay();
+        $startDate = $request->input('start_date', $yesterday->copy()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', $yesterday->toDateString());
         $type = $request->input('type', 'BRUTO'); // BRUTO or NETTO
 
         // Main data query based on the provided SQL
@@ -304,16 +309,16 @@ class CategoryItemController extends Controller
             <table>
                 <thead>
                     <tr>
-                        <th>No</th>
-                        <th>Nama Cabang</th>
-                        <th>Kode Cabang</th>';
+                        <th>NO</th>
+                        <th>NAMA CABANG</th>
+                        <th>KODE CABANG</th>';
 
         foreach ($categories as $category) {
-            $html .= '<th style="text-align: right;">' . htmlspecialchars($category) . ' (Rp)</th>';
+            $html .= '<th style="text-align: right;">' . strtoupper(htmlspecialchars($category)) . ' (RP)</th>';
         }
 
         $html .= '
-                        <th style="text-align: right;">Total (Rp)</th>
+                        <th style="text-align: right;">TOTAL (RP)</th>
                     </tr>
                 </thead>
                 <tbody>';
@@ -359,6 +364,9 @@ class CategoryItemController extends Controller
                     </tr>
                 </tbody>
             </table>
+            <br>
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
         </body>
         </html>';
 
@@ -367,8 +375,10 @@ class CategoryItemController extends Controller
 
     public function exportPdf(Request $request)
     {
-        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', Carbon::now()->toDateString());
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = Carbon::now()->subDay();
+        $startDate = $request->input('start_date', $yesterday->copy()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', $yesterday->toDateString());
         $type = $request->input('type', 'BRUTO'); // BRUTO or NETTO
 
         // Main data query based on the provided SQL
@@ -501,16 +511,16 @@ class CategoryItemController extends Controller
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 30px;">No</th>
-                        <th style="width: 120px;">Nama Cabang</th>
-                        <th style="width: 50px;">Kode Cabang</th>';
+                        <th style="width: 30px;">NO</th>
+                        <th style="width: 120px;">NAMA CABANG</th>
+                        <th style="width: 50px;">KODE CABANG</th>';
 
         foreach ($categories as $category) {
-            $html .= '<th style="width: 90px; text-align: right;">' . htmlspecialchars($category) . ' (Rp)</th>';
+            $html .= '<th style="width: 90px; text-align: right;">' . strtoupper(htmlspecialchars($category)) . ' (RP)</th>';
         }
 
         $html .= '
-                        <th style="width: 100px; text-align: right;">Total (Rp)</th>
+                        <th style="width: 100px; text-align: right;">TOTAL (RP)</th>
                     </tr>
                 </thead>
                 <tbody>';
@@ -556,6 +566,9 @@ class CategoryItemController extends Controller
                     </tr>
                 </tbody>
             </table>
+            <br>
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
         </body>
         </html>';
 

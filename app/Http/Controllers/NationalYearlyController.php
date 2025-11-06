@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use App\Helpers\ChartHelper;
 use PDOException;
 
@@ -24,7 +25,8 @@ class NationalYearlyController extends Controller
             $year = $request->input('year');
             $startDate = $request->input('start_date');
             $endDate = $request->input('end_date');
-            $today = date('Y-m-d');
+            // Use yesterday (H-1) since dashboard is updated daily at night
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
             $currentYear = date('Y');
 
             if ($year) {
@@ -38,11 +40,11 @@ class NationalYearlyController extends Controller
                 $endDate = $year . '-12-31';
 
                 if ($year == $currentYear) {
-                    $endDate = $today;
+                    $endDate = $yesterday;
                 }
             } else {
                 $startDate = $startDate ?: date('Y') . '-01-01';
-                $endDate = $endDate ?: $today;
+                $endDate = $endDate ?: $yesterday;
                 $year = date('Y', strtotime($startDate));
             }
 
@@ -370,14 +372,15 @@ class NationalYearlyController extends Controller
         $year = $request->input('year', date('Y'));
         $category = $request->input('category', 'MIKA');
         $type = $request->input('type', 'BRUTO');
-        $today = date('Y-m-d');
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = date('Y-m-d', strtotime('-1 day'));
         $currentYear = date('Y');
 
         $startDate = $year . '-01-01';
         $endDate = $year . '-12-31';
 
         if ($year == $currentYear) {
-            $endDate = $today;
+            $endDate = $yesterday;
         }
 
         $previousYear = $year - 1;
@@ -396,6 +399,23 @@ class NationalYearlyController extends Controller
         // Map data for each year
         $currentYearMap = collect($currentYearData)->keyBy('branch_name');
         $previousYearMap = collect($previousYearData)->keyBy('branch_name');
+
+        // Generate date range information text
+        $currentYearEndDate = date('Y-m-d', strtotime($dateRanges['current']['end']));
+        $previousYearEndDate = date('Y-m-d', strtotime($dateRanges['previous']['end']));
+
+        // Check if it's a complete year comparison or partial year
+        $isCompleteYear = ($currentYearEndDate == $year . '-12-31');
+
+        if ($isCompleteYear) {
+            // Complete year comparison (e.g., 2023-2024)
+            $dateRangeInfo = 'Periode: 1 Januari - 31 Desember ' . $previousYear . ' VS 1 Januari - 31 Desember ' . $year;
+        } else {
+            // Partial year comparison (e.g., 2024-2025 where current year is incomplete)
+            $currentEndDateFormatted = date('j F', strtotime($currentYearEndDate));
+            $previousEndDateFormatted = date('j F', strtotime($previousYearEndDate));
+            $dateRangeInfo = 'Periode: 1 Januari - ' . $previousEndDateFormatted . ' ' . $previousYear . ' VS 1 Januari - ' . $currentEndDateFormatted . ' ' . $year;
+        }
 
         $filename = 'Penjualan_Tahunan_Nasional_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
 
@@ -467,16 +487,17 @@ class NationalYearlyController extends Controller
         <body>
             <div class="title">PENJUALAN TAHUNAN NASIONAL</div>
             <div class="period">Perbandingan Tahun ' . $previousYear . ' vs ' . $year . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>
+            <div class="period" style="font-size: 10pt; color: #666;">' . htmlspecialchars($dateRangeInfo) . '</div>
             <br>
             <table>
                 <thead>
                     <tr>
-                        <th>No</th>
-                        <th>Nama Cabang</th>
-                        <th>Kode Cabang</th>
-                        <th style="text-align: right;">' . $previousYear . ' (Rp)</th>
-                        <th style="text-align: right;">' . $year . ' (Rp)</th>
-                        <th style="text-align: right;">Growth (%)</th>
+                        <th>NO</th>
+                        <th>NAMA CABANG</th>
+                        <th>KODE CABANG</th>
+                        <th style="text-align: right;">' . $previousYear . ' (RP)</th>
+                        <th style="text-align: right;">' . $year . ' (RP)</th>
+                        <th style="text-align: right;">GROWTH (%)</th>
                     </tr>
                 </thead>
                 <tbody>';
@@ -524,6 +545,9 @@ class NationalYearlyController extends Controller
                     </tr>
                 </tbody>
             </table>
+            <br>
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
         </body>
         </html>';
 
@@ -535,14 +559,15 @@ class NationalYearlyController extends Controller
         $year = $request->input('year', date('Y'));
         $category = $request->input('category', 'MIKA');
         $type = $request->input('type', 'BRUTO');
-        $today = date('Y-m-d');
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = date('Y-m-d', strtotime('-1 day'));
         $currentYear = date('Y');
 
         $startDate = $year . '-01-01';
         $endDate = $year . '-12-31';
 
         if ($year == $currentYear) {
-            $endDate = $today;
+            $endDate = $yesterday;
         }
 
         $previousYear = $year - 1;
@@ -561,6 +586,23 @@ class NationalYearlyController extends Controller
         // Map data for each year
         $currentYearMap = collect($currentYearData)->keyBy('branch_name');
         $previousYearMap = collect($previousYearData)->keyBy('branch_name');
+
+        // Generate date range information text
+        $currentYearEndDate = date('Y-m-d', strtotime($dateRanges['current']['end']));
+        $previousYearEndDate = date('Y-m-d', strtotime($dateRanges['previous']['end']));
+
+        // Check if it's a complete year comparison or partial year
+        $isCompleteYear = ($currentYearEndDate == $year . '-12-31');
+
+        if ($isCompleteYear) {
+            // Complete year comparison (e.g., 2023-2024)
+            $dateRangeInfo = 'Periode: 1 Januari - 31 Desember ' . $previousYear . ' VS 1 Januari - 31 Desember ' . $year;
+        } else {
+            // Partial year comparison (e.g., 2024-2025 where current year is incomplete)
+            $currentEndDateFormatted = date('j F', strtotime($currentYearEndDate));
+            $previousEndDateFormatted = date('j F', strtotime($previousYearEndDate));
+            $dateRangeInfo = 'Periode: 1 Januari - ' . $previousEndDateFormatted . ' ' . $previousYear . ' VS 1 Januari - ' . $currentEndDateFormatted . ' ' . $year;
+        }
 
         // Create HTML for PDF
         $html = '
@@ -625,16 +667,17 @@ class NationalYearlyController extends Controller
             <div class="header">
                 <div class="title">PENJUALAN TAHUNAN NASIONAL</div>
                 <div class="period">Perbandingan Tahun ' . $previousYear . ' vs ' . $year . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>
+                <div class="period" style="font-size: 9pt; color: #666;">' . htmlspecialchars($dateRangeInfo) . '</div>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 30px;">No</th>
-                        <th style="width: 150px;">Nama Cabang</th>
-                        <th style="width: 50px;">Kode Cabang</th>
+                        <th style="width: 30px;">NO</th>
+                        <th style="width: 150px;">NAMA CABANG</th>
+                        <th style="width: 50px;">KODE CABANG</th>
                         <th style="width: 100px; text-align: right;">' . $previousYear . '</th>
                         <th style="width: 100px; text-align: right;">' . $year . '</th>
-                        <th style="width: 80px; text-align: right;">Growth (%)</th>
+                        <th style="width: 80px; text-align: right;">GROWTH (%)</th>
                     </tr>
                 </thead>
                 <tbody>';
@@ -682,6 +725,9 @@ class NationalYearlyController extends Controller
                     </tr>
                 </tbody>
             </table>
+            <br>
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
         </body>
         </html>';
 
