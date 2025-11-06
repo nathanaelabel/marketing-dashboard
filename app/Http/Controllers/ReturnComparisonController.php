@@ -11,7 +11,7 @@ class ReturnComparisonController extends Controller
 {
     public function index()
     {
-        return view('return-comparison');
+        return view("return-comparison");
     }
 
     public function getData(Request $request)
@@ -20,13 +20,16 @@ class ReturnComparisonController extends Controller
             // Increase execution time limit for complex queries
             set_time_limit(120);
 
-            $month = $request->get('month', date('n'));
-            $year = $request->get('year', date('Y'));
+            $month = $request->get("month", date("n"));
+            $year = $request->get("year", date("Y"));
 
             // Validate parameters using TableHelper
-            $validationErrors = TableHelper::validatePeriodParameters($month, $year);
+            $validationErrors = TableHelper::validatePeriodParameters(
+                $month,
+                $year,
+            );
             if (!empty($validationErrors)) {
-                return response()->json(['error' => $validationErrors[0]], 400);
+                return response()->json(["error" => $validationErrors[0]], 400);
             }
 
             // Get all branch codes from TableHelper
@@ -43,50 +46,67 @@ class ReturnComparisonController extends Controller
 
             // Iterate through each branch and combine data
             foreach ($branchMapping as $branchName => $branchCode) {
-                $salesBruto = $salesBrutoData[$branchName] ?? ['pc' => 0, 'rp' => 0];
-                $cnc = $cncData[$branchName] ?? ['pc' => 0, 'rp' => 0];
-                $barang = $barangData[$branchName] ?? ['pc' => 0, 'rp' => 0];
-                $cabangPabrik = $cabangPabrikData[$branchName] ?? ['pc' => 0, 'rp' => 0];
+                $salesBruto = $salesBrutoData[$branchName] ?? [
+                    "pc" => 0,
+                    "rp" => 0,
+                ];
+                $cnc = $cncData[$branchName] ?? ["pc" => 0, "rp" => 0];
+                $barang = $barangData[$branchName] ?? ["pc" => 0, "rp" => 0];
+                $cabangPabrik = $cabangPabrikData[$branchName] ?? [
+                    "pc" => 0,
+                    "rp" => 0,
+                ];
 
                 // Calculate percentages
-                $cncPercent = $salesBruto['rp'] > 0 ? ($cnc['rp'] / $salesBruto['rp']) * 100 : 0;
-                $barangPercent = $salesBruto['rp'] > 0 ? ($barang['rp'] / $salesBruto['rp']) * 100 : 0;
-                $cabangPabrikPercent = $salesBruto['rp'] > 0 ? ($cabangPabrik['rp'] / $salesBruto['rp']) * 100 : 0;
+                $cncPercent =
+                    $salesBruto["rp"] > 0
+                    ? ($cnc["rp"] / $salesBruto["rp"]) * 100
+                    : 0;
+                $barangPercent =
+                    $salesBruto["rp"] > 0
+                    ? ($barang["rp"] / $salesBruto["rp"]) * 100
+                    : 0;
+                $cabangPabrikPercent =
+                    $salesBruto["rp"] > 0
+                    ? ($cabangPabrik["rp"] / $salesBruto["rp"]) * 100
+                    : 0;
 
                 $data[] = [
-                    'no' => $no++,
-                    'branch_code' => $branchCode,
-                    'branch_name' => $branchName,
-                    'sales_bruto_pc' => $salesBruto['pc'],
-                    'sales_bruto_rp' => $salesBruto['rp'],
-                    'cnc_pc' => $cnc['pc'],
-                    'cnc_rp' => $cnc['rp'],
-                    'cnc_percent' => $cncPercent,
-                    'barang_pc' => $barang['pc'],
-                    'barang_rp' => $barang['rp'],
-                    'barang_percent' => $barangPercent,
-                    'cabang_pabrik_pc' => $cabangPabrik['pc'],
-                    'cabang_pabrik_rp' => $cabangPabrik['rp'],
-                    'cabang_pabrik_percent' => $cabangPabrikPercent,
+                    "no" => $no++,
+                    "branch_code" => $branchCode,
+                    "branch_name" => $branchName,
+                    "sales_bruto_pc" => $salesBruto["pc"],
+                    "sales_bruto_rp" => $salesBruto["rp"],
+                    "cnc_pc" => $cnc["pc"],
+                    "cnc_rp" => $cnc["rp"],
+                    "cnc_percent" => $cncPercent,
+                    "barang_pc" => $barang["pc"],
+                    "barang_rp" => $barang["rp"],
+                    "barang_percent" => $barangPercent,
+                    "cabang_pabrik_pc" => $cabangPabrik["pc"],
+                    "cabang_pabrik_rp" => $cabangPabrik["rp"],
+                    "cabang_pabrik_percent" => $cabangPabrikPercent,
                 ];
             }
 
             $period = TableHelper::formatPeriodInfo($month, $year);
 
             return response()->json([
-                'data' => $data,
-                'period' => $period,
-                'total_count' => count($data)
+                "data" => $data,
+                "period" => $period,
+                "total_count" => count($data),
             ]);
         } catch (\Exception $e) {
-            TableHelper::logError('ReturnComparisonController', 'getData', $e, [
-                'month' => $request->get('month'),
-                'year' => $request->get('year'),
-                'message' => $e->getMessage(),
-                'line' => $e->getLine()
+            TableHelper::logError("ReturnComparisonController", "getData", $e, [
+                "month" => $request->get("month"),
+                "year" => $request->get("year"),
+                "message" => $e->getMessage(),
+                "line" => $e->getLine(),
             ]);
 
-            return TableHelper::errorResponse('Failed to load return comparison data: ' . $e->getMessage());
+            return TableHelper::errorResponse(
+                "Failed to load return comparison data: " . $e->getMessage(),
+            );
         }
     }
 
@@ -116,8 +136,8 @@ class ReturnComparisonController extends Controller
         $data = [];
         foreach ($results as $result) {
             $data[$result->branch_name] = [
-                'pc' => (float)$result->total_qty,
-                'rp' => (float)$result->total_rp
+                "pc" => (float) $result->total_qty,
+                "rp" => (float) $result->total_rp,
             ];
         }
 
@@ -147,8 +167,8 @@ class ReturnComparisonController extends Controller
         $result = DB::selectOne($query, [$branchName, $year, $month]);
 
         return [
-            'pc' => $result ? (float)$result->total_qty : 0,
-            'rp' => $result ? (float)$result->total_rp : 0
+            "pc" => $result ? (float) $result->total_qty : 0,
+            "rp" => $result ? (float) $result->total_rp : 0,
         ];
     }
 
@@ -175,8 +195,8 @@ class ReturnComparisonController extends Controller
         $data = [];
         foreach ($results as $result) {
             $data[$result->branch_name] = [
-                'pc' => (float)$result->total_qty,
-                'rp' => (float)$result->total_rp
+                "pc" => (float) $result->total_qty,
+                "rp" => (float) $result->total_rp,
             ];
         }
 
@@ -203,8 +223,8 @@ class ReturnComparisonController extends Controller
         $result = DB::selectOne($query, [$year, $month, $branchName]);
 
         return [
-            'pc' => $result ? (float)$result->total_qty : 0,
-            'rp' => $result ? (float)$result->total_rp : 0
+            "pc" => $result ? (float) $result->total_qty : 0,
+            "rp" => $result ? (float) $result->total_rp : 0,
         ];
     }
 
@@ -227,8 +247,8 @@ class ReturnComparisonController extends Controller
                 AND EXTRACT(year FROM mio.movementdate) = ?
                 AND EXTRACT(month FROM mio.movementdate) = ?
                 AND NOT EXISTS (
-                    SELECT 1 
-                    FROM c_invoiceline cil 
+                    SELECT 1
+                    FROM c_invoiceline cil
                     WHERE cil.m_inoutline_id = miol.m_inoutline_id
                 )
             GROUP BY org.name
@@ -239,8 +259,8 @@ class ReturnComparisonController extends Controller
         $data = [];
         foreach ($results as $result) {
             $data[$result->branch_name] = [
-                'pc' => (float)$result->total_qty,
-                'rp' => (float)$result->total_nominal
+                "pc" => (float) $result->total_qty,
+                "rp" => (float) $result->total_nominal,
             ];
         }
 
@@ -266,8 +286,8 @@ class ReturnComparisonController extends Controller
                 AND EXTRACT(year FROM mio.movementdate) = ?
                 AND EXTRACT(month FROM mio.movementdate) = ?
                 AND NOT EXISTS (
-                    SELECT 1 
-                    FROM c_invoiceline cil 
+                    SELECT 1
+                    FROM c_invoiceline cil
                     WHERE cil.m_inoutline_id = miol.m_inoutline_id
                 )
         ";
@@ -275,8 +295,8 @@ class ReturnComparisonController extends Controller
         $result = DB::selectOne($query, [$branchName, $year, $month]);
 
         return [
-            'pc' => $result ? (float)$result->total_qty : 0,
-            'rp' => $result ? (float)$result->total_nominal : 0
+            "pc" => $result ? (float) $result->total_qty : 0,
+            "rp" => $result ? (float) $result->total_nominal : 0,
         ];
     }
 
@@ -307,8 +327,8 @@ class ReturnComparisonController extends Controller
         $data = [];
         foreach ($results as $result) {
             $data[$result->branch_name] = [
-                'pc' => (float)$result->total_qty,
-                'rp' => (float)$result->total_nominal
+                "pc" => (float) $result->total_qty,
+                "rp" => (float) $result->total_nominal,
             ];
         }
 
@@ -339,47 +359,58 @@ class ReturnComparisonController extends Controller
         $result = DB::selectOne($query, [$branchName, $year, $month]);
 
         return [
-            'pc' => $result ? (float)$result->total_qty : 0,
-            'rp' => $result ? (float)$result->total_nominal : 0
+            "pc" => $result ? (float) $result->total_qty : 0,
+            "rp" => $result ? (float) $result->total_nominal : 0,
         ];
     }
 
     public function exportExcel(Request $request)
     {
         try {
-            $month = $request->get('month', date('n'));
-            $year = $request->get('year', date('Y'));
+            $month = $request->get("month", date("n"));
+            $year = $request->get("year", date("Y"));
 
             // Validate parameters using TableHelper
-            $validationErrors = TableHelper::validatePeriodParameters($month, $year);
+            $validationErrors = TableHelper::validatePeriodParameters(
+                $month,
+                $year,
+            );
             if (!empty($validationErrors)) {
-                return response()->json(['error' => $validationErrors[0]], 400);
+                return response()->json(["error" => $validationErrors[0]], 400);
             }
 
             // Get all data
-            $dataRequest = new Request(['month' => $month, 'year' => $year]);
+            $dataRequest = new Request(["month" => $month, "year" => $year]);
             $dataResponse = $this->getData($dataRequest);
             $responseData = json_decode($dataResponse->getContent(), true);
 
-            if (isset($responseData['error'])) {
-                return response()->json(['error' => 'Failed to fetch data'], 500);
+            if (isset($responseData["error"])) {
+                return response()->json(
+                    ["error" => "Failed to fetch data"],
+                    500,
+                );
             }
 
-            $data = $responseData['data'];
-            $period = $responseData['period'];
+            $data = $responseData["data"];
+            $period = $responseData["period"];
 
-            $filename = 'Perbandingan_Retur_Rusak_' . str_replace(' ', '_', $period['month_name'] . '_' . $year) . '.xls';
+            $filename =
+                "Perbandingan_Retur_Rusak_" .
+                str_replace(" ", "_", $period["month_name"] . "_" . $year) .
+                ".xls";
 
             // Create XLS content using HTML table format
             $headers = [
-                'Content-Type' => 'application/vnd.ms-excel',
-                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-                'Pragma' => 'no-cache',
-                'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
-                'Expires' => '0'
+                "Content-Type" => "application/vnd.ms-excel",
+                "Content-Disposition" =>
+                'attachment; filename="' . $filename . '"',
+                "Pragma" => "no-cache",
+                "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+                "Expires" => "0",
             ];
 
-            $html = '
+            $html =
+                '
             <html xmlns:x="urn:schemas-microsoft-com:office:excel">
             <head>
                 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
@@ -432,98 +463,194 @@ class ReturnComparisonController extends Controller
             </head>
             <body>
                 <div class="title">PERBANDINGAN RETUR RUSAK</div>
-                <div class="period">Periode ' . htmlspecialchars($period['month_name'] . ' ' . $year) . '</div>
+                <div class="period">Periode ' .
+                htmlspecialchars($period["month_name"] . " " . $year) .
+                '</div>
                 <br>
                 <table>
                     <thead>
                         <tr>
-                            <th rowspan="2" style="width: 60px;">NO</th>
-                            <th rowspan="2" style="width: 150px;">CABANG</th>
-                            <th colspan="2" style="width: 200px;">SALES BRUTO</th>
-                            <th colspan="3" style="width: 300px;">CUST. KE CABANG (CNC) (FX009)</th>
-                            <th colspan="3" style="width: 300px;">CUST. KE CABANG (BARANG) (FX016)</th>
-                            <th colspan="3" style="width: 300px;">CABANG KE PABRIK</th>
+                            <th rowspan="2" style="width: 60px; text-align: center;">NO</th>
+                            <th rowspan="2" style="width: 150px; text-align: center;">CABANG</th>
+                            <th colspan="2" style="width: 200px; text-align: center;">SALES BRUTO</th>
+                            <th colspan="3" style="width: 300px; text-align: center;">CUST. KE CABANG (CNC) (FX009)</th>
+                            <th colspan="3" style="width: 300px; text-align: center;">CUST. KE CABANG (BARANG) (FX016)</th>
+                            <th colspan="3" style="width: 300px; text-align: center;">CABANG KE PABRIK</th>
                         </tr>
                         <tr>
-                            <th style="width: 100px;">PC</th>
-                            <th style="width: 150px;">RP</th>
-                            <th style="width: 100px;">PC</th>
-                            <th style="width: 150px;">RP</th>
-                            <th style="width: 80px;">%</th>
-                            <th style="width: 100px;">PC</th>
-                            <th style="width: 150px;">RP</th>
-                            <th style="width: 80px;">%</th>
-                            <th style="width: 100px;">PC</th>
-                            <th style="width: 150px;">RP</th>
-                            <th style="width: 80px;">%</th>
+                            <th style="width: 150px; text-align: center;">PC</th>
+                            <th style="width: 300px; text-align: center;">RP</th>
+                            <th style="width: 150px; text-align: center;">PC</th>
+                            <th style="width: 300px; text-align: center;">RP</th>
+                            <th style="width: 120px; text-align: center;">%</th>
+                            <th style="width: 150px; text-align: center;">PC</th>
+                            <th style="width: 300px; text-align: center;">RP</th>
+                            <th style="width: 120px; text-align: center;">%</th>
+                            <th style="width: 150px; text-align: center;">PC</th>
+                            <th style="width: 300px; text-align: center;">RP</th>
+                            <th style="width: 120px; text-align: center;">%</th>
                         </tr>
                     </thead>
                     <tbody>';
 
             foreach ($data as $item) {
-                $html .= '<tr>
-                    <td style="text-align: right;">' . $item['no'] . '</td>
-                    <td>' . htmlspecialchars($item['branch_code']) . '</td>
-                    <td class="number">' . ($item['sales_bruto_pc'] == 0 ? '-' : number_format($item['sales_bruto_pc'], 0, '.', ',')) . '</td>
-                    <td class="number">' . ($item['sales_bruto_rp'] == 0 ? '-' : 'Rp ' . number_format($item['sales_bruto_rp'], 0, '.', ',')) . '</td>
-                    <td class="number">' . ($item['cnc_pc'] == 0 ? '-' : number_format($item['cnc_pc'], 0, '.', ',')) . '</td>
-                    <td class="number">' . ($item['cnc_rp'] == 0 ? '-' : 'Rp ' . number_format($item['cnc_rp'], 0, '.', ',')) . '</td>
-                    <td class="number">' . ($item['cnc_percent'] == 0 ? '-' : number_format($item['cnc_percent'], 2, '.', ',') . '%') . '</td>
-                    <td class="number">' . ($item['barang_pc'] == 0 ? '-' : number_format($item['barang_pc'], 0, '.', ',')) . '</td>
-                    <td class="number">' . ($item['barang_rp'] == 0 ? '-' : 'Rp ' . number_format($item['barang_rp'], 0, '.', ',')) . '</td>
-                    <td class="number">' . ($item['barang_percent'] == 0 ? '-' : number_format($item['barang_percent'], 2, '.', ',') . '%') . '</td>
-                    <td class="number">' . ($item['cabang_pabrik_pc'] == 0 ? '-' : number_format($item['cabang_pabrik_pc'], 0, '.', ',')) . '</td>
-                    <td class="number">' . ($item['cabang_pabrik_rp'] == 0 ? '-' : 'Rp ' . number_format($item['cabang_pabrik_rp'], 0, '.', ',')) . '</td>
-                    <td class="number">' . ($item['cabang_pabrik_percent'] == 0 ? '-' : number_format($item['cabang_pabrik_percent'], 2, '.', ',') . '%') . '</td>
+                $html .=
+                    '<tr>
+                    <td style="text-align: right;">' .
+                    $item["no"] .
+                    '</td>
+                    <td>' .
+                    htmlspecialchars($item["branch_code"]) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["sales_bruto_pc"] == 0
+                        ? "-"
+                        : number_format($item["sales_bruto_pc"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["sales_bruto_rp"] == 0
+                        ? "-"
+                        : "Rp " .
+                        number_format(
+                            $item["sales_bruto_rp"],
+                            0,
+                            ".",
+                            ",",
+                        )) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["cnc_pc"] == 0
+                        ? "-"
+                        : number_format($item["cnc_pc"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["cnc_rp"] == 0
+                        ? "-"
+                        : "Rp " . number_format($item["cnc_rp"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["cnc_percent"] == 0
+                        ? "-"
+                        : number_format($item["cnc_percent"], 2, ".", ",") .
+                        "%") .
+                    '</td>
+                    <td class="number">' .
+                    ($item["barang_pc"] == 0
+                        ? "-"
+                        : number_format($item["barang_pc"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["barang_rp"] == 0
+                        ? "-"
+                        : "Rp " .
+                        number_format($item["barang_rp"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["barang_percent"] == 0
+                        ? "-"
+                        : number_format($item["barang_percent"], 2, ".", ",") .
+                        "%") .
+                    '</td>
+                    <td class="number">' .
+                    ($item["cabang_pabrik_pc"] == 0
+                        ? "-"
+                        : number_format(
+                            $item["cabang_pabrik_pc"],
+                            0,
+                            ".",
+                            ",",
+                        )) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["cabang_pabrik_rp"] == 0
+                        ? "-"
+                        : "Rp " .
+                        number_format(
+                            $item["cabang_pabrik_rp"],
+                            0,
+                            ".",
+                            ",",
+                        )) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["cabang_pabrik_percent"] == 0
+                        ? "-"
+                        : number_format(
+                            $item["cabang_pabrik_percent"],
+                            2,
+                            ".",
+                            ",",
+                        ) . "%") .
+                    '</td>
                 </tr>';
             }
 
-            $html .= '
+            $html .=
+                '
                     </tbody>
                 </table>
                 <br>
                 <br>
-                <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
+                <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' .
+                htmlspecialchars(Auth::user()->name) .
+                " (" .
+                date("d/m/Y - H.i") .
+                ' WIB)</div>
             </body>
             </html>';
 
             return response($html, 200, $headers);
         } catch (\Exception $e) {
-            TableHelper::logError('ReturnComparisonController', 'exportExcel', $e, [
-                'month' => $request->get('month'),
-                'year' => $request->get('year')
-            ]);
+            TableHelper::logError(
+                "ReturnComparisonController",
+                "exportExcel",
+                $e,
+                [
+                    "month" => $request->get("month"),
+                    "year" => $request->get("year"),
+                ],
+            );
 
-            return response()->json(['error' => 'Failed to export Excel file'], 500);
+            return response()->json(
+                ["error" => "Failed to export Excel file"],
+                500,
+            );
         }
     }
 
     public function exportPdf(Request $request)
     {
         try {
-            $month = $request->get('month', date('n'));
-            $year = $request->get('year', date('Y'));
+            $month = $request->get("month", date("n"));
+            $year = $request->get("year", date("Y"));
 
             // Validate parameters using TableHelper
-            $validationErrors = TableHelper::validatePeriodParameters($month, $year);
+            $validationErrors = TableHelper::validatePeriodParameters(
+                $month,
+                $year,
+            );
             if (!empty($validationErrors)) {
-                return response()->json(['error' => $validationErrors[0]], 400);
+                return response()->json(["error" => $validationErrors[0]], 400);
             }
 
             // Get all data
-            $dataRequest = new Request(['month' => $month, 'year' => $year]);
+            $dataRequest = new Request(["month" => $month, "year" => $year]);
             $dataResponse = $this->getData($dataRequest);
             $responseData = json_decode($dataResponse->getContent(), true);
 
-            if (isset($responseData['error'])) {
-                return response()->json(['error' => 'Failed to fetch data'], 500);
+            if (isset($responseData["error"])) {
+                return response()->json(
+                    ["error" => "Failed to fetch data"],
+                    500,
+                );
             }
 
-            $data = $responseData['data'];
-            $period = $responseData['period'];
+            $data = $responseData["data"];
+            $period = $responseData["period"];
 
             // Create HTML for PDF
-            $html = '
+            $html =
+                '
             <!DOCTYPE html>
             <html>
             <head>
@@ -577,7 +704,9 @@ class ReturnComparisonController extends Controller
             <body>
                 <div class="header">
                     <div class="title">PERBANDINGAN RETUR RUSAK</div>
-                    <div class="period">Periode ' . htmlspecialchars($period['month_name'] . ' ' . $year) . '</div>
+                    <div class="period">Periode ' .
+                htmlspecialchars($period["month_name"] . " " . $year) .
+                '</div>
                 </div>
                 <table>
                     <thead>
@@ -606,46 +735,136 @@ class ReturnComparisonController extends Controller
                     <tbody>';
 
             foreach ($data as $item) {
-                $html .= '<tr>
-                    <td style="text-align: right;">' . $item['no'] . '</td>
-                    <td>' . htmlspecialchars($item['branch_code']) . '</td>
-                    <td class="number">' . ($item['sales_bruto_pc'] == 0 ? '-' : number_format($item['sales_bruto_pc'], 0, '.', ',')) . '</td>
-                    <td class="number">' . ($item['sales_bruto_rp'] == 0 ? '-' : 'Rp ' . number_format($item['sales_bruto_rp'], 0, '.', ',')) . '</td>
-                    <td class="number">' . ($item['cnc_pc'] == 0 ? '-' : number_format($item['cnc_pc'], 0, '.', ',')) . '</td>
-                    <td class="number">' . ($item['cnc_rp'] == 0 ? '-' : 'Rp ' . number_format($item['cnc_rp'], 0, '.', ',')) . '</td>
-                    <td class="number">' . ($item['cnc_percent'] == 0 ? '-' : number_format($item['cnc_percent'], 2, '.', ',') . '%') . '</td>
-                    <td class="number">' . ($item['barang_pc'] == 0 ? '-' : number_format($item['barang_pc'], 0, '.', ',')) . '</td>
-                    <td class="number">' . ($item['barang_rp'] == 0 ? '-' : 'Rp ' . number_format($item['barang_rp'], 0, '.', ',')) . '</td>
-                    <td class="number">' . ($item['barang_percent'] == 0 ? '-' : number_format($item['barang_percent'], 2, '.', ',') . '%') . '</td>
-                    <td class="number">' . ($item['cabang_pabrik_pc'] == 0 ? '-' : number_format($item['cabang_pabrik_pc'], 0, '.', ',')) . '</td>
-                    <td class="number">' . ($item['cabang_pabrik_rp'] == 0 ? '-' : 'Rp ' . number_format($item['cabang_pabrik_rp'], 0, '.', ',')) . '</td>
-                    <td class="number">' . ($item['cabang_pabrik_percent'] == 0 ? '-' : number_format($item['cabang_pabrik_percent'], 2, '.', ',') . '%') . '</td>
+                $html .=
+                    '<tr>
+                    <td style="text-align: right;">' .
+                    $item["no"] .
+                    '</td>
+                    <td>' .
+                    htmlspecialchars($item["branch_code"]) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["sales_bruto_pc"] == 0
+                        ? "-"
+                        : number_format($item["sales_bruto_pc"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["sales_bruto_rp"] == 0
+                        ? "-"
+                        : "Rp " .
+                        number_format(
+                            $item["sales_bruto_rp"],
+                            0,
+                            ".",
+                            ",",
+                        )) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["cnc_pc"] == 0
+                        ? "-"
+                        : number_format($item["cnc_pc"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["cnc_rp"] == 0
+                        ? "-"
+                        : "Rp " . number_format($item["cnc_rp"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["cnc_percent"] == 0
+                        ? "-"
+                        : number_format($item["cnc_percent"], 2, ".", ",") .
+                        "%") .
+                    '</td>
+                    <td class="number">' .
+                    ($item["barang_pc"] == 0
+                        ? "-"
+                        : number_format($item["barang_pc"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["barang_rp"] == 0
+                        ? "-"
+                        : "Rp " .
+                        number_format($item["barang_rp"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["barang_percent"] == 0
+                        ? "-"
+                        : number_format($item["barang_percent"], 2, ".", ",") .
+                        "%") .
+                    '</td>
+                    <td class="number">' .
+                    ($item["cabang_pabrik_pc"] == 0
+                        ? "-"
+                        : number_format(
+                            $item["cabang_pabrik_pc"],
+                            0,
+                            ".",
+                            ",",
+                        )) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["cabang_pabrik_rp"] == 0
+                        ? "-"
+                        : "Rp " .
+                        number_format(
+                            $item["cabang_pabrik_rp"],
+                            0,
+                            ".",
+                            ",",
+                        )) .
+                    '</td>
+                    <td class="number">' .
+                    ($item["cabang_pabrik_percent"] == 0
+                        ? "-"
+                        : number_format(
+                            $item["cabang_pabrik_percent"],
+                            2,
+                            ".",
+                            ",",
+                        ) . "%") .
+                    '</td>
                 </tr>';
             }
 
-            $html .= '
+            $html .=
+                '
                     </tbody>
                 </table>
                 <br>
                 <br>
-                <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
+                <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' .
+                htmlspecialchars(Auth::user()->name) .
+                " (" .
+                date("d/m/Y - H.i") .
+                ' WIB)</div>
             </body>
             </html>';
 
             // Use DomPDF to generate PDF
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
-            $pdf->setPaper('A4', 'landscape');
+            $pdf->setPaper("A4", "landscape");
 
-            $filename = 'Perbandingan_Retur_Rusak_' . str_replace(' ', '_', $period['month_name'] . '_' . $year) . '.pdf';
+            $filename =
+                "Perbandingan_Retur_Rusak_" .
+                str_replace(" ", "_", $period["month_name"] . "_" . $year) .
+                ".pdf";
 
             return $pdf->download($filename);
         } catch (\Exception $e) {
-            TableHelper::logError('ReturnComparisonController', 'exportPdf', $e, [
-                'month' => $request->get('month'),
-                'year' => $request->get('year')
-            ]);
+            TableHelper::logError(
+                "ReturnComparisonController",
+                "exportPdf",
+                $e,
+                [
+                    "month" => $request->get("month"),
+                    "year" => $request->get("year"),
+                ],
+            );
 
-            return response()->json(['error' => 'Failed to export PDF file'], 500);
+            return response()->json(
+                ["error" => "Failed to export PDF file"],
+                500,
+            );
         }
     }
 }
