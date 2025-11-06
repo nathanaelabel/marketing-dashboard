@@ -19,6 +19,51 @@ document.addEventListener('DOMContentLoaded', function () {
 
     Chart.register(ChartDataLabels, LegendMargin);
 
+    function displayFailedBranchesWarning(failedBranches) {
+        // Get or create warning container
+        let warningContainer = document.getElementById('arFailedBranchesWarning');
+
+        if (!warningContainer) {
+            // Create warning container if it doesn't exist
+            warningContainer = document.createElement('div');
+            warningContainer.id = 'arFailedBranchesWarning';
+            warningContainer.className = 'mt-3 p-3 rounded-lg border-l-4';
+
+            // Insert after chart container
+            const chartContainer = document.getElementById('ar-chart-container');
+            if (chartContainer && chartContainer.parentNode) {
+                chartContainer.parentNode.insertBefore(warningContainer, chartContainer.nextSibling);
+            }
+        }
+
+        // Clear previous content
+        warningContainer.innerHTML = '';
+
+        if (failedBranches && failedBranches.length > 0) {
+            // Show warning with red styling
+            warningContainer.className = 'mt-3 p-3 rounded-lg border-l-4 border-red-500 bg-red-50';
+            warningContainer.innerHTML = `
+                <div class="flex items-start">
+                    <svg class="w-5 h-5 text-red-500 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-red-800">
+                            Cabang <strong>${failedBranches.join(', ')}</strong> gagal diambil. Harap refresh atau coba lagi nanti.
+                        </p>
+                        <p class="text-xs text-red-600 mt-1">
+                            Data yang ditampilkan hanya dari cabang yang berhasil diambil.
+                        </p>
+                    </div>
+                </div>
+            `;
+            warningContainer.style.display = 'block';
+        } else {
+            // Hide warning if no failed branches
+            warningContainer.style.display = 'none';
+        }
+    }
+
     function fetchAndUpdateAccountsReceivableChart() {
         const arTotalEl = document.getElementById('arTotal');
         const arDateEl = document.getElementById('arDate');
@@ -57,6 +102,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 arTotalEl.textContent = data.total;
                 arDateEl.textContent = data.date;
+
+                // Display failed branches warning if any
+                displayFailedBranchesWarning(data.failedBranches);
 
                 const yMax = ChartHelper.calculateYAxisMax(data.datasets, 5000000000);
 

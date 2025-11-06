@@ -27,9 +27,9 @@ class AccountsReceivableController extends Controller
             'pgsql_plb',
             'pgsql_bjm',
             'pgsql_dps',
-            'pgsql_mks',
+            // 'pgsql_mks',
             'pgsql_pku',
-            'pgsql_sby',
+            // 'pgsql_sby',
             'pgsql_ptk',
             'pgsql_crb',
             'pgsql_pdg',
@@ -94,11 +94,12 @@ class AccountsReceivableController extends Controller
 
         // Query all branch databases and collect results
         $allResults = collect();
+        $failedBranches = [];
 
         foreach ($branchConnections as $connection) {
             try {
-                // Set database timeout for this connection
-                DB::connection($connection)->statement("SET statement_timeout = 180000"); // 3 minutes
+                // Set shorter timeout per connection (30 seconds)
+                DB::connection($connection)->statement("SET statement_timeout = 30000"); // 30 seconds
 
                 $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate]);
                 $allResults = $allResults->merge($branchResults);
@@ -106,8 +107,9 @@ class AccountsReceivableController extends Controller
                 // Reset timeout
                 DB::connection($connection)->statement("SET statement_timeout = 0");
             } catch (\Exception $e) {
-                // Log error but continue with other branches
+                // Log error and track failed branch
                 Log::warning("Failed to query {$connection}: " . $e->getMessage());
+                $failedBranches[] = $connection;
 
                 // Try to reset timeout even on error
                 try {
@@ -115,7 +117,15 @@ class AccountsReceivableController extends Controller
                 } catch (\Exception $resetError) {
                     // Ignore reset errors
                 }
+
+                // Continue to next branch without breaking
+                continue;
             }
+        }
+
+        // Log summary of failed branches if any
+        if (!empty($failedBranches)) {
+            Log::info("Accounts Receivable - Failed branches: " . implode(', ', $failedBranches));
         }
 
         $queryResult = $allResults->map(function ($item) {
@@ -128,6 +138,16 @@ class AccountsReceivableController extends Controller
         });
 
         $formattedData = ChartHelper::formatAccountsReceivableData($queryResult, $currentDate);
+
+        // Add failed branches information with abbreviations
+        $failedBranchAbbreviations = [];
+        foreach ($failedBranches as $connection) {
+            // Convert connection name to abbreviation (e.g., pgsql_jkt -> JKT)
+            $abbr = strtoupper(str_replace('pgsql_', '', $connection));
+            $failedBranchAbbreviations[] = $abbr;
+        }
+        
+        $formattedData['failedBranches'] = $failedBranchAbbreviations;
 
         return response()->json($formattedData);
     }
@@ -216,11 +236,12 @@ class AccountsReceivableController extends Controller
 
         // Query all branch databases and collect results
         $allResults = collect();
+        $failedBranches = [];
 
         foreach ($branchConnections as $connection) {
             try {
-                // Set database timeout for this connection
-                DB::connection($connection)->statement("SET statement_timeout = 300000"); // 5 minutes
+                // Set timeout per connection (60 seconds for export)
+                DB::connection($connection)->statement("SET statement_timeout = 60000"); // 60 seconds
 
                 $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate]);
                 $allResults = $allResults->merge($branchResults);
@@ -228,8 +249,9 @@ class AccountsReceivableController extends Controller
                 // Reset timeout
                 DB::connection($connection)->statement("SET statement_timeout = 0");
             } catch (\Exception $e) {
-                // Log error but continue with other branches
-                Log::warning("Failed to query {$connection}: " . $e->getMessage());
+                // Log error and track failed branch
+                Log::warning("Export Excel - Failed to query {$connection}: " . $e->getMessage());
+                $failedBranches[] = $connection;
 
                 // Try to reset timeout even on error
                 try {
@@ -237,7 +259,15 @@ class AccountsReceivableController extends Controller
                 } catch (\Exception $resetError) {
                     // Ignore reset errors
                 }
+
+                // Continue to next branch without breaking
+                continue;
             }
+        }
+
+        // Log summary of failed branches if any
+        if (!empty($failedBranches)) {
+            Log::info("Export Excel - Failed branches: " . implode(', ', $failedBranches));
         }
 
         $queryResult = $allResults->map(function ($item) {
@@ -473,11 +503,12 @@ class AccountsReceivableController extends Controller
 
         // Query all branch databases and collect results
         $allResults = collect();
+        $failedBranches = [];
 
         foreach ($branchConnections as $connection) {
             try {
-                // Set database timeout for this connection
-                DB::connection($connection)->statement("SET statement_timeout = 300000"); // 5 minutes
+                // Set timeout per connection (60 seconds for export)
+                DB::connection($connection)->statement("SET statement_timeout = 60000"); // 60 seconds
 
                 $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate]);
                 $allResults = $allResults->merge($branchResults);
@@ -485,8 +516,9 @@ class AccountsReceivableController extends Controller
                 // Reset timeout
                 DB::connection($connection)->statement("SET statement_timeout = 0");
             } catch (\Exception $e) {
-                // Log error but continue with other branches
-                Log::warning("Failed to query {$connection}: " . $e->getMessage());
+                // Log error and track failed branch
+                Log::warning("Export PDF - Failed to query {$connection}: " . $e->getMessage());
+                $failedBranches[] = $connection;
 
                 // Try to reset timeout even on error
                 try {
@@ -494,7 +526,15 @@ class AccountsReceivableController extends Controller
                 } catch (\Exception $resetError) {
                     // Ignore reset errors
                 }
+
+                // Continue to next branch without breaking
+                continue;
             }
+        }
+
+        // Log summary of failed branches if any
+        if (!empty($failedBranches)) {
+            Log::info("Export PDF - Failed branches: " . implode(', ', $failedBranches));
         }
 
         $queryResult = $allResults->map(function ($item) {

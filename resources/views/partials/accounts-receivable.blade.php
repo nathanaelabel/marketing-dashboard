@@ -23,6 +23,15 @@
                 <div class="text-right">
                     <p id="arDate" class="text-sm text-gray-500"></p>
                 </div>
+                <!-- Type Selector -->
+                <div>
+                    <label for="ar-type-select" class="block text-xs font-medium text-gray-500 mb-1">Jenis</label>
+                    <select id="ar-type-select"
+                        class="pl-3 pr-8 py-1.5 w-24 text-sm rounded-md border border-gray-300 shadow-sm focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 focus:ring-opacity-50">
+                        <option value="OVERDUE">Overdue</option>
+                        <option value="ALL">All</option>
+                    </select>
+                </div>
                 <!-- Three-dots Menu (Horizontal) -->
                 <div class="relative">
                     <button type="button" id="arMenuButton"
