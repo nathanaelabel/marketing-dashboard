@@ -27,23 +27,24 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize Flatpickr
     let startDatePicker, endDatePicker;
 
-    const today = new Date();
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-
-    // Set initial values before initializing flatpickr
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    endDateFilter.value = `${yyyy}-${mm}-${dd}`;
-
     // Use yesterday (H-1) as max date since dashboard is updated daily at night
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
+    
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    // Set initial values before initializing flatpickr - use yesterday
+    const yyyy = yesterday.getFullYear();
+    const mm = String(yesterday.getMonth() + 1).padStart(2, '0');
+    const dd = String(yesterday.getDate()).padStart(2, '0');
+    endDateFilter.value = `${yyyy}-${mm}-${dd}`;
 
     endDatePicker = flatpickr(endDateFilter, {
         altInput: true,
         altFormat: "d-m-Y",
         dateFormat: "Y-m-d",
+        defaultDate: yesterday,
         maxDate: yesterday,
         onChange: function (selectedDates, dateStr, instance) {
             if (startDatePicker) {
