@@ -6,12 +6,34 @@ use App\Helpers\ChartHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class AccountsReceivableController extends Controller
 {
     public function data(Request $request)
     {
         $currentDate = now()->toDateString();
+
+        // Define all branch database connections
+        $branchConnections = [
+            'pgsql_jkt',
+            'pgsql_bdg',
+            'pgsql_smg',
+            'pgsql_mdn',
+            'pgsql_plb',
+            'pgsql_bjm',
+            'pgsql_dps',
+            'pgsql_mks',
+            'pgsql_pku',
+            'pgsql_sby',
+            'pgsql_ptk',
+            'pgsql_crb',
+            'pgsql_pdg',
+            'pgsql_pwt',
+            'pgsql_bks',
+            'pgsql_lmp',
+            'pgsql_trg',
+        ];
 
         // Use CTE for better performance - pre-calculate payments in one pass
         $sql = "
@@ -72,15 +94,27 @@ class AccountsReceivableController extends Controller
         ORDER BY total_overdue DESC
         ";
 
-        $queryResult = collect(DB::select($sql, [$currentDate, $currentDate]))
-            ->map(function ($item) {
-                $item->overdue_1_30 = (float) $item->overdue_1_30;
-                $item->overdue_31_60 = (float) $item->overdue_31_60;
-                $item->overdue_61_90 = (float) $item->overdue_61_90;
-                $item->overdue_90_plus = (float) $item->overdue_90_plus;
-                $item->total_overdue = (float) $item->total_overdue;
-                return $item;
-            });
+        // Query all branch databases and collect results
+        $allResults = collect();
+
+        foreach ($branchConnections as $connection) {
+            try {
+                $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate]);
+                $allResults = $allResults->merge($branchResults);
+            } catch (\Exception $e) {
+                // Log error but continue with other branches
+                Log::warning("Failed to query {$connection}: " . $e->getMessage());
+            }
+        }
+
+        $queryResult = $allResults->map(function ($item) {
+            $item->overdue_1_30 = (float) $item->overdue_1_30;
+            $item->overdue_31_60 = (float) $item->overdue_31_60;
+            $item->overdue_61_90 = (float) $item->overdue_61_90;
+            $item->overdue_90_plus = (float) $item->overdue_90_plus;
+            $item->total_overdue = (float) $item->total_overdue;
+            return $item;
+        });
 
         $formattedData = ChartHelper::formatAccountsReceivableData($queryResult, $currentDate);
 
@@ -91,6 +125,27 @@ class AccountsReceivableController extends Controller
     {
         $currentDate = now()->toDateString();
 
+        // Define all branch database connections
+        $branchConnections = [
+            'pgsql_jkt',
+            'pgsql_bdg',
+            'pgsql_smg',
+            'pgsql_mdn',
+            'pgsql_plb',
+            'pgsql_bjm',
+            'pgsql_dps',
+            'pgsql_mks',
+            'pgsql_pku',
+            'pgsql_sby',
+            'pgsql_ptk',
+            'pgsql_crb',
+            'pgsql_pdg',
+            'pgsql_pwt',
+            'pgsql_bks',
+            'pgsql_lmp',
+            'pgsql_trg',
+        ];
+
         // Use CTE for better performance - pre-calculate payments in one pass
         $sql = "
         WITH payment_summary AS (
@@ -150,15 +205,27 @@ class AccountsReceivableController extends Controller
         ORDER BY total_overdue DESC
         ";
 
-        $queryResult = collect(DB::select($sql, [$currentDate, $currentDate]))
-            ->map(function ($item) {
-                $item->overdue_1_30 = (float) $item->overdue_1_30;
-                $item->overdue_31_60 = (float) $item->overdue_31_60;
-                $item->overdue_61_90 = (float) $item->overdue_61_90;
-                $item->overdue_90_plus = (float) $item->overdue_90_plus;
-                $item->total_overdue = (float) $item->total_overdue;
-                return $item;
-            });
+        // Query all branch databases and collect results
+        $allResults = collect();
+
+        foreach ($branchConnections as $connection) {
+            try {
+                $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate]);
+                $allResults = $allResults->merge($branchResults);
+            } catch (\Exception $e) {
+                // Log error but continue with other branches
+                Log::warning("Failed to query {$connection}: " . $e->getMessage());
+            }
+        }
+
+        $queryResult = $allResults->map(function ($item) {
+            $item->overdue_1_30 = (float) $item->overdue_1_30;
+            $item->overdue_31_60 = (float) $item->overdue_31_60;
+            $item->overdue_61_90 = (float) $item->overdue_61_90;
+            $item->overdue_90_plus = (float) $item->overdue_90_plus;
+            $item->total_overdue = (float) $item->total_overdue;
+            return $item;
+        });
 
         // Calculate totals
         $total_1_30 = $queryResult->sum('overdue_1_30');
@@ -304,6 +371,27 @@ class AccountsReceivableController extends Controller
     {
         $currentDate = now()->toDateString();
 
+        // Define all branch database connections
+        $branchConnections = [
+            'pgsql_jkt',
+            'pgsql_bdg',
+            'pgsql_smg',
+            'pgsql_mdn',
+            'pgsql_plb',
+            'pgsql_bjm',
+            'pgsql_dps',
+            'pgsql_mks',
+            'pgsql_pku',
+            'pgsql_sby',
+            'pgsql_ptk',
+            'pgsql_crb',
+            'pgsql_pdg',
+            'pgsql_pwt',
+            'pgsql_bks',
+            'pgsql_lmp',
+            'pgsql_trg',
+        ];
+
         // Use CTE for better performance - pre-calculate payments in one pass
         $sql = "
         WITH payment_summary AS (
@@ -363,15 +451,27 @@ class AccountsReceivableController extends Controller
         ORDER BY total_overdue DESC
         ";
 
-        $queryResult = collect(DB::select($sql, [$currentDate, $currentDate]))
-            ->map(function ($item) {
-                $item->overdue_1_30 = (float) $item->overdue_1_30;
-                $item->overdue_31_60 = (float) $item->overdue_31_60;
-                $item->overdue_61_90 = (float) $item->overdue_61_90;
-                $item->overdue_90_plus = (float) $item->overdue_90_plus;
-                $item->total_overdue = (float) $item->total_overdue;
-                return $item;
-            });
+        // Query all branch databases and collect results
+        $allResults = collect();
+
+        foreach ($branchConnections as $connection) {
+            try {
+                $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate]);
+                $allResults = $allResults->merge($branchResults);
+            } catch (\Exception $e) {
+                // Log error but continue with other branches
+                Log::warning("Failed to query {$connection}: " . $e->getMessage());
+            }
+        }
+
+        $queryResult = $allResults->map(function ($item) {
+            $item->overdue_1_30 = (float) $item->overdue_1_30;
+            $item->overdue_31_60 = (float) $item->overdue_31_60;
+            $item->overdue_61_90 = (float) $item->overdue_61_90;
+            $item->overdue_90_plus = (float) $item->overdue_90_plus;
+            $item->total_overdue = (float) $item->total_overdue;
+            return $item;
+        });
 
         // Calculate totals
         $total_1_30 = $queryResult->sum('overdue_1_30');
