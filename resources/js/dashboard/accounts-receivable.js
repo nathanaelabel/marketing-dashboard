@@ -14,6 +14,11 @@ document.addEventListener('DOMContentLoaded', function () {
         onChange: function (selectedDates, dateStr, instance) {
             // Refresh chart when date changes
             fetchAndUpdateAccountsReceivableChart();
+            
+            // Dispatch custom event to notify sales metrics to refresh pie chart
+            document.dispatchEvent(new CustomEvent('ar-date-changed', {
+                detail: { date: dateStr }
+            }));
         }
     });
 
