@@ -247,6 +247,8 @@ class ChartHelper
             'PWM Pontianak' => 'PTK',
             'PWM Purwokerto' => 'PWT',
             'PWM Padang' => 'PDG',
+            'PT. Putra Mandiri Damai' => 'MKS',
+            'PT. CIPTA ARDANA KENCANA' => 'TGR',
         ];
 
         // Return the abbreviation if found, otherwise return the original name
