@@ -12,6 +12,10 @@ class AccountsReceivableController extends Controller
 {
     public function data(Request $request)
     {
+        // Increase execution time limit for querying multiple databases
+        set_time_limit(180); // 3 minutes
+        ini_set('max_execution_time', 180);
+
         $currentDate = now()->toDateString();
 
         // Define all branch database connections
@@ -93,11 +97,24 @@ class AccountsReceivableController extends Controller
 
         foreach ($branchConnections as $connection) {
             try {
+                // Set database timeout for this connection
+                DB::connection($connection)->statement("SET statement_timeout = 180000"); // 3 minutes
+
                 $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate]);
                 $allResults = $allResults->merge($branchResults);
+
+                // Reset timeout
+                DB::connection($connection)->statement("SET statement_timeout = 0");
             } catch (\Exception $e) {
                 // Log error but continue with other branches
                 Log::warning("Failed to query {$connection}: " . $e->getMessage());
+
+                // Try to reset timeout even on error
+                try {
+                    DB::connection($connection)->statement("SET statement_timeout = 0");
+                } catch (\Exception $resetError) {
+                    // Ignore reset errors
+                }
             }
         }
 
@@ -117,6 +134,10 @@ class AccountsReceivableController extends Controller
 
     public function exportExcel(Request $request)
     {
+        // Increase execution time limit for export operations
+        set_time_limit(300); // 5 minutes
+        ini_set('max_execution_time', 300);
+
         $currentDate = now()->toDateString();
 
         // Define all branch database connections
@@ -198,11 +219,24 @@ class AccountsReceivableController extends Controller
 
         foreach ($branchConnections as $connection) {
             try {
+                // Set database timeout for this connection
+                DB::connection($connection)->statement("SET statement_timeout = 300000"); // 5 minutes
+
                 $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate]);
                 $allResults = $allResults->merge($branchResults);
+
+                // Reset timeout
+                DB::connection($connection)->statement("SET statement_timeout = 0");
             } catch (\Exception $e) {
                 // Log error but continue with other branches
                 Log::warning("Failed to query {$connection}: " . $e->getMessage());
+
+                // Try to reset timeout even on error
+                try {
+                    DB::connection($connection)->statement("SET statement_timeout = 0");
+                } catch (\Exception $resetError) {
+                    // Ignore reset errors
+                }
             }
         }
 
@@ -357,6 +391,10 @@ class AccountsReceivableController extends Controller
 
     public function exportPdf(Request $request)
     {
+        // Increase execution time limit for export operations
+        set_time_limit(300); // 5 minutes
+        ini_set('max_execution_time', 300);
+
         $currentDate = now()->toDateString();
 
         // Define all branch database connections
@@ -438,11 +476,24 @@ class AccountsReceivableController extends Controller
 
         foreach ($branchConnections as $connection) {
             try {
+                // Set database timeout for this connection
+                DB::connection($connection)->statement("SET statement_timeout = 300000"); // 5 minutes
+
                 $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate]);
                 $allResults = $allResults->merge($branchResults);
+
+                // Reset timeout
+                DB::connection($connection)->statement("SET statement_timeout = 0");
             } catch (\Exception $e) {
                 // Log error but continue with other branches
                 Log::warning("Failed to query {$connection}: " . $e->getMessage());
+
+                // Try to reset timeout even on error
+                try {
+                    DB::connection($connection)->statement("SET statement_timeout = 0");
+                } catch (\Exception $resetError) {
+                    // Ignore reset errors
+                }
             }
         }
 

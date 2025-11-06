@@ -95,6 +95,14 @@ document.addEventListener('DOMContentLoaded', function () {
                                             label += formattedValue;
                                         }
                                         return label;
+                                    },
+                                    footer: function (tooltipItems) {
+                                        // Calculate total from all datasets for this branch
+                                        let total = 0;
+                                        tooltipItems.forEach(function (tooltipItem) {
+                                            total += tooltipItem.parsed.y;
+                                        });
+                                        return 'Total: ' + Math.round(total).toLocaleString('id-ID');
                                     }
                                 }
                             },
