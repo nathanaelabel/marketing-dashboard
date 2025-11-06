@@ -184,7 +184,7 @@ class ChartHelper
         return $suggestedMax;
     }
 
-    public static function formatAccountsReceivableData($data, $currentDate)
+    public static function formatAccountsReceivableData($data, $currentDate, $filter = 'overdue')
     {
         $labels = $data->pluck('branch_name')->map(function ($name) {
             return self::getBranchAbbreviation($name);
@@ -192,38 +192,53 @@ class ChartHelper
 
         $totalOverdue = $data->sum('total_overdue');
 
-        $datasets = [
-            [
-                'label' => '1 - 30 Days',
-                'data' => $data->pluck('overdue_1_30')->all(),
-                'backgroundColor' => 'rgba(22, 220, 160, 0.8)',
-                'borderRadius' => 5,
-            ],
-            [
-                'label' => '31 - 60 Days',
-                'data' => $data->pluck('overdue_31_60')->all(),
-                'backgroundColor' => 'rgba(139, 92, 246, 0.8)',
-                'borderRadius' => 5,
-            ],
-            [
-                'label' => '61 - 90 Days',
-                'data' => $data->pluck('overdue_61_90')->all(),
-                'backgroundColor' => 'rgba(251, 146, 60, 0.8)',
-                'borderRadius' => 5,
-            ],
-            [
-                'label' => '> 90 Days',
-                'data' => $data->pluck('overdue_90_plus')->all(),
-                'backgroundColor' => 'rgba(244, 63, 94, 0.8)',
-                'borderRadius' => 5,
-            ],
-        ];
+        // Build datasets based on filter type
+        if ($filter === 'all') {
+            // All: Show 0-104 Days (green), 105-120 Days (yellow), >120 Days (red)
+            $datasets = [
+                [
+                    'label' => '0 - 104 Hari',
+                    'data' => $data->pluck('range_0_104')->all(),
+                    'backgroundColor' => 'rgba(34, 197, 94, 0.8)', // Green
+                    'borderRadius' => 5,
+                ],
+                [
+                    'label' => '105 - 120 Hari',
+                    'data' => $data->pluck('range_105_120')->all(),
+                    'backgroundColor' => 'rgba(234, 179, 8, 0.8)', // Yellow
+                    'borderRadius' => 5,
+                ],
+                [
+                    'label' => '> 120 Hari',
+                    'data' => $data->pluck('range_120_plus')->all(),
+                    'backgroundColor' => 'rgba(239, 68, 68, 0.8)', // Red
+                    'borderRadius' => 5,
+                ],
+            ];
+        } else {
+            // Overdue: Show only 105-120 Days (yellow) and >120 Days (red)
+            $datasets = [
+                [
+                    'label' => '105 - 120 Hari',
+                    'data' => $data->pluck('range_105_120')->all(),
+                    'backgroundColor' => 'rgba(234, 179, 8, 0.8)', // Yellow
+                    'borderRadius' => 5,
+                ],
+                [
+                    'label' => '> 120 Hari',
+                    'data' => $data->pluck('range_120_plus')->all(),
+                    'backgroundColor' => 'rgba(239, 68, 68, 0.8)', // Red
+                    'borderRadius' => 5,
+                ],
+            ];
+        }
 
         return [
             'labels' => $labels,
             'datasets' => $datasets,
             'total' => 'Rp ' . number_format($totalOverdue, 0, ',', '.'),
             'date' => \Carbon\Carbon::parse($currentDate)->format('l, d F Y'),
+            'filter' => $filter,
         ];
     }
 
@@ -247,6 +262,8 @@ class ChartHelper
             'PWM Pontianak' => 'PTK',
             'PWM Purwokerto' => 'PWT',
             'PWM Padang' => 'PDG',
+            'PT. Putra Mandiri Damai' => 'MKS',
+            'PT. CIPTA ARDANA KENCANA' => 'TGR',
         ];
 
         // Return the abbreviation if found, otherwise return the original name
