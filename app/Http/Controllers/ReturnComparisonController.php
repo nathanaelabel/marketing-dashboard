@@ -17,6 +17,9 @@ class ReturnComparisonController extends Controller
     public function getData(Request $request)
     {
         try {
+            // Increase execution time limit for complex queries
+            set_time_limit(120);
+
             $month = $request->get('month', date('n'));
             $year = $request->get('year', date('Y'));
 
@@ -80,10 +83,12 @@ class ReturnComparisonController extends Controller
         } catch (\Exception $e) {
             TableHelper::logError('ReturnComparisonController', 'getData', $e, [
                 'month' => $request->get('month'),
-                'year' => $request->get('year')
+                'year' => $request->get('year'),
+                'message' => $e->getMessage(),
+                'line' => $e->getLine()
             ]);
 
-            return TableHelper::errorResponse();
+            return TableHelper::errorResponse('Failed to load return comparison data: ' . $e->getMessage());
         }
     }
 
@@ -150,7 +155,7 @@ class ReturnComparisonController extends Controller
             INNER JOIN m_inout mio ON miol.m_inout_id = mio.m_inout_id
             INNER JOIN c_orderline col ON miol.c_orderline_id = col.c_orderline_id
             INNER JOIN c_order co ON col.c_order_id = co.c_order_id
-            LEFT OUTER JOIN c_invoiceline cil ON col.c_orderline_id = col.c_orderline_id
+            LEFT OUTER JOIN c_invoiceline cil ON cil.c_orderline_id = col.c_orderline_id
             INNER JOIN ad_org org ON miol.ad_org_id = org.ad_org_id
             WHERE org.name = ?
                 AND co.documentno LIKE 'SOC%'

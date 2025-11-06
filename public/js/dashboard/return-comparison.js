@@ -17,6 +17,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // Disable pagination for this table
         disablePagination: true,
 
+        // Increase timeout for complex queries (17 branches * 4 queries each)
+        requestTimeout: 120000, // 120 seconds
+
         renderTable: function (data) {
             if (!data.data || data.data.length === 0) {
                 this.elements.tableBody.innerHTML = '<tr><td colspan="13" class="px-3 py-4 text-center text-gray-500">No data available</td></tr>';
