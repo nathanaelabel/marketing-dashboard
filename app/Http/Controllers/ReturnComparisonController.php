@@ -31,29 +31,27 @@ class ReturnComparisonController extends Controller
 
             // Get all branch codes from TableHelper
             $branchMapping = TableHelper::getBranchMapping();
-            $branchCodes = TableHelper::getBranchCodes();
+
+            // Get all data in single queries (optimized)
+            $salesBrutoData = $this->getAllSalesBruto($month, $year);
+            $cncData = $this->getAllCNCData($month, $year);
+            $barangData = $this->getAllBarangData($month, $year);
+            $cabangPabrikData = $this->getAllCabangPabrikData($month, $year);
 
             $data = [];
             $no = 1;
 
-            // Iterate through each branch
+            // Iterate through each branch and combine data
             foreach ($branchMapping as $branchName => $branchCode) {
-                // Get Sales Bruto
-                $salesBruto = $this->getSalesBruto($branchName, $month, $year);
-
-                // Get CNC FX009 data
-                $cncData = $this->getCNCData($branchName, $month, $year);
-
-                // Get Barang FX016 data
-                $barangData = $this->getBarangData($branchName, $month, $year);
-
-                // Get Cabang Ke Pabrik data
-                $cabangPabrikData = $this->getCabangPabrikData($branchName, $month, $year);
+                $salesBruto = $salesBrutoData[$branchName] ?? ['pc' => 0, 'rp' => 0];
+                $cnc = $cncData[$branchName] ?? ['pc' => 0, 'rp' => 0];
+                $barang = $barangData[$branchName] ?? ['pc' => 0, 'rp' => 0];
+                $cabangPabrik = $cabangPabrikData[$branchName] ?? ['pc' => 0, 'rp' => 0];
 
                 // Calculate percentages
-                $cncPercent = $salesBruto['rp'] > 0 ? ($cncData['rp'] / $salesBruto['rp']) * 100 : 0;
-                $barangPercent = $salesBruto['rp'] > 0 ? ($barangData['rp'] / $salesBruto['rp']) * 100 : 0;
-                $cabangPabrikPercent = $salesBruto['rp'] > 0 ? ($cabangPabrikData['rp'] / $salesBruto['rp']) * 100 : 0;
+                $cncPercent = $salesBruto['rp'] > 0 ? ($cnc['rp'] / $salesBruto['rp']) * 100 : 0;
+                $barangPercent = $salesBruto['rp'] > 0 ? ($barang['rp'] / $salesBruto['rp']) * 100 : 0;
+                $cabangPabrikPercent = $salesBruto['rp'] > 0 ? ($cabangPabrik['rp'] / $salesBruto['rp']) * 100 : 0;
 
                 $data[] = [
                     'no' => $no++,
@@ -61,14 +59,14 @@ class ReturnComparisonController extends Controller
                     'branch_name' => $branchName,
                     'sales_bruto_pc' => $salesBruto['pc'],
                     'sales_bruto_rp' => $salesBruto['rp'],
-                    'cnc_pc' => $cncData['pc'],
-                    'cnc_rp' => $cncData['rp'],
+                    'cnc_pc' => $cnc['pc'],
+                    'cnc_rp' => $cnc['rp'],
                     'cnc_percent' => $cncPercent,
-                    'barang_pc' => $barangData['pc'],
-                    'barang_rp' => $barangData['rp'],
+                    'barang_pc' => $barang['pc'],
+                    'barang_rp' => $barang['rp'],
                     'barang_percent' => $barangPercent,
-                    'cabang_pabrik_pc' => $cabangPabrikData['pc'],
-                    'cabang_pabrik_rp' => $cabangPabrikData['rp'],
+                    'cabang_pabrik_pc' => $cabangPabrik['pc'],
+                    'cabang_pabrik_rp' => $cabangPabrik['rp'],
                     'cabang_pabrik_percent' => $cabangPabrikPercent,
                 ];
             }
@@ -90,6 +88,40 @@ class ReturnComparisonController extends Controller
 
             return TableHelper::errorResponse('Failed to load return comparison data: ' . $e->getMessage());
         }
+    }
+
+    private function getAllSalesBruto($month, $year)
+    {
+        $query = "
+            SELECT
+                org.name as branch_name,
+                COALESCE(SUM(invl.qtyinvoiced), 0) as total_qty,
+                COALESCE(SUM(invl.linenetamt), 0) as total_rp
+            FROM c_invoice inv
+            INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
+            INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+            WHERE inv.ad_client_id = 1000001
+                AND inv.issotrx = 'Y'
+                AND invl.qtyinvoiced > 0
+                AND invl.linenetamt > 0
+                AND inv.docstatus IN ('CO', 'CL')
+                AND inv.isactive = 'Y'
+                AND EXTRACT(year FROM inv.dateinvoiced) = ?
+                AND EXTRACT(month FROM inv.dateinvoiced) = ?
+            GROUP BY org.name
+        ";
+
+        $results = DB::select($query, [$year, $month]);
+
+        $data = [];
+        foreach ($results as $result) {
+            $data[$result->branch_name] = [
+                'pc' => (float)$result->total_qty,
+                'rp' => (float)$result->total_rp
+            ];
+        }
+
+        return $data;
     }
 
     private function getSalesBruto($branchName, $month, $year)
@@ -120,6 +152,37 @@ class ReturnComparisonController extends Controller
         ];
     }
 
+    private function getAllCNCData($month, $year)
+    {
+        $query = "
+            SELECT
+                org.name as branch_name,
+                COALESCE(SUM(d.qtyinvoiced), 0) as total_qty,
+                COALESCE(SUM(d.linenetamt), 0) as total_rp
+            FROM c_invoiceline d
+            INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+            INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+            WHERE h.documentno LIKE 'CNC%'
+                AND h.docstatus IN ('CO', 'CL')
+                AND h.issotrx = 'Y'
+                AND EXTRACT(year FROM h.dateinvoiced) = ?
+                AND EXTRACT(month FROM h.dateinvoiced) = ?
+            GROUP BY org.name
+        ";
+
+        $results = DB::select($query, [$year, $month]);
+
+        $data = [];
+        foreach ($results as $result) {
+            $data[$result->branch_name] = [
+                'pc' => (float)$result->total_qty,
+                'rp' => (float)$result->total_rp
+            ];
+        }
+
+        return $data;
+    }
+
     private function getCNCData($branchName, $month, $year)
     {
         $query = "
@@ -143,6 +206,45 @@ class ReturnComparisonController extends Controller
             'pc' => $result ? (float)$result->total_qty : 0,
             'rp' => $result ? (float)$result->total_rp : 0
         ];
+    }
+
+    private function getAllBarangData($month, $year)
+    {
+        $query = "
+            SELECT
+                org.name as branch_name,
+                COALESCE(SUM(miol.movementqty), 0) as total_qty,
+                COALESCE(SUM(col.priceactual * miol.movementqty), 0) as total_nominal
+            FROM m_inoutline miol
+            INNER JOIN m_inout mio ON miol.m_inout_id = mio.m_inout_id
+            INNER JOIN c_orderline col ON miol.c_orderline_id = col.c_orderline_id
+            INNER JOIN c_order co ON col.c_order_id = co.c_order_id
+            INNER JOIN ad_org org ON miol.ad_org_id = org.ad_org_id
+            WHERE co.documentno LIKE 'SOC%'
+                AND co.docstatus = 'CL'
+                AND mio.documentno LIKE 'SJC%'
+                AND mio.docstatus IN ('CO', 'CL')
+                AND EXTRACT(year FROM mio.movementdate) = ?
+                AND EXTRACT(month FROM mio.movementdate) = ?
+                AND NOT EXISTS (
+                    SELECT 1 
+                    FROM c_invoiceline cil 
+                    WHERE cil.m_inoutline_id = miol.m_inoutline_id
+                )
+            GROUP BY org.name
+        ";
+
+        $results = DB::select($query, [$year, $month]);
+
+        $data = [];
+        foreach ($results as $result) {
+            $data[$result->branch_name] = [
+                'pc' => (float)$result->total_qty,
+                'rp' => (float)$result->total_nominal
+            ];
+        }
+
+        return $data;
     }
 
     private function getBarangData($branchName, $month, $year)
@@ -176,6 +278,41 @@ class ReturnComparisonController extends Controller
             'pc' => $result ? (float)$result->total_qty : 0,
             'rp' => $result ? (float)$result->total_nominal : 0
         ];
+    }
+
+    private function getAllCabangPabrikData($month, $year)
+    {
+        $query = "
+            SELECT
+                org.name as branch_name,
+                COALESCE(SUM(invl.qtyinvoiced), 0) as total_qty,
+                COALESCE(SUM(invl.linenetamt), 0) as total_nominal
+            FROM c_invoiceline invl
+            INNER JOIN m_inoutline shpln ON invl.m_inoutline_id = shpln.m_inoutline_id
+            INNER JOIN m_inout shp ON shpln.m_inout_id = shp.m_inout_id
+            INNER JOIN c_invoice inv ON invl.c_invoice_id = inv.c_invoice_id
+            INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+            WHERE inv.issotrx = 'N'
+                AND inv.docstatus IN ('CO','CL')
+                AND inv.isactive = 'Y'
+                AND shp.docstatus IN ('CO', 'CL')
+                AND (inv.documentno LIKE 'DNS-%' OR inv.documentno LIKE 'NCS-%')
+                AND EXTRACT(year FROM inv.dateinvoiced) = ?
+                AND EXTRACT(month FROM inv.dateinvoiced) = ?
+            GROUP BY org.name
+        ";
+
+        $results = DB::select($query, [$year, $month]);
+
+        $data = [];
+        foreach ($results as $result) {
+            $data[$result->branch_name] = [
+                'pc' => (float)$result->total_qty,
+                'rp' => (float)$result->total_nominal
+            ];
+        }
+
+        return $data;
     }
 
     private function getCabangPabrikData($branchName, $month, $year)
