@@ -166,7 +166,7 @@ class ReturnComparisonController extends Controller
                 AND NOT EXISTS (
                     SELECT 1 
                     FROM c_invoiceline cil 
-                    WHERE cil.c_orderline_id = col.c_orderline_id
+                    WHERE cil.m_inoutline_id = miol.m_inoutline_id
                 )
         ";
 
