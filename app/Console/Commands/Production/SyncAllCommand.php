@@ -75,12 +75,12 @@ class SyncAllCommand extends Command
                     $params = ['model' => $modelName, '--connection' => $connection];
                     $tempFailedSyncs = [];
                     if (!$this->callWithRetries('app:sync-table', $params, 3, $tempFailedSyncs, 'app:sync-table', $modelName)) {
-                        $this->error("Critical failure syncing single-source table {$modelName}. Aborting process.");
-                        Log::error("SyncAll: Critical failure in Step 1", [
+                        $this->warn("Failed to sync single-source table {$modelName} after 3 attempts. Skipping and continuing...");
+                        Log::warning("SyncAll: Skipping failed table in Step 1", [
                             'model' => $modelName,
                             'connection' => $connection
                         ]);
-                        return Command::FAILURE;
+                        continue; // Skip to next table instead of aborting
                     }
                 }
             }
@@ -106,7 +106,8 @@ class SyncAllCommand extends Command
                     }
                     $params = ['model' => $modelName, '--connection' => $connection];
                     if (!$this->callWithRetries('app:sync-table', $params, 3, $connectionFailedSyncs, 'app:sync-table', $modelName)) {
-                        continue 2; // Skip to the next connection in the outer loop
+                        $this->warn("Failed to sync {$modelName} from {$connection}. Skipping to next table...");
+                        continue; // Skip to the next table in the current connection
                     }
                 }
             }
@@ -118,8 +119,9 @@ class SyncAllCommand extends Command
                 }
                 // Use production sync for these tables
                 $params = ['model' => $tableInfo['model'], '--connection' => $connection];
-                if (!$this->callWithRetries('app:production-sync-adempiere-table', $params, 3, $connectionFailedSyncs, 'app:production-sync-adempiere-table', $tableInfo['model'])) {
-                    continue 2; // Skip to the next connection in the outer loop
+                if (!$this->callWithRetries('app:sync-table', $params, 3, $connectionFailedSyncs, 'app:sync-table', $tableInfo['model'])) {
+                    $this->warn("Failed to sync {$tableInfo['model']} from {$connection}. Skipping to next table...");
+                    continue; // Skip to the next table in the current connection
                 }
             }
 
@@ -129,8 +131,9 @@ class SyncAllCommand extends Command
                     continue;
                 }
                 $params = ['model' => $modelName, '--connection' => $connection];
-                if (!$this->callWithRetries('app:production-sync-adempiere-table', $params, 3, $connectionFailedSyncs, 'app:production-sync-adempiere-table', $modelName)) {
-                    continue 2; // Skip to the next connection in the outer loop
+                if (!$this->callWithRetries('app:sync-table', $params, 3, $connectionFailedSyncs, 'app:sync-table', $modelName)) {
+                    $this->warn("Failed to sync {$modelName} from {$connection}. Skipping to next table...");
+                    continue; // Skip to the next table in the current connection
                 }
             }
 
@@ -153,13 +156,14 @@ class SyncAllCommand extends Command
                     $this->line('');
                     $this->comment("Retrying: {$failedSync['command']} for model {$failedSync['model']} from connection {$connection}...");
 
+                    $tempRetryFailures = []; // Create temp array for pass by reference
                     $success = $this->callWithRetries(
                         $failedSync['command'],
                         $failedSync['params'],
                         1, // Only 1 retry in final phase
-                        null, // Don't track failures in final retry
-                        null,
-                        null
+                        $tempRetryFailures, // Pass temp array instead of null
+                        $failedSync['command'],
+                        $failedSync['model']
                     );
 
                     if ($success) {
@@ -220,7 +224,7 @@ class SyncAllCommand extends Command
                     // Command executed but returned failure
                     $attempts++;
                     if ($attempts < $retries) {
-                        $this->warn("Command failed for [{$connectionName}] model [{$modelName}]. Retrying in 10 seconds... ({$attempts}/{$retries})");
+                        $this->warn("⚠ Sync failed for table [{$modelName}] from [{$connectionName}]. Retrying in 10 seconds... (Attempt {$attempts}/{$retries})");
                         sleep(10);
                         continue;
                     } else {
@@ -239,7 +243,7 @@ class SyncAllCommand extends Command
                             'connection' => $connectionName,
                             'attempts' => $attempts
                         ]);
-                        $this->error("Command failed for [{$connectionName}] model [{$modelName}] after {$retries} attempts. Will retry at end.");
+                        $this->error("✗ Failed to sync table [{$modelName}] from [{$connectionName}] after {$retries} attempts.");
                         return false;
                     }
                 }
@@ -249,7 +253,7 @@ class SyncAllCommand extends Command
 
                 if ($isTimeout) {
                     if ($attempts < $retries) {
-                        $this->warn("Connection timeout to [{$connectionName}] for model [{$modelName}]. Retrying in 10 seconds... ({$attempts}/{$retries})");
+                        $this->warn("⚠ Connection timeout for table [{$modelName}] from [{$connectionName}]. Retrying in 10 seconds... (Attempt {$attempts}/{$retries})");
                         Log::warning("SyncAll: Connection timeout retry", [
                             'command' => $commandName ?? $command,
                             'model' => $modelName,
@@ -276,12 +280,12 @@ class SyncAllCommand extends Command
                             'attempts' => $attempts,
                             'error' => $e->getMessage()
                         ]);
-                        $this->error("Connection timeout to [{$connectionName}] for model [{$modelName}] after {$retries} attempts. Will retry at end.");
+                        $this->error("✗ Connection timeout for table [{$modelName}] from [{$connectionName}] after {$retries} attempts.");
                         return false;
                     }
                 } else {
                     // Non-timeout exception
-                    $this->error("An unexpected SQL error on [{$connectionName}] for model [{$modelName}]: " . $e->getMessage());
+                    $this->error("✗ Unexpected SQL error for table [{$modelName}] from [{$connectionName}]: " . $e->getMessage());
                     Log::error("SyncAll: Unexpected SQL error", [
                         'command' => $commandName ?? $command,
                         'model' => $modelName,
@@ -296,7 +300,7 @@ class SyncAllCommand extends Command
                 $isTimeout = $this->isConnectionTimeout($e);
 
                 if ($isTimeout && $attempts < $retries) {
-                    $this->warn("Connection timeout to [{$connectionName}] for model [{$modelName}]. Retrying in 10 seconds... ({$attempts}/{$retries})");
+                    $this->warn("⚠ Connection timeout for table [{$modelName}] from [{$connectionName}]. Retrying in 10 seconds... (Attempt {$attempts}/{$retries})");
                     Log::warning("SyncAll: Connection timeout retry (general exception)", [
                         'command' => $commandName ?? $command,
                         'model' => $modelName,
@@ -325,7 +329,7 @@ class SyncAllCommand extends Command
                             'attempts' => $attempts,
                             'error' => $e->getMessage()
                         ]);
-                        $this->error("Connection timeout to [{$connectionName}] for model [{$modelName}] after {$attempts} attempts. Will retry at end.");
+                        $this->error("✗ Connection timeout for table [{$modelName}] from [{$connectionName}] after {$attempts} attempts.");
                     } else {
                         Log::error("SyncAll: Unexpected error", [
                             'command' => $commandName ?? $command,
@@ -333,7 +337,7 @@ class SyncAllCommand extends Command
                             'connection' => $connectionName,
                             'error' => $e->getMessage()
                         ]);
-                        $this->error("Unexpected error for [{$connectionName}] model [{$modelName}]: " . $e->getMessage());
+                        $this->error("✗ Unexpected error for table [{$modelName}] from [{$connectionName}]: " . $e->getMessage());
                     }
                     return false;
                 }

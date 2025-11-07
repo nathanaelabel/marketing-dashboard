@@ -217,7 +217,7 @@ class SyncTableCommand extends Command
         $dependencies = [
             'm_product' => [
                 ['parent_table' => 'm_product_category', 'foreign_key' => 'm_product_category_id', 'optional' => true],
-                ['parent_table' => 'm_productsubcat', 'foreign_key' => 'm_product_subcat_id', 'optional' => true],
+                ['parent_table' => 'm_productsubcat', 'foreign_key' => 'm_productsubcat_id', 'optional' => true],
             ],
             'm_locator' => [
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
