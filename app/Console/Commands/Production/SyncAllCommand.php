@@ -73,7 +73,8 @@ class SyncAllCommand extends Command
                         continue;
                     }
                     $params = ['model' => $modelName, '--connection' => $connection];
-                    if (!$this->callWithRetries('app:sync-table', $params, 3, null, 'app:sync-table', $modelName)) {
+                    $tempFailedSyncs = [];
+                    if (!$this->callWithRetries('app:sync-table', $params, 3, $tempFailedSyncs, 'app:sync-table', $modelName)) {
                         $this->error("Critical failure syncing single-source table {$modelName}. Aborting process.");
                         Log::error("SyncAll: Critical failure in Step 1", [
                             'model' => $modelName,

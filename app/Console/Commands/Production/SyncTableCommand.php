@@ -31,6 +31,12 @@ class SyncTableCommand extends Command
             return Command::FAILURE;
         }
 
+        // Validate that connection is provided
+        if (!$connectionName) {
+            $this->error("Connection name is required. Use --connection option.");
+            return Command::FAILURE;
+        }
+
         $model = new $modelClass();
         $tableName = $model->getTable();
 
