@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\QueryException;
+use PDOException;
 
 class FastSyncAdempiereTableCommand extends Command
 {
@@ -43,6 +45,18 @@ class FastSyncAdempiereTableCommand extends Command
             Log::info("FastSync: Completed for {$tableName} from {$connectionName}.");
             return Command::SUCCESS;
         } catch (\Exception $e) {
+            // Check if it's a connection timeout
+            if ($this->isConnectionTimeout($e)) {
+                Log::error("FastSync: Connection timeout for {$tableName} from {$connectionName}", [
+                    'model' => $modelName,
+                    'connection' => $connectionName,
+                    'table' => $tableName,
+                    'error' => $e->getMessage()
+                ]);
+                $this->error("Connection timeout for table {$tableName} from {$connectionName}. Please retry manually.");
+                return Command::FAILURE;
+            }
+
             Log::error("Error during fast sync for table {$tableName}: " . $e->getMessage(), ['exception' => $e]);
             $this->error('An error occurred: ' . $e->getMessage());
             return Command::FAILURE;
@@ -109,7 +123,9 @@ class FastSyncAdempiereTableCommand extends Command
                 // Get the parent table name from foreign key
                 $parentTable = $this->getParentTableFromForeignKey($foreignKey);
                 if ($parentTable) {
-                    $existingIds = DB::table($parentTable)->pluck($foreignKey)->toArray();
+                    $existingIds = $this->executeWithRetry(function () use ($parentTable, $foreignKey) {
+                        return DB::table($parentTable)->pluck($foreignKey)->toArray();
+                    }, $connectionName, "Fetching parent IDs from {$parentTable}");
 
                     // Check if we have IDs to filter by
                     if (empty($existingIds)) {
@@ -129,11 +145,12 @@ class FastSyncAdempiereTableCommand extends Command
                     foreach ($idChunks as $index => $chunk) {
                         $this->comment("Processing chunk " . ($index + 1) . " of " . count($idChunks) . " for {$tableName}...");
 
-                        $chunkQuery = DB::connection($connectionName)
-                            ->table($tableName)
-                            ->whereIn($foreignKey, $chunk);
-
-                        $chunkResults = $chunkQuery->get();
+                        $chunkResults = $this->executeWithRetry(function () use ($connectionName, $tableName, $foreignKey, $chunk) {
+                            return DB::connection($connectionName)
+                                ->table($tableName)
+                                ->whereIn($foreignKey, $chunk)
+                                ->get();
+                        }, $connectionName, "Processing chunk for {$tableName}");
                         $allResults = $allResults->concat($chunkResults);
                     }
 
@@ -172,13 +189,9 @@ class FastSyncAdempiereTableCommand extends Command
                 $this->comment("Executing filtered query for {$tableName}...");
             }
 
-            try {
-                $sourceData = $query->get();
-            } catch (\Exception $e) {
-                Log::error("Query execution failed for {$tableName} from {$connectionName}: " . $e->getMessage());
-                $this->error("Failed to fetch data from {$tableName}: " . $e->getMessage());
-                throw $e;
-            }
+            $sourceData = $this->executeWithRetry(function () use ($query) {
+                return $query->get();
+            }, $connectionName, "Executing query for {$tableName}");
         }
 
         // Only check if sourceData is empty if we haven't already processed chunked results
@@ -224,6 +237,7 @@ class FastSyncAdempiereTableCommand extends Command
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
                 ['parent_table' => 'c_invoice', 'foreign_key' => 'c_invoice_id'],
                 ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
+                ['parent_table' => 'm_inoutline', 'foreign_key' => 'm_inoutline_id', 'optional' => true],
             ],
             'c_order' => [
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
@@ -272,7 +286,9 @@ class FastSyncAdempiereTableCommand extends Command
                 $foreignKey = $dep['foreign_key'];
                 if (!isset($existingParentIds[$parentTable])) {
                     $this->comment("Fetching parent IDs from {$parentTable}...");
-                    $existingParentIds[$parentTable] = DB::table($parentTable)->pluck($foreignKey)->flip(); // Use flip for O(1) lookups
+                    $existingParentIds[$parentTable] = $this->executeWithRetry(function () use ($parentTable, $foreignKey) {
+                        return DB::table($parentTable)->pluck($foreignKey)->flip();
+                    }, null, "Fetching parent IDs from {$parentTable}"); // Use flip for O(1) lookups
                 }
             }
 
@@ -336,10 +352,13 @@ class FastSyncAdempiereTableCommand extends Command
             Log::channel('sync')->info('Sample processed data for ' . $modelName . ':', [reset($dataToInsert)]);
         }
 
-        // Chunk the data to avoid hitting the parameter limit in PostgreSQL.
-        collect($dataToInsert)->chunk(500)->each(function ($chunk) use ($model) {
-            $model->insertOrIgnore($chunk->toArray());
-        });
+        // Use upsert instead of insertOrIgnore to update existing records with new columns
+        // This ensures that when new columns like m_inoutline_id are added, existing records get updated
+        $this->executeWithRetry(function () use ($dataToInsert, $model, $keyColumns) {
+            collect($dataToInsert)->chunk(500)->each(function ($chunk) use ($model, $keyColumns) {
+                $model->upsert($chunk->toArray(), $keyColumns);
+            });
+        }, $connectionName, "Inserting data for {$tableName}");
 
         $this->line(''); // Add spacing
         $this->info("Insertion attempt complete for {$tableName} from {$connectionName}.");
@@ -369,5 +388,87 @@ class FastSyncAdempiereTableCommand extends Command
             $columns[] = $model->getUpdatedAtColumn();
         }
         return array_filter($columns);
+    }
+
+    /**
+     * Execute a database operation with retry logic for connection timeouts
+     */
+    private function executeWithRetry(callable $operation, ?string $connectionName, string $operationDescription, int $maxRetries = 3): mixed
+    {
+        $attempts = 0;
+        $lastException = null;
+
+        while ($attempts < $maxRetries) {
+            try {
+                return $operation();
+            } catch (\Exception $e) {
+                $attempts++;
+                $lastException = $e;
+
+                if ($this->isConnectionTimeout($e)) {
+                    if ($attempts < $maxRetries) {
+                        $connInfo = $connectionName ? "[{$connectionName}]" : "";
+                        $this->warn("Connection timeout during {$operationDescription} {$connInfo}. Retrying in 10 seconds... ({$attempts}/{$maxRetries})");
+                        Log::warning("FastSync: Connection timeout retry", [
+                            'operation' => $operationDescription,
+                            'connection' => $connectionName,
+                            'attempt' => $attempts,
+                            'max_retries' => $maxRetries
+                        ]);
+                        sleep(10);
+                        continue;
+                    } else {
+                        // Final attempt failed
+                        $connInfo = $connectionName ? "[{$connectionName}]" : "";
+                        $this->error("Connection timeout during {$operationDescription} {$connInfo} after {$maxRetries} attempts.");
+                        Log::error("FastSync: Connection timeout after all retries", [
+                            'operation' => $operationDescription,
+                            'connection' => $connectionName,
+                            'attempts' => $attempts,
+                            'error' => $e->getMessage()
+                        ]);
+                        throw $e;
+                    }
+                } else {
+                    // Non-timeout exception, throw immediately
+                    throw $e;
+                }
+            }
+        }
+
+        throw $lastException;
+    }
+
+    /**
+     * Check if exception is a connection timeout
+     */
+    private function isConnectionTimeout(\Exception $e): bool
+    {
+        $message = strtolower($e->getMessage());
+        $timeoutPatterns = [
+            'connection timed out',
+            'could not connect to server',
+            'connection refused',
+            'timeout',
+            'connection reset',
+            'no connection to the server',
+            'server closed the connection'
+        ];
+
+        foreach ($timeoutPatterns as $pattern) {
+            if (str_contains($message, $pattern)) {
+                return true;
+            }
+        }
+
+        // Also check for PDOException with timeout codes
+        if ($e instanceof PDOException) {
+            $pdoTimeoutCodes = ['08006', '08001', '08003', '08004'];
+            if (in_array($e->getCode(), $pdoTimeoutCodes)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -5,14 +5,17 @@ namespace App\Http\Controllers;
 use App\Helpers\ChartHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class CategoryItemController extends Controller
 {
     public function getData(Request $request)
     {
-        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', Carbon::now()->toDateString());
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = Carbon::now()->subDay();
+        $startDate = $request->input('start_date', $yesterday->copy()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', $yesterday->toDateString());
         $type = $request->input('type', 'NETTO');
         $page = (int)$request->input('page', 1);
         $perPage = $page === 1 ? 9 : 8;
@@ -164,8 +167,10 @@ class CategoryItemController extends Controller
 
     public function exportExcel(Request $request)
     {
-        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', Carbon::now()->toDateString());
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = Carbon::now()->subDay();
+        $startDate = $request->input('start_date', $yesterday->copy()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', $yesterday->toDateString());
         $type = $request->input('type', 'BRUTO'); // BRUTO or NETTO
 
         // Main data query based on the provided SQL
@@ -230,7 +235,7 @@ class CategoryItemController extends Controller
         $fileStartDate = Carbon::parse($startDate)->format('d-m-Y');
         $fileEndDate = Carbon::parse($endDate)->format('d-m-Y');
         $typeLabel = $type === 'NETTO' ? 'Netto' : 'Bruto';
-        $filename = 'Category_Item_Revenue_' . $typeLabel . '_' . $fileStartDate . '_to_' . $fileEndDate . '.xls';
+        $filename = 'Kontribusi_Kategori_Barang_' . $typeLabel . '_' . $fileStartDate . '_sampai_' . $fileEndDate . '.xls';
 
         // Create XLS content using HTML table format
         $headers = [
@@ -250,7 +255,7 @@ class CategoryItemController extends Controller
                 <x:ExcelWorkbook>
                     <x:ExcelWorksheets>
                         <x:ExcelWorksheet>
-                            <x:Name>Category Item Revenue</x:Name>
+                            <x:Name>Kontribusi Kategori Barang</x:Name>
                             <x:WorksheetOptions>
                                 <x:Print>
                                     <x:ValidPrinterInfo/>
@@ -262,24 +267,34 @@ class CategoryItemController extends Controller
             </xml>
             <![endif]-->
             <style>
-                body { font-family: Calibri, Arial, sans-serif; font-size: 10pt; }
+                body { font-family: Verdana, sans-serif; }
                 table { border-collapse: collapse; }
                 th, td {
-                    border: 1px solid #ddd;
-                    padding: 4px 8px;
+                    border: 1px solid #000;
+                    padding: 6px 8px;
                     text-align: left;
+                    font-family: Verdana, sans-serif;
                     font-size: 10pt;
-                    white-space: nowrap;
                 }
                 th {
-                    background-color: #4CAF50;
-                    color: white;
+                    background-color: #D3D3D3;
+                    color: #000;
                     font-weight: bold;
-                    font-size: 10pt;
+                    text-align: center;
+                    vertical-align: middle;
                 }
-                .title { font-size: 10pt; font-weight: bold; margin-bottom: 5px; }
-                .period { font-size: 10pt; margin-bottom: 10px; }
-                .total-row { font-weight: bold; background-color: #f2f2f2; }
+                .title {
+                    font-family: Verdana, sans-serif;
+                    font-size: 16pt;
+                    font-weight: bold;
+                    margin-bottom: 8px;
+                }
+                .period {
+                    font-family: Verdana, sans-serif;
+                    font-size: 12pt;
+                    margin-bottom: 15px;
+                }
+                .total-row { font-weight: bold; background-color: #E8E8E8; }
                 .number { text-align: right; }
                 .col-no { width: 70px; }
                 .col-branch { width: 250px; }
@@ -288,22 +303,22 @@ class CategoryItemController extends Controller
             </style>
         </head>
         <body>
-            <div class="title">Category Item Revenue Report (' . $typeLabel . ')</div>
-            <div class="period">Period: ' . $formattedStartDate . ' to ' . $formattedEndDate . '</div>
+            <div class="title">KONTRIBUSI KATEGORI BARANG (' . $typeLabel . ')</div>
+            <div class="period">Periode ' . $formattedStartDate . ' sampai ' . $formattedEndDate . '</div>
             <br>
             <table>
                 <thead>
                     <tr>
-                        <th>No</th>
-                        <th>Branch Name</th>
-                        <th>Branch Code</th>';
+                        <th>NO</th>
+                        <th>NAMA CABANG</th>
+                        <th>KODE CABANG</th>';
 
         foreach ($categories as $category) {
-            $html .= '<th style="text-align: right;">' . htmlspecialchars($category) . ' (Rp)</th>';
+            $html .= '<th style="text-align: right;">' . strtoupper(htmlspecialchars($category)) . ' (RP)</th>';
         }
 
         $html .= '
-                        <th style="text-align: right;">Total (Rp)</th>
+                        <th style="text-align: right;">TOTAL (RP)</th>
                     </tr>
                 </thead>
                 <tbody>';
@@ -349,6 +364,9 @@ class CategoryItemController extends Controller
                     </tr>
                 </tbody>
             </table>
+            <br>
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
         </body>
         </html>';
 
@@ -357,8 +375,10 @@ class CategoryItemController extends Controller
 
     public function exportPdf(Request $request)
     {
-        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', Carbon::now()->toDateString());
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = Carbon::now()->subDay();
+        $startDate = $request->input('start_date', $yesterday->copy()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', $yesterday->toDateString());
         $type = $request->input('type', 'BRUTO'); // BRUTO or NETTO
 
         // Main data query based on the provided SQL
@@ -433,7 +453,7 @@ class CategoryItemController extends Controller
             <style>
                 @page { margin: 20px; }
                 body {
-                    font-family: Arial, sans-serif;
+                    font-family: Verdana, sans-serif;
                     font-size: 9pt;
                     margin: 0;
                     padding: 20px;
@@ -443,11 +463,13 @@ class CategoryItemController extends Controller
                     margin-bottom: 20px;
                 }
                 .title {
+                    font-family: Verdana, sans-serif;
                     font-size: 16pt;
                     font-weight: bold;
                     margin-bottom: 5px;
                 }
                 .period {
+                    font-family: Verdana, sans-serif;
                     font-size: 10pt;
                     color: #666;
                     margin-bottom: 20px;
@@ -459,19 +481,22 @@ class CategoryItemController extends Controller
                 }
                 th, td {
                     border: 1px solid #ddd;
-                    padding: 6px;
+                    padding: 6px 8px;
                     text-align: left;
+                    font-family: Verdana, sans-serif;
                     font-size: 8pt;
                 }
                 th {
-                    background-color: rgba(38, 102, 241, 0.9);
-                    color: white;
+                    background-color: #F5F5F5;
+                    color: #000;
                     font-weight: bold;
+                    text-align: center;
+                    vertical-align: middle;
                 }
                 .number { text-align: right; }
                 .total-row {
                     font-weight: bold;
-                    background-color: #f2f2f2;
+                    background-color: #E8E8E8;
                 }
                 .total-row td {
                     border-top: 2px solid #333;
@@ -480,22 +505,22 @@ class CategoryItemController extends Controller
         </head>
         <body>
             <div class="header">
-                <div class="title">Category Item Revenue Report (' . $typeLabel . ')</div>
-                <div class="period">Period: ' . $formattedStartDate . ' to ' . $formattedEndDate . '</div>
+                <div class="title">KONTRIBUSI KATEGORI BARANG (' . $typeLabel . ')</div>
+                <div class="period">Periode ' . $formattedStartDate . ' sampai ' . $formattedEndDate . '</div>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 30px;">No</th>
-                        <th style="width: 120px;">Branch</th>
-                        <th style="width: 50px;">Code</th>';
+                        <th style="width: 30px;">NO</th>
+                        <th style="width: 120px;">NAMA CABANG</th>
+                        <th style="width: 50px;">KODE CABANG</th>';
 
         foreach ($categories as $category) {
-            $html .= '<th style="width: 90px; text-align: right;">' . htmlspecialchars($category) . '</th>';
+            $html .= '<th style="width: 90px; text-align: right;">' . strtoupper(htmlspecialchars($category)) . ' (RP)</th>';
         }
 
         $html .= '
-                        <th style="width: 100px; text-align: right;">Total</th>
+                        <th style="width: 100px; text-align: right;">TOTAL (RP)</th>
                     </tr>
                 </thead>
                 <tbody>';
@@ -541,6 +566,9 @@ class CategoryItemController extends Controller
                     </tr>
                 </tbody>
             </table>
+            <br>
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
         </body>
         </html>';
 
@@ -548,7 +576,7 @@ class CategoryItemController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'landscape');
 
-        $filename = 'Category_Item_Revenue_' . $typeLabel . '_' . $fileStartDate . '_to_' . $fileEndDate . '.pdf';
+        $filename = 'Kontribusi_Kategori_Barang_' . $typeLabel . '_' . $fileStartDate . '_sampai_' . $fileEndDate . '.pdf';
 
         return $pdf->download($filename);
     }

@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const nationalTotalRevenueDisplay = document.getElementById('nationalTotalRevenueDisplay');
     const startDateInput = document.getElementById('start_date');
     const endDateInput = document.getElementById('end_date');
+    const typeSelect = document.getElementById('national-type-select');
     const revenueChartCanvas = document.getElementById('revenueChart');
     const messageContainer = document.getElementById('national-revenue-message');
 
@@ -163,7 +164,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!nationalTotalRevenueDisplay) return;
         nationalTotalRevenueDisplay.textContent = 'Loading...';
         clearMessages();
-        const url = `${revenueChartCanvas.dataset.url}?start_date=${startDate}&end_date=${endDate}`;
+        const type = typeSelect ? typeSelect.value : 'BRUTO';
+        const url = `${revenueChartCanvas.dataset.url}?start_date=${startDate}&end_date=${endDate}&type=${type}`;
 
         fetch(url)
             .then(response => {
@@ -192,6 +194,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    // Listen for type selector changes
+    if (typeSelect) {
+        typeSelect.addEventListener('change', function () {
+            triggerUpdate();
+        });
+    }
+
     startDatePicker = flatpickr(startDateInput, {
         altInput: true,
         altFormat: "d-m-Y",
@@ -205,11 +214,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Use yesterday (H-1) as max date since dashboard is updated daily at night
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    
     endDatePicker = flatpickr(endDateInput, {
         altInput: true,
         altFormat: "d-m-Y",
         dateFormat: "Y-m-d",
-        maxDate: "today",
+        maxDate: yesterday,
         onChange: function (selectedDates, dateStr, instance) {
             if (startDatePicker) {
                 startDatePicker.set('maxDate', selectedDates[0]);
@@ -258,6 +271,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Get current date values and refresh the chart
             const currentStartDate = startDateInput.value;
             const currentEndDate = endDateInput.value;
+            const currentType = typeSelect ? typeSelect.value : 'BRUTO';
 
             if (currentStartDate && currentEndDate) {
                 fetchAndUpdateNationalRevenueChart(currentStartDate, currentEndDate);
@@ -274,6 +288,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const currentStartDate = startDateInput.value;
             const currentEndDate = endDateInput.value;
+            const currentType = typeSelect ? typeSelect.value : 'BRUTO';
 
             if (!currentStartDate || !currentEndDate) {
                 alert('Please select both start and end dates');
@@ -291,7 +306,7 @@ document.addEventListener('DOMContentLoaded', function () {
             exportBtn.innerHTML = 'Exporting...';
 
             // Create download URL with parameters
-            const exportUrl = `/national-revenue/export-excel?start_date=${currentStartDate}&end_date=${currentEndDate}`;
+            const exportUrl = `/national-revenue/export-excel?start_date=${currentStartDate}&end_date=${currentEndDate}&type=${currentType}`;
 
             // Use window.location for direct download (more reliable than creating link)
             window.location.href = exportUrl;
@@ -313,6 +328,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const currentStartDate = startDateInput.value;
             const currentEndDate = endDateInput.value;
+            const currentType = typeSelect ? typeSelect.value : 'BRUTO';
 
             if (!currentStartDate || !currentEndDate) {
                 alert('Please select both start and end dates');
@@ -330,7 +346,7 @@ document.addEventListener('DOMContentLoaded', function () {
             exportPdfBtn.innerHTML = 'Exporting...';
 
             // Create download URL with parameters
-            const exportPdfUrl = `/national-revenue/export-pdf?start_date=${currentStartDate}&end_date=${currentEndDate}`;
+            const exportPdfUrl = `/national-revenue/export-pdf?start_date=${currentStartDate}&end_date=${currentEndDate}&type=${currentType}`;
 
             // Use window.location for direct download
             window.location.href = exportPdfUrl;

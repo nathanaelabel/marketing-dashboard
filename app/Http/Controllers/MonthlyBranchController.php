@@ -11,8 +11,42 @@ use App\Helpers\ChartHelper;
 
 class MonthlyBranchController extends Controller
 {
+    /**
+     * Format date to Indonesian format (e.g., "5 November")
+     */
+    private function formatIndonesianDate($date)
+    {
+        $monthNames = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember'
+        ];
+
+        $dateObj = new \DateTime($date);
+        $day = (int)$dateObj->format('j');
+        $month = (int)$dateObj->format('n');
+
+        return $day . ' ' . $monthNames[$month];
+    }
+
     public function getData(Request $request)
     {
+        // Increase PHP execution time limit for heavy queries
+        set_time_limit(120); // 2 minutes
+
+        $year = null;
+        $startDate = null;
+        $endDate = null;
+
         try {
             // Handle both year parameters (from frontend) and date parameters (legacy)
             $year = $request->input('year');
@@ -24,16 +58,16 @@ class MonthlyBranchController extends Controller
                 $startDate = $year . '-01-01';
                 $endDate = $year . '-12-31';
 
-                // If it's the current year, limit end date to today to avoid querying future dates
+                // If it's the current year, limit end date to yesterday (H-1) since dashboard is updated daily at night
                 $currentYear = date('Y');
                 if ($year == $currentYear) {
-                    $today = date('Y-m-d');
-                    $endDate = min($endDate, $today);
+                    $yesterday = date('Y-m-d', strtotime('-1 day'));
+                    $endDate = min($endDate, $yesterday);
                 }
             } else {
                 // Fallback to date parameters or defaults
                 $startDate = $startDate ?: date('Y') . '-01-01';
-                $endDate = $endDate ?: date('Y-m-d'); // Use today instead of end of year
+                $endDate = $endDate ?: date('Y-m-d', strtotime('-1 day')); // Use yesterday instead of today
                 $year = date('Y', strtotime($startDate));
             }
 
@@ -54,18 +88,61 @@ class MonthlyBranchController extends Controller
             $formattedData = $this->formatMonthlyComparisonData($currentYearData, $previousYearData, $year, $previousYear);
 
             return response()->json($formattedData);
-        } catch (\Exception $e) {
-            Log::error('MonthlyBranchController getData error: ' . $e->getMessage(), [
-                'year' => $request->get('year'),
+        } catch (\PDOException $e) {
+            Log::error('MonthlyBranchController getData PDO error: ' . $e->getMessage(), [
+                'year' => $year ?? $request->get('year'),
                 'start_date' => $startDate ?? null,
                 'end_date' => $endDate ?? null,
                 'category' => $request->get('category'),
                 'branch' => $request->get('branch'),
                 'type' => $request->get('type'),
+                'code' => $e->getCode(),
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json(['error' => 'Failed to fetch monthly branch data'], 500);
+            return response()->json([
+                'error' => 'Database connection timeout. Please try again.',
+                'message' => 'The request took too long to process. Please refresh the page.'
+            ], 500);
+        } catch (\Error $e) {
+            // Handle fatal errors like maximum execution time exceeded
+            $errorMessage = $e->getMessage();
+            $isTimeout = strpos($errorMessage, 'Maximum execution time') !== false ||
+                strpos($errorMessage, 'execution time') !== false;
+
+            Log::error('MonthlyBranchController getData Fatal error: ' . $errorMessage, [
+                'year' => $year ?? $request->get('year'),
+                'start_date' => $startDate ?? null,
+                'end_date' => $endDate ?? null,
+                'category' => $request->get('category'),
+                'branch' => $request->get('branch'),
+                'type' => $request->get('type'),
+                'is_timeout' => $isTimeout,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => $isTimeout ? 'Request timeout' : 'Server error',
+                'message' => $isTimeout
+                    ? 'The query is taking too long to execute. Please try again or contact support if the problem persists.'
+                    : 'An unexpected error occurred. Please try again.'
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('MonthlyBranchController getData error: ' . $e->getMessage(), [
+                'year' => $year ?? $request->get('year'),
+                'start_date' => $startDate ?? null,
+                'end_date' => $endDate ?? null,
+                'category' => $request->get('category'),
+                'branch' => $request->get('branch'),
+                'type' => $request->get('type'),
+                'class' => get_class($e),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to fetch monthly branch data',
+                'message' => 'An error occurred while processing your request. Please try again.'
+            ], 500);
         }
     }
 
@@ -107,20 +184,34 @@ class MonthlyBranchController extends Controller
 
     private function getMonthlyRevenueData($startDate, $endDate, $category, $branch, $type = 'BRUTO')
     {
-        // Branch condition - if National, sum all branches, otherwise filter by specific branch
-        $branchCondition = '';
-        $bindings = [];
+        try {
+            // Set statement timeout for this query (in milliseconds for PostgreSQL)
+            // Only set if using PostgreSQL
+            try {
+                $driver = DB::connection()->getDriverName();
+                if ($driver === 'pgsql') {
+                    // Set statement timeout to 2 minutes (120000 milliseconds)
+                    DB::statement("SET statement_timeout = 120000");
+                }
+            } catch (\Exception $e) {
+                // Ignore if statement timeout is not supported
+                Log::debug('Could not set statement timeout', ['error' => $e->getMessage()]);
+            }
 
-        if ($branch !== 'National') {
-            $branchCondition = 'AND org.name = ?';
-            $bindings = [$branch, $startDate, $endDate, $category];
-        } else {
-            $bindings = [$startDate, $endDate, $category];
-        }
+            // Branch condition - if National, sum all branches, otherwise filter by specific branch
+            $branchCondition = '';
+            $bindings = [];
 
-        if ($type === 'NETTO') {
-            // Netto query - includes returns (CNC documents) as negative values
-            $query = "
+            if ($branch !== 'National') {
+                $branchCondition = 'AND org.name = ?';
+                $bindings = [$branch, $startDate, $endDate, $category];
+            } else {
+                $bindings = [$startDate, $endDate, $category];
+            }
+
+            if ($type === 'NETTO') {
+                // Netto query - includes returns (CNC documents) as negative values
+                $query = "
                 SELECT
                     EXTRACT(month FROM inv.dateinvoiced) AS month_number,
                     COALESCE(SUM(CASE
@@ -141,7 +232,7 @@ class MonthlyBranchController extends Controller
                     AND inv.docstatus IN ('CO', 'CL')
                     AND inv.isactive = 'Y'
                     {$branchCondition}
-                    AND DATE(inv.dateinvoiced) BETWEEN ? AND ?
+                    AND inv.dateinvoiced::date BETWEEN ? AND ?
                     AND SUBSTR(inv.documentno, 1, 3) IN ('INC', 'CNC')
                     AND pc.name = ?
                 GROUP BY
@@ -149,9 +240,9 @@ class MonthlyBranchController extends Controller
                 ORDER BY
                     month_number
             ";
-        } else {
-            // Bruto query - original query (only INC documents)
-            $query = "
+            } else {
+                // Bruto query - original query (only INC documents)
+                $query = "
                 SELECT
                     EXTRACT(month FROM inv.dateinvoiced) AS month_number,
                     COALESCE(SUM(invl.linenetamt), 0) AS total_revenue
@@ -169,7 +260,7 @@ class MonthlyBranchController extends Controller
                     AND inv.docstatus IN ('CO', 'CL')
                     AND inv.isactive = 'Y'
                     {$branchCondition}
-                    AND DATE(inv.dateinvoiced) BETWEEN ? AND ?
+                    AND inv.dateinvoiced::date BETWEEN ? AND ?
                     AND inv.documentno LIKE 'INC%'
                     AND pc.name = ?
                 GROUP BY
@@ -177,9 +268,65 @@ class MonthlyBranchController extends Controller
                 ORDER BY
                     month_number
             ";
-        }
+            }
 
-        return DB::select($query, $bindings);
+            $result = DB::select($query, $bindings);
+
+            // Reset statement timeout (only for PostgreSQL)
+            try {
+                $driver = DB::connection()->getDriverName();
+                if ($driver === 'pgsql') {
+                    DB::statement("SET statement_timeout = 0");
+                }
+            } catch (\Exception $e) {
+                // Ignore reset error
+            }
+
+            return $result;
+        } catch (\PDOException $e) {
+            // Reset statement timeout on error (only for PostgreSQL)
+            try {
+                $driver = DB::connection()->getDriverName();
+                if ($driver === 'pgsql') {
+                    DB::statement("SET statement_timeout = 0");
+                }
+            } catch (\Exception $resetError) {
+                // Ignore reset error
+            }
+
+            Log::error('MonthlyBranchController getMonthlyRevenueData PDO error', [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'category' => $category,
+                'branch' => $branch,
+                'type' => $type,
+                'error' => $e->getMessage(),
+                'code' => $e->getCode()
+            ]);
+
+            throw $e;
+        } catch (\Exception $e) {
+            // Reset statement timeout on error (only for PostgreSQL)
+            try {
+                $driver = DB::connection()->getDriverName();
+                if ($driver === 'pgsql') {
+                    DB::statement("SET statement_timeout = 0");
+                }
+            } catch (\Exception $resetError) {
+                // Ignore reset error
+            }
+
+            Log::error('MonthlyBranchController getMonthlyRevenueData error', [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'category' => $category,
+                'branch' => $branch,
+                'type' => $type,
+                'error' => $e->getMessage()
+            ]);
+
+            throw $e;
+        }
     }
 
     private function formatMonthlyComparisonData($currentYearData, $previousYearData, $year, $previousYear)
@@ -238,6 +385,10 @@ class MonthlyBranchController extends Controller
 
     public function exportExcel(Request $request)
     {
+        // Increase execution time for export operations
+        set_time_limit(300); // 5 minutes for export
+        ini_set('max_execution_time', 300);
+
         $year = $request->input('year', date('Y'));
         $category = $request->input('category', 'MIKA');
         $type = $request->input('type', 'BRUTO');
@@ -247,8 +398,9 @@ class MonthlyBranchController extends Controller
         $endDate = $year . '-12-31';
 
         if ($year == $currentYear) {
-            $today = date('Y-m-d');
-            $endDate = min($endDate, $today);
+            // Use yesterday (H-1) since dashboard is updated daily at night
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            $endDate = min($endDate, $yesterday);
         }
 
         $previousYear = $year - 1;
@@ -259,6 +411,16 @@ class MonthlyBranchController extends Controller
         // Get all data in single query for both years
         $previousStartDate = $previousYear . '-01-01';
         $previousEndDate = $previousYear . '-12-31';
+
+        // Set database timeout for heavy export query
+        try {
+            $driver = DB::connection()->getDriverName();
+            if ($driver === 'pgsql') {
+                DB::statement("SET statement_timeout = 300000"); // 5 minutes
+            }
+        } catch (\Exception $e) {
+            Log::debug('Could not set statement timeout for export', ['error' => $e->getMessage()]);
+        }
 
         // Optimized single query for all branches and both years
         if ($type === 'NETTO') {
@@ -286,8 +448,8 @@ class MonthlyBranchController extends Controller
                     AND inv.docstatus IN ('CO', 'CL')
                     AND inv.isactive = 'Y'
                     AND (
-                        (DATE(inv.dateinvoiced) BETWEEN ? AND ?)
-                        OR (DATE(inv.dateinvoiced) BETWEEN ? AND ?)
+                        (inv.dateinvoiced::date BETWEEN ? AND ?)
+                        OR (inv.dateinvoiced::date BETWEEN ? AND ?)
                     )
                     AND SUBSTR(inv.documentno, 1, 3) IN ('INC', 'CNC')
                     AND pc.name = ?
@@ -318,8 +480,8 @@ class MonthlyBranchController extends Controller
                     AND inv.docstatus IN ('CO', 'CL')
                     AND inv.isactive = 'Y'
                     AND (
-                        (DATE(inv.dateinvoiced) BETWEEN ? AND ?)
-                        OR (DATE(inv.dateinvoiced) BETWEEN ? AND ?)
+                        (inv.dateinvoiced::date BETWEEN ? AND ?)
+                        OR (inv.dateinvoiced::date BETWEEN ? AND ?)
                     )
                     AND inv.documentno LIKE 'INC%'
                     AND pc.name = ?
@@ -331,6 +493,16 @@ class MonthlyBranchController extends Controller
         }
 
         $allData = DB::select($query, [$previousStartDate, $previousEndDate, $startDate, $endDate, $category]);
+
+        // Reset database timeout
+        try {
+            $driver = DB::connection()->getDriverName();
+            if ($driver === 'pgsql') {
+                DB::statement("SET statement_timeout = 0");
+            }
+        } catch (\Exception $e) {
+            // Ignore reset error
+        }
 
         // Detect last available month in current year data
         $lastAvailableMonth = 0;
@@ -353,6 +525,26 @@ class MonthlyBranchController extends Controller
         }
 
         // Organize data by branch
+        // Generate date range information text
+        // Use actual end date instead of just month for more accurate display
+        $isCompleteYear = ($endDate == $year . '-12-31');
+
+        if ($isCompleteYear) {
+            // Complete year comparison (e.g., 2023-2024)
+            $dateRangeInfo = 'Periode: 1 Januari - 31 Desember ' . $previousYear . ' VS 1 Januari - 31 Desember ' . $year;
+        } else {
+            // Partial year comparison (e.g., 2024-2025 where current year is incomplete)
+            // Use actual end date to show specific date (e.g., 5 November instead of just November)
+            $currentEndDateFormatted = $this->formatIndonesianDate($endDate);
+
+            // For previous year, use same day and month as current year end date
+            $currentEndDate = new \DateTime($endDate);
+            $previousEndDateStr = $previousYear . $currentEndDate->format('-m-d');
+            $previousEndDateFormatted = $this->formatIndonesianDate($previousEndDateStr);
+
+            $dateRangeInfo = 'Periode: 1 Januari - ' . $previousEndDateFormatted . ' ' . $previousYear . ' VS 1 Januari - ' . $currentEndDateFormatted . ' ' . $year;
+        }
+
         $allBranchesData = [];
         foreach ($branches as $branch) {
             $branchData = [
@@ -379,7 +571,7 @@ class MonthlyBranchController extends Controller
             $allBranchesData[] = $branchData;
         }
 
-        $filename = 'Monthly_Branch_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
+        $filename = 'Penjualan_Bulanan_Cabang_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
 
         // Create XLS content using HTML table format
         $headers = [
@@ -401,7 +593,7 @@ class MonthlyBranchController extends Controller
                 <x:ExcelWorkbook>
                     <x:ExcelWorksheets>
                         <x:ExcelWorksheet>
-                            <x:Name>Monthly Branch Revenue</x:Name>
+                            <x:Name>Penjualan Bulanan Cabang</x:Name>
                             <x:WorksheetOptions>
                                 <x:Print>
                                     <x:ValidPrinterInfo/>
@@ -463,8 +655,9 @@ class MonthlyBranchController extends Controller
             </style>
         </head>
         <body>
-            <div class="title">MONTHLY BRANCH REVENUE REPORT</div>
-            <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Category: ' . htmlspecialchars($category) . ' | Type: ' . htmlspecialchars($type) . '</div>
+            <div class="title">PENJUALAN BULANAN CABANG</div>
+            <div class="period">Perbandingan Tahun ' . $previousYear . ' vs ' . $year . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>
+            <div class="period" style="font-size: 10pt; color: #666;">' . htmlspecialchars($dateRangeInfo) . '</div>
             <br>
             <table>
                 <thead>
@@ -595,6 +788,10 @@ class MonthlyBranchController extends Controller
 
     public function exportPdf(Request $request)
     {
+        // Increase execution time for export operations
+        set_time_limit(300); // 5 minutes for export
+        ini_set('max_execution_time', 300);
+
         $year = $request->input('year', date('Y'));
         $category = $request->input('category', 'MIKA');
         $branch = $request->input('branch', 'National');
@@ -605,11 +802,22 @@ class MonthlyBranchController extends Controller
         $endDate = $year . '-12-31';
 
         if ($year == $currentYear) {
-            $today = date('Y-m-d');
-            $endDate = min($endDate, $today);
+            // Use yesterday (H-1) since dashboard is updated daily at night
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            $endDate = min($endDate, $yesterday);
         }
 
         $previousYear = $year - 1;
+
+        // Set database timeout for heavy export query
+        try {
+            $driver = DB::connection()->getDriverName();
+            if ($driver === 'pgsql') {
+                DB::statement("SET statement_timeout = 300000"); // 5 minutes
+            }
+        } catch (\Exception $e) {
+            Log::debug('Could not set statement timeout for export', ['error' => $e->getMessage()]);
+        }
 
         // Get current year data
         $currentYearData = $this->getMonthlyRevenueData($startDate, $endDate, $category, $branch, $type);
@@ -618,6 +826,16 @@ class MonthlyBranchController extends Controller
         $previousStartDate = $previousYear . '-01-01';
         $previousEndDate = $previousYear . '-12-31';
         $previousYearData = $this->getMonthlyRevenueData($previousStartDate, $previousEndDate, $category, $branch, $type);
+
+        // Reset database timeout
+        try {
+            $driver = DB::connection()->getDriverName();
+            if ($driver === 'pgsql') {
+                DB::statement("SET statement_timeout = 0");
+            }
+        } catch (\Exception $e) {
+            // Ignore reset error
+        }
 
         // Month labels
         $monthLabels = [
@@ -640,6 +858,26 @@ class MonthlyBranchController extends Controller
         $previousYearMap = collect($previousYearData)->keyBy('month_number');
 
         $branchDisplay = $branch === 'National' ? 'National' : ChartHelper::getBranchDisplayName($branch);
+
+        // Generate date range information text
+        // Use actual end date instead of just month for more accurate display
+        $isCompleteYear = ($endDate == $year . '-12-31');
+
+        if ($isCompleteYear) {
+            // Complete year comparison (e.g., 2023-2024)
+            $dateRangeInfo = 'Periode: 1 Januari - 31 Desember ' . $previousYear . ' VS 1 Januari - 31 Desember ' . $year;
+        } else {
+            // Partial year comparison (e.g., 2024-2025 where current year is incomplete)
+            // Use actual end date to show specific date (e.g., 5 November instead of just November)
+            $currentEndDateFormatted = $this->formatIndonesianDate($endDate);
+
+            // For previous year, use same day and month as current year end date
+            $currentEndDate = new \DateTime($endDate);
+            $previousEndDateStr = $previousYear . $currentEndDate->format('-m-d');
+            $previousEndDateFormatted = $this->formatIndonesianDate($previousEndDateStr);
+
+            $dateRangeInfo = 'Periode: 1 Januari - ' . $previousEndDateFormatted . ' ' . $previousYear . ' VS 1 Januari - ' . $currentEndDateFormatted . ' ' . $year;
+        }
 
         // Create HTML for PDF
         $html = '
@@ -702,17 +940,18 @@ class MonthlyBranchController extends Controller
         </head>
         <body>
             <div class="header">
-                <div class="title">MONTHLY BRANCH REVENUE REPORT</div>
-                <div class="period">Year Comparison: ' . $previousYear . ' vs ' . $year . ' | Branch: ' . htmlspecialchars($branchDisplay) . ' | Category: ' . htmlspecialchars($category) . ' | Type: ' . htmlspecialchars($type) . '</div>
+                <div class="title">PENJUALAN BULANAN CABANG</div>
+                <div class="period">Perbandingan Tahun ' . $previousYear . ' vs ' . $year . ' | Cabang ' . htmlspecialchars($branchDisplay) . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>
+                <div class="period" style="font-size: 9pt; color: #666;">' . htmlspecialchars($dateRangeInfo) . '</div>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 50px; text-align: right;">No</th>
-                        <th style="width: 140px;">Month</th>
+                        <th style="width: 50px; text-align: right;">NO</th>
+                        <th style="width: 140px;">MONTH</th>
                         <th style="width: 200px; text-align: right;">' . $previousYear . '</th>
                         <th style="width: 200px; text-align: right;">' . $year . '</th>
-                        <th style="width: 160px; text-align: right;">Growth (%)</th>
+                        <th style="width: 160px; text-align: right;">GROWTH (%)</th>
                     </tr>
                 </thead>
                 <tbody>';
@@ -769,7 +1008,7 @@ class MonthlyBranchController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'landscape');
 
-        $filename = 'Monthly_Branch_Revenue_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $branchDisplay) . '_' . str_replace(' ', '_', $category) . '_' . $type . '.pdf';
+        $filename = 'Penjualan_Bulanan_Cabang_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $branchDisplay) . '_' . str_replace(' ', '_', $category) . '_' . $type . '.pdf';
 
         return $pdf->download($filename);
     }

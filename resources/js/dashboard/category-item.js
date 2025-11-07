@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     </svg>
                     <span>${message}</span>
                 </div>`;
-            messageContainer.style.display = 'block';
+            messageContainer.style.display = 'flex';
         }
     }
 
@@ -350,12 +350,16 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Use yesterday (H-1) as max date since dashboard is updated daily at night
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
     startDatePicker = flatpickr(startDateInput, {
         altInput: true,
         altFormat: "d-m-Y",
         dateFormat: "Y-m-d",
         defaultDate: new Date().setDate(1),
-        maxDate: endDateInput.value || "today",
+        maxDate: endDateInput.value || yesterday,
         onChange: function (selectedDates, dateStr, instance) {
             if (endDatePicker) {
                 endDatePicker.set('minDate', selectedDates[0]);
@@ -368,9 +372,9 @@ document.addEventListener('DOMContentLoaded', function () {
         altInput: true,
         altFormat: "d-m-Y",
         dateFormat: "Y-m-d",
-        defaultDate: "today",
+        defaultDate: yesterday,
         minDate: startDateInput.value,
-        maxDate: "today",
+        maxDate: yesterday,
         onChange: function (selectedDates, dateStr, instance) {
             if (startDatePicker) {
                 startDatePicker.set('maxDate', selectedDates[0]);

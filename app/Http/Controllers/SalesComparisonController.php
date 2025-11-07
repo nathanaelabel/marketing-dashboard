@@ -41,7 +41,9 @@ class SalesComparisonController extends Controller
     public function getData(Request $request)
     {
         try {
-            $date = $request->get('date', date('Y-m-d'));
+            // Use yesterday (H-1) since dashboard is updated daily at night
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            $date = $request->get('date', $yesterday);
 
             // Validate date
             if (!strtotime($date)) {
@@ -200,6 +202,10 @@ class SalesComparisonController extends Controller
         }
 
         // 2. Get STOCK data for all branches at once
+        // NOTE: Stock data from m_storage table is a CURRENT SNAPSHOT only
+        // The m_storage table does not have historical data with dates
+        // Stock values shown will always reflect the LATEST synced data regardless of selected date
+        // This matches the original ADempiere query behavior using productqty(locator_id, product_id, date('now'))
         foreach ($branchConfig as $branchName => $config) {
             $pricelistVersionId = $config['pricelist_version_id'];
             $locatorId = $config['locator_id'];
@@ -238,6 +244,7 @@ class SalesComparisonController extends Controller
         }
 
         // 3. Get BDP data for all branches at once (MIKA and SPARE PART)
+        // Filter BDP based on invoices created up to the selected date
         $bdpQuery = "
             SELECT
                 org.name as branch_name,
@@ -248,6 +255,7 @@ class SalesComparisonController extends Controller
             LEFT JOIN (
                 SELECT c_invoiceline_id, SUM(qty) as qtymr
                 FROM m_matchinv
+                WHERE created::date <= ?::date
                 GROUP BY c_invoiceline_id
             ) match_qty ON d.c_invoiceline_id = match_qty.c_invoiceline_id
             INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
@@ -257,11 +265,12 @@ class SalesComparisonController extends Controller
                 AND h.docstatus = 'CO'
                 AND h.issotrx = 'N'
                 AND cat.name IN ('MIKA', 'SPARE PART')
+                AND h.dateinvoiced::date <= ?::date
                 AND d.qtyinvoiced <> COALESCE(match_qty.qtymr, 0)
             GROUP BY org.name, cat.name
         ";
 
-        $bdpData = DB::select($bdpQuery);
+        $bdpData = DB::select($bdpQuery, [$date, $date]);
 
         foreach ($bdpData as $row) {
             if (isset($results[$row->branch_name])) {
@@ -441,7 +450,7 @@ class SalesComparisonController extends Controller
                         FROM
                             c_invoice h
                             INNER JOIN c_invoiceline d ON d.c_invoice_id = h.c_invoice_id
-                            LEFT OUTER JOIN m_matchinv mi ON d.c_invoiceline_id = mi.c_invoiceline_id
+                            LEFT OUTER JOIN m_matchinv mi ON d.c_invoiceline_id = mi.c_invoiceline_id AND mi.created::date <= ?::date
                             INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                             INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                             INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
@@ -451,6 +460,8 @@ class SalesComparisonController extends Controller
                             AND h.issotrx = 'N'
                             AND org.name = ?
                             AND cat.name = 'MIKA'
+                            AND h.dateinvoiced >= ?::timestamp
+                            AND h.dateinvoiced <= ?::timestamp
                         GROUP BY
                             cat.name, prd.name, d.c_invoiceline_id, d.c_invoice_id, h.documentno, d.qtyinvoiced, d.priceactual
                     ) AS ss1
@@ -479,7 +490,7 @@ class SalesComparisonController extends Controller
                         FROM
                             c_invoice h
                             INNER JOIN c_invoiceline d ON d.c_invoice_id = h.c_invoice_id
-                            LEFT OUTER JOIN m_matchinv mi ON d.c_invoiceline_id = mi.c_invoiceline_id
+                            LEFT OUTER JOIN m_matchinv mi ON d.c_invoiceline_id = mi.c_invoiceline_id AND mi.created::date <= ?::date
                             INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                             INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                             INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
@@ -489,6 +500,8 @@ class SalesComparisonController extends Controller
                             AND h.issotrx = 'N'
                             AND org.name = ?
                             AND cat.name = 'SPARE PART'
+                            AND h.dateinvoiced >= ?::timestamp
+                            AND h.dateinvoiced <= ?::timestamp
                         GROUP BY
                             cat.name, prd.name, d.c_invoiceline_id, d.c_invoice_id, h.documentno, d.qtyinvoiced, d.priceactual
                     ) AS ss1
@@ -510,8 +523,14 @@ class SalesComparisonController extends Controller
             $locatorId,
             $pricelistVersionId,
             $branchName,  // Stok SPARE PART
+            $date,        // BDP MIKA matchinv date filter
             $branchName,  // BDP MIKA
-            $branchName   // BDP SPARE PART
+            $dateStart,   // BDP MIKA start
+            $dateEnd,     // BDP MIKA end
+            $date,        // BDP SPARE PART matchinv date filter
+            $branchName,  // BDP SPARE PART
+            $dateStart,   // BDP SPARE PART start
+            $dateEnd      // BDP SPARE PART end
         ]);
 
         return [
@@ -546,7 +565,7 @@ class SalesComparisonController extends Controller
             $data = $responseData['data'];
             $formattedDate = $responseData['formatted_date'];
 
-            $filename = 'Sales_Comparison_' . str_replace(' ', '_', $formattedDate) . '.xls';
+            $filename = 'Rekap_Sales_Stok_dan_BDP_' . str_replace(' ', '_', $formattedDate) . '.xls';
 
             // Create XLS content using HTML table format
             $headers = [
@@ -566,7 +585,7 @@ class SalesComparisonController extends Controller
                     <x:ExcelWorkbook>
                         <x:ExcelWorksheets>
                             <x:ExcelWorksheet>
-                                <x:Name>Sales Comparison</x:Name>
+                                <x:Name>Rekap Sales, Stok, dan BDP</x:Name>
                                 <x:WorksheetOptions>
                                     <x:Print>
                                         <x:ValidPrinterInfo/>
@@ -609,8 +628,8 @@ class SalesComparisonController extends Controller
                 </style>
             </head>
             <body>
-                <div class="title">PERBANDINGAN SALES, STOK, DAN BDP</div>
-                <div class="period">Date: ' . htmlspecialchars($formattedDate) . '</div>
+                <div class="title">REKAP SALES, STOK, DAN BDP</div>
+                <div class="period">Periode ' . htmlspecialchars($formattedDate) . '</div>
                 <br>
                 <table>
                     <thead>
@@ -760,8 +779,8 @@ class SalesComparisonController extends Controller
             </head>
             <body>
                 <div class="header">
-                    <div class="title">PERBANDINGAN SALES, STOK, DAN BDP</div>
-                    <div class="period">Date: ' . htmlspecialchars($formattedDate) . '</div>
+                    <div class="title">REKAP SALES, STOK, DAN BDP</div>
+                    <div class="period">Periode ' . htmlspecialchars($formattedDate) . '</div>
                 </div>
                 <table>
                     <thead>
@@ -829,7 +848,7 @@ class SalesComparisonController extends Controller
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
             $pdf->setPaper('A4', 'landscape');
 
-            $filename = 'Sales_Comparison_' . str_replace(' ', '_', $formattedDate) . '.pdf';
+            $filename = 'Rekap_Sales_Stok_dan_BDP_' . str_replace(' ', '_', $formattedDate) . '.pdf';
 
             return $pdf->download($filename);
         } catch (\Exception $e) {

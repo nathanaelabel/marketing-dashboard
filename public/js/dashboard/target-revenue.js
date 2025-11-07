@@ -292,9 +292,37 @@ document.addEventListener('DOMContentLoaded', function () {
         window.location.href = url;
     });
 
-    // Set current month as default
-    const currentMonth = new Date().getMonth() + 1;
-    monthSelect.value = currentMonth;
+    // Read URL parameters and set default values
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlMonth = urlParams.get('month');
+    const urlYear = urlParams.get('year');
+    const urlCategory = urlParams.get('category');
+
+    // Set default values from URL parameters, otherwise use current month
+    if (urlMonth) {
+        monthSelect.value = urlMonth;
+    } else {
+        const currentMonth = new Date().getMonth() + 1;
+        monthSelect.value = currentMonth;
+    }
+
+    if (urlYear) {
+        yearSelect.value = urlYear;
+    }
+
+    if (urlCategory) {
+        categorySelect.value = decodeURIComponent(urlCategory);
+    }
+
+    // Scroll to target-revenue section if URL has hash
+    if (window.location.hash === '#target-revenue-section') {
+        setTimeout(() => {
+            const targetSection = document.getElementById('target-revenue-section');
+            if (targetSection) {
+                targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 100);
+    }
 
     // Three-dots menu toggle
     const targetMenuButton = document.getElementById('targetMenuButton');

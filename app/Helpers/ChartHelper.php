@@ -110,21 +110,68 @@ class ChartHelper
             return $minSuggestedMaxDivisorUnits * $divisor;
         }
 
-        // Calculate the scaled value (e.g., if maxDataValue is 34M and divisor is 1e6, scaledValue = 34)
+        // Calculate the scaled value (e.g., if maxDataValue is 6.5M and divisor is 1e9, scaledValue = 6.5)
         $scaledValue = $maxDataValue / $divisor;
-        
-        // For small values (< 5), just round up to 5
-        if ($scaledValue <= 3.5) {
-            return 5 * $divisor; // Return 5M or 5B
+
+        // For very small values (<= 5), just round up to 5
+        if ($scaledValue <= 5) {
+            return 5 * $divisor;
         }
-        
-        // Round up to the next "nice" number (multiple of 5)
-        // For example: 34 -> 35, but we want to add one more bar -> 40
-        $roundedUp = ceil($scaledValue / 5) * 5;
-        
-        // Add one more bar increment (5 units) to prevent values from being cut off
-        $suggestedMaxScaled = $roundedUp + 5;
-        
+
+        // Determine rounding increment and padding based on value range
+        $padding = 0;
+        $roundedUp = 0;
+
+        if ($scaledValue <= 10) {
+            // For values <= 10, round to next integer, then add 1-2 units
+            // Example: 6.5 -> round to 7 -> add 1 = 8
+            // Example: 8.0 -> round to 8 -> add 2 = 10
+            $roundedUp = ceil($scaledValue);
+            // Add 1-2 units: add 1 for values that round up significantly, add 2 for values already near round numbers
+            if ($scaledValue <= 7.5) {
+                $padding = 1; // 6.5 -> 7 -> 8, 7.2 -> 8 -> 9
+            } else {
+                $padding = 2; // 8 -> 8 -> 10, 9.5 -> 10 -> 12
+            }
+        } elseif ($scaledValue <= 20) {
+            // For values 10-20, round to next 1, then add 2 units
+            // Example: 15.3 -> round to 16 -> add 2 = 18
+            $roundedUp = ceil($scaledValue);
+            $padding = 2;
+        } elseif ($scaledValue <= 50) {
+            // For values 20-50, round to next 2, then add 3-5 units
+            // Example: 34 -> round to 34 -> add 5 = 39, then round to 40
+            $roundedUp = ceil($scaledValue / 2) * 2;
+            $padding = 3;
+        } elseif ($scaledValue <= 100) {
+            // For values 50-100, round to next 5, then add 5 units
+            // Example: 75 -> round to 75 -> add 5 = 80
+            $roundedUp = ceil($scaledValue / 5) * 5;
+            $padding = 5;
+        } else {
+            // For larger values, round to next 10, then add 10 units
+            $roundedUp = ceil($scaledValue / 10) * 10;
+            $padding = 10;
+        }
+
+        // Calculate suggested max with padding
+        $suggestedMaxScaled = $roundedUp + $padding;
+
+        // Round to nearest nice number for cleaner axis labels
+        if ($suggestedMaxScaled <= 10) {
+            // Round to nearest integer for values <= 10
+            $suggestedMaxScaled = ceil($suggestedMaxScaled);
+        } elseif ($suggestedMaxScaled <= 20) {
+            // Round to nearest integer for values 10-20
+            $suggestedMaxScaled = ceil($suggestedMaxScaled);
+        } elseif ($suggestedMaxScaled <= 50) {
+            // Round to nearest 2 for values 20-50
+            $suggestedMaxScaled = ceil($suggestedMaxScaled / 2) * 2;
+        } else {
+            // Round to nearest 5 for larger values
+            $suggestedMaxScaled = ceil($suggestedMaxScaled / 5) * 5;
+        }
+
         // Convert back to raw units
         $suggestedMax = $suggestedMaxScaled * $divisor;
 
@@ -137,7 +184,7 @@ class ChartHelper
         return $suggestedMax;
     }
 
-    public static function formatAccountsReceivableData($data, $currentDate)
+    public static function formatAccountsReceivableData($data, $currentDate, $filter = 'overdue')
     {
         $labels = $data->pluck('branch_name')->map(function ($name) {
             return self::getBranchAbbreviation($name);
@@ -145,38 +192,53 @@ class ChartHelper
 
         $totalOverdue = $data->sum('total_overdue');
 
-        $datasets = [
-            [
-                'label' => '1 - 30 Days',
-                'data' => $data->pluck('overdue_1_30')->all(),
-                'backgroundColor' => 'rgba(22, 220, 160, 0.8)',
-                'borderRadius' => 5,
-            ],
-            [
-                'label' => '31 - 60 Days',
-                'data' => $data->pluck('overdue_31_60')->all(),
-                'backgroundColor' => 'rgba(139, 92, 246, 0.8)',
-                'borderRadius' => 5,
-            ],
-            [
-                'label' => '61 - 90 Days',
-                'data' => $data->pluck('overdue_61_90')->all(),
-                'backgroundColor' => 'rgba(251, 146, 60, 0.8)',
-                'borderRadius' => 5,
-            ],
-            [
-                'label' => '> 90 Days',
-                'data' => $data->pluck('overdue_90_plus')->all(),
-                'backgroundColor' => 'rgba(244, 63, 94, 0.8)',
-                'borderRadius' => 5,
-            ],
-        ];
+        // Build datasets based on filter type
+        if ($filter === 'all') {
+            // All: Show 0-104 Days (green), 105-120 Days (yellow), >120 Days (red)
+            $datasets = [
+                [
+                    'label' => '0 - 104 Hari',
+                    'data' => $data->pluck('range_0_104')->all(),
+                    'backgroundColor' => 'rgba(34, 197, 94, 0.8)', // Green
+                    'borderRadius' => 5,
+                ],
+                [
+                    'label' => '105 - 120 Hari',
+                    'data' => $data->pluck('range_105_120')->all(),
+                    'backgroundColor' => 'rgba(234, 179, 8, 0.8)', // Yellow
+                    'borderRadius' => 5,
+                ],
+                [
+                    'label' => '> 120 Hari',
+                    'data' => $data->pluck('range_120_plus')->all(),
+                    'backgroundColor' => 'rgba(239, 68, 68, 0.8)', // Red
+                    'borderRadius' => 5,
+                ],
+            ];
+        } else {
+            // Overdue: Show only 105-120 Days (yellow) and >120 Days (red)
+            $datasets = [
+                [
+                    'label' => '105 - 120 Hari',
+                    'data' => $data->pluck('range_105_120')->all(),
+                    'backgroundColor' => 'rgba(234, 179, 8, 0.8)', // Yellow
+                    'borderRadius' => 5,
+                ],
+                [
+                    'label' => '> 120 Hari',
+                    'data' => $data->pluck('range_120_plus')->all(),
+                    'backgroundColor' => 'rgba(239, 68, 68, 0.8)', // Red
+                    'borderRadius' => 5,
+                ],
+            ];
+        }
 
         return [
             'labels' => $labels,
             'datasets' => $datasets,
             'total' => 'Rp ' . number_format($totalOverdue, 0, ',', '.'),
             'date' => \Carbon\Carbon::parse($currentDate)->format('l, d F Y'),
+            'filter' => $filter,
         ];
     }
 
@@ -200,6 +262,8 @@ class ChartHelper
             'PWM Pontianak' => 'PTK',
             'PWM Purwokerto' => 'PWT',
             'PWM Padang' => 'PDG',
+            'PT. Putra Mandiri Damai' => 'MKS',
+            'PT. CIPTA ARDANA KENCANA' => 'TGR',
         ];
 
         // Return the abbreviation if found, otherwise return the original name
@@ -388,7 +452,7 @@ class ChartHelper
 
     /**
      * Calculate percentage growth between two values with decimal precision
-     * 
+     *
      * @param float $currentValue Current period value
      * @param float $previousValue Previous period value
      * @param int $decimalPlaces Number of decimal places (default: 1)
@@ -408,7 +472,7 @@ class ChartHelper
 
     /**
      * Format value with appropriate unit (M/B) and decimal precision
-     * 
+     *
      * @param float $value Raw value
      * @param float $divisor Divisor (1e6 for millions, 1e9 for billions)
      * @param string $unit Unit string ('M' or 'B')
@@ -448,18 +512,18 @@ class ChartHelper
 
     /**
      * Calculate fair comparison date ranges for year-over-year analysis
-     * 
+     *
      * This method ensures both years have the same period length for accurate comparison.
      * For example, if today is September 24, 2025, instead of comparing:
      * - 2024: Jan 1 - Dec 31 (full year)
      * - 2025: Jan 1 - Sep 24 (partial year)
-     * 
+     *
      * It will compare:
      * - 2024: Jan 1 - Sep 24 (same period)
      * - 2025: Jan 1 - Sep 24 (same period)
-     * 
+     *
      * This eliminates unfair percentage comparisons caused by different period lengths.
-     * 
+     *
      * @param string $currentEndDate Current period end date (Y-m-d format)
      * @param int $previousYear Previous year to compare against
      * @return array Array with 'current' and 'previous' date range arrays

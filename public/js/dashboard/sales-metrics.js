@@ -27,20 +27,25 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize Flatpickr
     let startDatePicker, endDatePicker;
 
+    // Use yesterday (H-1) as max date since dashboard is updated daily at night
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    
     const today = new Date();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    // Set initial values before initializing flatpickr
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
+    // Set initial values before initializing flatpickr - use yesterday
+    const yyyy = yesterday.getFullYear();
+    const mm = String(yesterday.getMonth() + 1).padStart(2, '0');
+    const dd = String(yesterday.getDate()).padStart(2, '0');
     endDateFilter.value = `${yyyy}-${mm}-${dd}`;
 
     endDatePicker = flatpickr(endDateFilter, {
         altInput: true,
         altFormat: "d-m-Y",
         dateFormat: "Y-m-d",
-        maxDate: "today",
+        defaultDate: yesterday,
+        maxDate: yesterday,
         onChange: function (selectedDates, dateStr, instance) {
             if (startDatePicker) {
                 startDatePicker.set('maxDate', selectedDates[0]);
@@ -54,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function () {
         altFormat: "d-m-Y",
         dateFormat: "Y-m-d",
         defaultDate: firstDayOfMonth,
-        maxDate: endDatePicker.selectedDates[0] || today,
+        maxDate: endDatePicker.selectedDates[0] || yesterday,
         onChange: function (selectedDates, dateStr, instance) {
             if (endDatePicker) {
                 endDatePicker.set('minDate', selectedDates[0]);
@@ -108,11 +113,20 @@ document.addEventListener('DOMContentLoaded', function () {
         const location = locationFilter.value;
         const startDate = startDateFilter.value;
         const endDate = endDateFilter.value;
+        
+        // Get current date from AR section
+        const arCurrentDateInput = document.getElementById('ar_current_date');
+        const arCurrentDate = arCurrentDateInput ? arCurrentDateInput.value : null;
 
         const url = new URL(salesMetricsUrl);
         url.searchParams.append('location', location);
         url.searchParams.append('start_date', startDate);
         url.searchParams.append('end_date', endDate);
+        
+        // Pass AR current date if available
+        if (arCurrentDate) {
+            url.searchParams.append('ar_current_date', arCurrentDate);
+        }
 
         // Show loading state
         totalSoValue.textContent = 'Loading...';
@@ -188,14 +202,13 @@ document.addEventListener('DOMContentLoaded', function () {
         arPieChart = new Chart(arPieChartCanvas, {
             type: 'pie',
             data: {
-                labels: ['1 - 30 Days', '31 - 60 Days', '61 - 90 Days', '> 90 Days'],
+                labels: data.labels || ['0 - 104 Days', '105 - 120 Days', '> 120 Days'],
                 datasets: [{
                     data: data.data,
                     backgroundColor: [
-                        'rgba(22, 220, 160, 0.8)', // 1 - 30 Days
-                        'rgba(139, 92, 246, 0.8)', // 31 - 60 Days
-                        'rgba(251, 146, 60, 0.8)', // 61 - 90 Days
-                        'rgba(244, 63, 94, 0.8)' // > 90 Days
+                        'rgba(22, 220, 160, 0.8)', // 0 - 104 Days
+                        'rgba(251, 146, 60, 0.8)', // 105 - 120 Days
+                        'rgba(244, 63, 94, 0.8)' // > 120 Days
                     ],
                     borderColor: '#fff',
                     borderWidth: 2
@@ -229,6 +242,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Add event listeners
     locationFilter.addEventListener('change', () => fetchSalesMetrics('location'));
+    
+    // Listen for AR current date changes to refresh pie chart
+    // Using custom event dispatched from accounts-receivable.js
+    document.addEventListener('ar-date-changed', () => {
+        fetchSalesMetrics('location');
+    });
 
     // Initial load
     fetchLocations();
