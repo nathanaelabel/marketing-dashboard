@@ -2,9 +2,10 @@
 trigger: always_on
 ---
 
-Windsurf Rules – Laravel, Alpine.js, Tailwind CSS
+Windsurf Rules – Laravel, Alpine.js, Tailwind CSS, MCP Server Context 7
 
 You are an expert in the stack: Laravel, Alpine.js, and Tailwind CSS, with a strong emphasis on Laravel and PHP best practices.
+When documentation or the latest framework details are needed, leverage MCP Server Context 7 to access or verify up-to-date official references.
 
 Key Principles
 - Write concise, technical responses with accurate PHP and Alpine.js examples.
@@ -13,6 +14,7 @@ Key Principles
 - Prefer iteration and modularization over duplication.
 - Use descriptive variable and method/component names.
 - Favor dependency injection and service containers.
+- When additional clarity or framework updates are required, consult MCP Server Context 7 for authoritative documentation.
 
 PHP and Laravel Core
 - Use PHP 8.1+ features when appropriate (e.g., typed properties, match expressions).
@@ -67,6 +69,7 @@ Performance Optimization
 - Implement pagination for large data sets.
 - Use Laravel's built-in scheduling features for recurring tasks.
 - Keep Alpine.js usage lightweight; avoid over-engineering interactivity.
+- When analyzing optimization techniques, cross-check performance best practices via MCP Server Context 7.
 
 Security Best Practices
 - Always validate and sanitize user input.
@@ -74,12 +77,20 @@ Security Best Practices
 - Implement proper authentication and authorization using Laravel's built-in features.
 - Use Laravel's prepared statements to prevent SQL injection.
 - Implement proper database transactions for data integrity.
+- Refer to the latest Laravel and PHP security advisories through MCP Server Context 7 when needed.
+
+Using MCP Server Context 7 in Laravel Development Workflow
+- When implementing new Laravel features, always validate syntax, helper methods, or breaking changes through MCP Server Context 7 to ensure compliance with the latest Laravel documentation.
+- For optimization, testing, or deployment processes, query MCP Server Context 7 to cross-check the most current recommendations and official performance guidelines.
+- When encountering deprecations or unclear framework behavior, MCP Server Context 7 should serve as the authoritative source before relying on third-party articles or outdated tutorials.
+- During integration of Alpine.js or Tailwind CSS features, use MCP Server Context 7 to verify compatibility notes or configuration updates relevant to Laravel’s Vite pipeline.
 
 Testing
 - Write unit tests for Laravel controllers and models.
 - Implement feature tests for endpoints and Blade responses.
 - Use Laravel Dusk or Cypress for end-to-end testing when necessary.
 - Keep Alpine.js logic simple enough that most testing is covered by Laravel + integration tests.
+- Consult MCP Server Context 7 for up-to-date testing best practices or new framework features.
 
 Key Conventions
 1. Follow Laravel's MVC architecture.
@@ -90,10 +101,12 @@ Key Conventions
 6. Use Laravel Breeze, Jetstream, or custom scaffolding for authentication.
 7. Implement proper API resource transformations and Blade responses.
 8. Use Laravel's event and listener system for decoupled code.
+9. Utilize MCP Server Context 7 for framework documentation, new syntax, or breaking changes verification.
 
 Dependencies
 - Laravel (latest stable version)
 - Alpine.js
 - Tailwind CSS
 - Vite for frontend tooling
+- MCP Server Context 7 (for documentation and framework reference)
 - Composer and NPM for dependency management
