@@ -414,7 +414,7 @@ class AccountsReceivableController extends Controller
             </style>
         </head>
         <body>
-            <div class="title">PIUTANG JATUH TEMPO</div>
+            <div class="title">UMUR PIUTANG USAHA</div>
             <div class="date">As of ' . $formattedDate . '</div>
             <br>
             <table>
@@ -677,7 +677,7 @@ class AccountsReceivableController extends Controller
         </head>
         <body>
             <div class="header">
-                <div class="title">PIUTANG JATUH TEMPO</div>
+                <div class="title">UMUR PIUTANG USAHA</div>
                 <div class="date">As of ' . $formattedDate . '</div>
             </div>
             <table>
@@ -730,7 +730,7 @@ class AccountsReceivableController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'landscape');
 
-        $filename = 'Piutang_Jatuh_Tempo_' . $fileDate . '.pdf';
+        $filename = 'Piutang_Usaha_' . $fileDate . '.pdf';
 
         return $pdf->download($filename);
     }

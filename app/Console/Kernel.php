@@ -12,19 +12,26 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Adempiere Data Sync Scheduler
+        // Data Sync Scheduler
         // --------------------------------------------------------------------
-        // Runs the fast, incremental sync every 30 minutes to catch recent changes.
-        $schedule->command('app:sync-all-adempiere-data --type=incremental')
+        // Runs incremental sync every 30 minutes to catch recent changes from 17 branches
+        // This will insert new records and update existing ones based on timestamp
+        $schedule->command('app:incremental-sync-all')
             ->everyThirtyMinutes()
             ->withoutOverlapping()
-            ->sendOutputTo(storage_path('logs/sync-incremental.log'));
+            ->timezone('Asia/Jakarta')
+            ->sendOutputTo(storage_path('logs/sync-incremental.log'))
+            ->appendOutputTo(storage_path('logs/sync-incremental.log'));
 
-        // Runs the full, robust sync and prune once daily to ensure 1:1 data parity.
-        $schedule->command('app:sync-all-adempiere-data --type=full')
-            ->dailyAt('01:00')
+        // Runs full sync daily at 08:30 WIB (Asia/Jakarta timezone)
+        // This ensures 1:1 data parity with all 17 branch databases
+        // Performs insert for new records and update for existing records
+        $schedule->command('app:sync-all')
+            ->dailyAt('08:30')
             ->withoutOverlapping()
-            ->sendOutputTo(storage_path('logs/sync-full.log'));
+            ->timezone('Asia/Jakarta')
+            ->sendOutputTo(storage_path('logs/sync-full.log'))
+            ->appendOutputTo(storage_path('logs/sync-full.log'));
     }
 
     /**

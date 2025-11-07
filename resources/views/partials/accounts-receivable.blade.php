@@ -2,7 +2,7 @@
     currentLang: localStorage.getItem('language') || 'id',
     translations: {
         title: {
-            id: 'Piutang Jatuh Tempo',
+            id: 'Umur Piutang',
             en: 'Accounts Receivable'
         }
     },

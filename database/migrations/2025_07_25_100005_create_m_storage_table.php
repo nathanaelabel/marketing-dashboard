@@ -21,8 +21,8 @@ return new class extends Migration
             $table->integer('m_attributesetinstance_id')->nullable();
 
             $table->foreign('ad_org_id')->references('ad_org_id')->on('ad_org');
-            // Primary key now only contains essential columns
-            $table->primary(['m_product_id', 'm_locator_id'], 'm_storage_pkey');
+            // Primary key includes m_attributesetinstance_id to match the model
+            $table->primary(['m_product_id', 'm_locator_id', 'm_attributesetinstance_id'], 'm_storage_pkey');
 
             // Add individual indexes for performance on lookups
             $table->index('m_product_id');
