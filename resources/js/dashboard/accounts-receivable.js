@@ -37,51 +37,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     Chart.register(ChartDataLabels, LegendMargin);
 
-    function displayFailedBranchesWarning(failedBranches) {
-        // Get or create warning container
-        let warningContainer = document.getElementById('arFailedBranchesWarning');
-
-        if (!warningContainer) {
-            // Create warning container if it doesn't exist
-            warningContainer = document.createElement('div');
-            warningContainer.id = 'arFailedBranchesWarning';
-            warningContainer.className = 'mt-3 p-3 rounded-lg border-l-4';
-
-            // Insert after chart container
-            const chartContainer = document.getElementById('ar-chart-container');
-            if (chartContainer && chartContainer.parentNode) {
-                chartContainer.parentNode.insertBefore(warningContainer, chartContainer.nextSibling);
-            }
-        }
-
-        // Clear previous content
-        warningContainer.innerHTML = '';
-
-        if (failedBranches && failedBranches.length > 0) {
-            // Show warning with red styling
-            warningContainer.className = 'mt-3 p-3 rounded-lg border-l-4 border-red-500 bg-red-50';
-            warningContainer.innerHTML = `
-                <div class="flex items-start">
-                    <svg class="w-5 h-5 text-red-500 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                    </svg>
-                    <div class="flex-1">
-                        <p class="text-sm font-medium text-red-800">
-                            Cabang <strong>${failedBranches.join(', ')}</strong> gagal diambil. Harap refresh atau coba lagi nanti.
-                        </p>
-                        <p class="text-xs text-red-600 mt-1">
-                            Data yang ditampilkan hanya dari cabang yang berhasil diambil.
-                        </p>
-                    </div>
-                </div>
-            `;
-            warningContainer.style.display = 'block';
-        } else {
-            // Hide warning if no failed branches
-            warningContainer.style.display = 'none';
-        }
-    }
-
     let currentFilter = 'overdue'; // Default filter
 
     function fetchAndUpdateAccountsReceivableChart(filter = null) {
@@ -155,24 +110,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 arTotalEl.textContent = data.total;
 
-                // Display failed branches warning if any
-                displayFailedBranchesWarning(data.failedBranches);
-
-                // Determine scale based on filter and max value
+                // Determine scale based on filter and max value (excluding OFFLINE dataset)
                 let maxValue = 0;
                 data.datasets.forEach(dataset => {
-                    dataset.data.forEach(value => {
-                        maxValue = Math.max(maxValue, value || 0);
-                    });
+                    if (dataset.label !== 'OFFLINE') {
+                        dataset.data.forEach(value => {
+                            maxValue = Math.max(maxValue, value || 0);
+                        });
+                    }
                 });
 
-                // Calculate total stacked values per bar
+                // Calculate total stacked values per bar (excluding OFFLINE dataset)
                 let maxStackedValue = 0;
                 if (data.datasets.length > 0 && data.datasets[0].data.length > 0) {
                     for (let i = 0; i < data.datasets[0].data.length; i++) {
                         let stackTotal = 0;
                         data.datasets.forEach(dataset => {
-                            stackTotal += dataset.data[i] || 0;
+                            if (dataset.label !== 'OFFLINE') {
+                                stackTotal += dataset.data[i] || 0;
+                            }
                         });
                         maxStackedValue = Math.max(maxStackedValue, stackTotal);
                     }
@@ -203,7 +159,11 @@ document.addEventListener('DOMContentLoaded', function () {
                             legend: {
                                 position: 'top',
                                 labels: {
-                                    padding: 12
+                                    padding: 12,
+                                    filter: function(legendItem, chartData) {
+                                        // Hide OFFLINE from legend
+                                        return legendItem.text !== 'OFFLINE';
+                                    }
                                 }
                             },
                             // extra space under legend
@@ -240,13 +200,37 @@ document.addEventListener('DOMContentLoaded', function () {
                                 }
                             },
                             datalabels: {
-                                display: true,
-                                color: '#333',
-                                font: {
-                                    weight: 'bold',
-                                    size: 11
+                                display: function(context) {
+                                    // For OFFLINE dataset, use its own config
+                                    if (context.dataset.label === 'OFFLINE') {
+                                        return context.dataset.datalabels?.display ?? false;
+                                    }
+                                    return true;
+                                },
+                                color: function(context) {
+                                    if (context.dataset.label === 'OFFLINE') {
+                                        return context.dataset.datalabels?.color ?? '#333';
+                                    }
+                                    return '#333';
+                                },
+                                font: function(context) {
+                                    if (context.dataset.label === 'OFFLINE') {
+                                        return context.dataset.datalabels?.font ?? { weight: 'bold', size: 11 };
+                                    }
+                                    return { weight: 'bold', size: 11 };
+                                },
+                                rotation: function(context) {
+                                    if (context.dataset.label === 'OFFLINE') {
+                                        return context.dataset.datalabels?.rotation ?? 0;
+                                    }
+                                    return 0;
                                 },
                                 formatter: function (value, context) {
+                                    // For OFFLINE bars, use dataset-specific formatter
+                                    if (context.dataset.label === 'OFFLINE') {
+                                        return value !== null && value > 0 ? 'OFFLINE' : null;
+                                    }
+                                    // For other datasets, show value if above threshold
                                     if (value < labelThreshold) {
                                         return null;
                                     }
