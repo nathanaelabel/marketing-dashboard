@@ -1,6 +1,41 @@
 # Adempiere Data Sync - Commands Reference
 
-## Production Commands (NEW - Recommended)
+## 🆕 Progress Tracking (NEW)
+
+Sistem tracking untuk monitoring dan resume sync yang terinterupsi.
+
+### Check Sync Status
+```bash
+# Lihat status batch terakhir
+php artisan app:sync-status --latest
+
+# Lihat status batch tertentu
+php artisan app:sync-status sync_20251108_143052_aB3dEf9h
+
+# Lihat hanya tabel yang failed
+php artisan app:sync-status sync_20251108_143052_aB3dEf9h --failed
+
+# Lihat semua batch (20 terakhir)
+php artisan app:sync-status --all
+```
+
+### Resume Interrupted Sync
+```bash
+# Resume dari batch yang terinterupsi
+php artisan app:sync-all --resume=sync_20251108_143052_aB3dEf9h
+```
+
+**Fitur Resume:**
+- ✅ Skip tabel yang sudah completed
+- ✅ Retry tabel yang failed
+- ✅ Lanjutkan dari progress terakhir
+- ✅ Preserve batch statistics
+
+**Dokumentasi lengkap:** Lihat `SYNC_PROGRESS_TRACKING.md` dan `SYNC_QUICK_GUIDE.md`
+
+---
+
+## Production Commands (Recommended)
 
 ### Full Sync Commands
 
