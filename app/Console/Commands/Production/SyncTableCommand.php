@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\QueryException;
 use PDOException;
+use App\Models\SyncProgress;
 
 class SyncTableCommand extends Command
 {
-    protected $signature = 'app:sync-table {model} {--connection= : The database connection to use}';
+    protected $signature = 'app:sync-table {model} {--connection= : The database connection to use} {--batch-id= : The batch ID for progress tracking}';
     protected $description = 'Sync table with insert/update mechanism from 17 branches';
 
     public function handle()
@@ -45,7 +46,23 @@ class SyncTableCommand extends Command
         Log::info("SyncTable: Starting for {$tableName} from {$connectionName}");
 
         try {
-            $this->runProductionSync($model, $connectionName, $tableName, $modelName);
+            $recordsProcessed = $this->runProductionSync($model, $connectionName, $tableName, $modelName);
+
+            // Update progress if batch_id is provided
+            $batchId = $this->option('batch-id');
+            if ($batchId) {
+                $progress = SyncProgress::where('batch_id', $batchId)
+                    ->where('connection_name', $connectionName)
+                    ->where('model_name', $modelName)
+                    ->first();
+                
+                if ($progress) {
+                    $progress->update([
+                        'records_processed' => $recordsProcessed['processed'],
+                        'records_skipped' => $recordsProcessed['skipped'],
+                    ]);
+                }
+            }
 
             $this->info("Sync for table {$tableName} from {$connectionName} completed successfully.");
             Log::info("SyncTable: Completed for {$tableName} from {$connectionName}");
@@ -69,7 +86,7 @@ class SyncTableCommand extends Command
         }
     }
 
-    private function runProductionSync(Model $model, string $connectionName, string $tableName, string $modelName)
+    private function runProductionSync(Model $model, string $connectionName, string $tableName, string $modelName): array
     {
         // Get the table name in lowercase, as it's returned by getTable()
         $lowerTableName = strtolower($tableName);
@@ -137,7 +154,7 @@ class SyncTableCommand extends Command
                     // Check if we have IDs to filter by
                     if (empty($existingIds)) {
                         $this->warn("No parent records found in {$parentTable} for {$foreignKey}. Skipping {$tableName}.");
-                        return; // Skip this table if no parent records exist
+                        return ['processed' => 0, 'skipped' => 0]; // Skip this table if no parent records exist
                     }
 
                     // Chunk the IDs to avoid PostgreSQL parameter limit (65535)
@@ -166,7 +183,7 @@ class SyncTableCommand extends Command
 
                     if ($sourceData->isEmpty()) {
                         $this->info("No records found in {$tableName} from {$connectionName} with valid {$foreignKey}. Skipping.");
-                        return;
+                        return ['processed' => 0, 'skipped' => 0];
                     }
 
                     $this->comment("Found {" . $sourceData->count() . "} records from chunked queries. Preparing for upsert...");
@@ -205,7 +222,7 @@ class SyncTableCommand extends Command
         if (!isset($skipNormalQuery)) {
             if ($sourceData->isEmpty()) {
                 $this->info("No records found in {$tableName} from {$connectionName}. Skipping.");
-                return;
+                return ['processed' => 0, 'skipped' => 0];
             }
 
             $this->comment("Found {" . $sourceData->count() . "} records. Preparing for upsert...");
@@ -369,6 +386,12 @@ class SyncTableCommand extends Command
 
         $this->line(''); // Add spacing
         $this->info("Upsert complete for {$tableName} from {$connectionName}. Total records: " . count($dataToUpsert));
+        
+        // Return counts for progress tracking
+        return [
+            'processed' => count($dataToUpsert),
+            'skipped' => isset($skippedCount) ? $skippedCount : 0,
+        ];
     }
 
     /**
