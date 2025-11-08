@@ -57,8 +57,8 @@ class SyncProgress extends Model
      */
     public function markAsCompleted(int $recordsProcessed, int $recordsSkipped = 0): void
     {
-        $duration = $this->started_at ? now()->diffInSeconds($this->started_at) : null;
-        
+        $duration = $this->started_at ? max(0, (int) $this->started_at->diffInSeconds(now(), false)) : null;
+
         $this->update([
             'status' => 'completed',
             'records_processed' => $recordsProcessed,
@@ -73,8 +73,8 @@ class SyncProgress extends Model
      */
     public function markAsFailed(string $errorMessage): void
     {
-        $duration = $this->started_at ? now()->diffInSeconds($this->started_at) : null;
-        
+        $duration = $this->started_at ? max(0, (int) $this->started_at->diffInSeconds(now(), false)) : null;
+
         $this->update([
             'status' => 'failed',
             'error_message' => $errorMessage,

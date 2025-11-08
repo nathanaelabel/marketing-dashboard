@@ -63,8 +63,8 @@ class SyncBatch extends Model
      */
     public function markAsCompleted(): void
     {
-        $duration = $this->started_at ? now()->diffInSeconds($this->started_at) : null;
-        
+        $duration = $this->started_at ? max(0, (int) $this->started_at->diffInSeconds(now(), false)) : null;
+
         $this->update([
             'status' => 'completed',
             'completed_at' => now(),
@@ -77,8 +77,8 @@ class SyncBatch extends Model
      */
     public function markAsFailed(): void
     {
-        $duration = $this->started_at ? now()->diffInSeconds($this->started_at) : null;
-        
+        $duration = $this->started_at ? max(0, (int) $this->started_at->diffInSeconds(now(), false)) : null;
+
         $this->update([
             'status' => 'failed',
             'completed_at' => now(),
@@ -91,8 +91,8 @@ class SyncBatch extends Model
      */
     public function markAsInterrupted(): void
     {
-        $duration = $this->started_at ? now()->diffInSeconds($this->started_at) : null;
-        
+        $duration = $this->started_at ? max(0, (int) $this->started_at->diffInSeconds(now(), false)) : null;
+
         $this->update([
             'status' => 'interrupted',
             'completed_at' => now(),
@@ -124,7 +124,7 @@ class SyncBatch extends Model
         if ($this->total_tables === 0) {
             return 0;
         }
-        
+
         return round(($this->completed_tables / $this->total_tables) * 100, 2);
     }
 }
