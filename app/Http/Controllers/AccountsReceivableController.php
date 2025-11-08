@@ -20,26 +20,29 @@ class AccountsReceivableController extends Controller
         $currentDate = $request->input('current_date', now()->toDateString());
         $filter = $request->input('filter', 'overdue'); // Default to 'overdue'
 
-        // Define all branch database connections
+        // Define all branch database connections in desired display order
         $branchConnections = [
-            'pgsql_jkt',
-            'pgsql_bdg',
-            'pgsql_smg',
-            'pgsql_mdn',
-            'pgsql_plb',
-            'pgsql_bjm',
-            'pgsql_dps',
-            // 'pgsql_mks',
-            'pgsql_pku',
-            // 'pgsql_sby',
-            'pgsql_ptk',
-            'pgsql_crb',
-            'pgsql_pdg',
-            'pgsql_pwt',
-            'pgsql_bks',
-            'pgsql_lmp',
-            'pgsql_trg',
+            'pgsql_trg',  // 1. Tangerang (TGR)
+            'pgsql_bks',  // 2. Bekasi (BKS)
+            'pgsql_jkt',  // 3. Jakarta (JKT)
+            'pgsql_ptk',  // 4. Pontianak (PTK)
+            'pgsql_lmp',  // 5. Lampung (LMP)
+            'pgsql_bjm',  // 6. Banjarmasin (BJM)
+            'pgsql_crb',  // 7. Cirebon (CRB)
+            'pgsql_bdg',  // 8. Bandung (BDG)
+            'pgsql_mks',  // 9. Makassar (MKS) - Offline/Anomali
+            'pgsql_sby',  // 10. Surabaya (SBY) - Offline/Anomali
+            'pgsql_smg',  // 11. Semarang (SMG)
+            'pgsql_pwt',  // 12. Purwokerto (PWT)
+            'pgsql_dps',  // 13. Denpasar (DPS)
+            'pgsql_plb',  // 14. Palembang (PLB)
+            'pgsql_pdg',  // 15. Padang (PDG)
+            'pgsql_mdn',  // 16. Medan (MDN)
+            'pgsql_pku',  // 17. Pekanbaru (PKU)
         ];
+
+        // Define branches that are known to be offline or have anomalies
+        $offlineBranches = ['pgsql_mks', 'pgsql_sby'];
 
         // Build SQL query based on filter type
         if ($filter === 'all') {
@@ -147,6 +150,19 @@ class AccountsReceivableController extends Controller
         $failedBranches = [];
 
         foreach ($branchConnections as $connection) {
+            // Skip offline branches - they will be added as OFFLINE bars
+            if (in_array($connection, $offlineBranches)) {
+                $failedBranches[] = $connection;
+                continue;
+            }
+
+            // Perform lightweight socket check before attempting database query
+            if (!$this->canConnectToBranch($connection)) {
+                Log::warning("Skipping {$connection} due to connectivity check failure");
+                $failedBranches[] = $connection;
+                continue;
+            }
+
             try {
                 // Set shorter timeout per connection (30 seconds)
                 DB::connection($connection)->statement("SET statement_timeout = 30000"); // 30 seconds
@@ -192,19 +208,49 @@ class AccountsReceivableController extends Controller
             return $item;
         });
 
-        $formattedData = ChartHelper::formatAccountsReceivableData($queryResult, $currentDate, $filter);
-
-        // Add failed branches information with abbreviations
-        $failedBranchAbbreviations = [];
-        foreach ($failedBranches as $connection) {
-            // Convert connection name to abbreviation (e.g., pgsql_jkt -> JKT)
-            $abbr = strtoupper(str_replace('pgsql_', '', $connection));
-            $failedBranchAbbreviations[] = $abbr;
-        }
-
-        $formattedData['failedBranches'] = $failedBranchAbbreviations;
+        // Pass branch order and failed branches to formatter
+        $formattedData = ChartHelper::formatAccountsReceivableData(
+            $queryResult,
+            $currentDate,
+            $filter,
+            $branchConnections,
+            $failedBranches
+        );
 
         return response()->json($formattedData);
+    }
+
+    /**
+     * Perform a quick socket connectivity check to avoid long Postgres connection timeouts.
+     */
+    protected function canConnectToBranch(string $connection, int $timeoutSeconds = 3): bool
+    {
+        $config = config("database.connections.{$connection}");
+
+        if (!is_array($config)) {
+            return false;
+        }
+
+        $host = $config['host'] ?? null;
+        $port = (int)($config['port'] ?? 5432);
+
+        if (empty($host) || $port <= 0) {
+            return false;
+        }
+
+        $socket = @stream_socket_client(
+            "tcp://{$host}:{$port}",
+            $errorNumber,
+            $errorString,
+            $timeoutSeconds
+        );
+
+        if ($socket === false) {
+            return false;
+        }
+
+        fclose($socket);
+        return true;
     }
 
     public function exportExcel(Request $request)

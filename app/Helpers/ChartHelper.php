@@ -184,13 +184,114 @@ class ChartHelper
         return $suggestedMax;
     }
 
-    public static function formatAccountsReceivableData($data, $currentDate, $filter = 'overdue')
+    public static function formatAccountsReceivableData($data, $currentDate, $filter = 'overdue', $branchOrder = [], $failedBranches = [])
     {
-        $labels = $data->pluck('branch_name')->map(function ($name) {
-            return self::getBranchAbbreviation($name);
-        });
+        // Create a mapping of branch connection to abbreviation
+        $connectionToAbbr = [
+            'pgsql_trg' => 'TGR',
+            'pgsql_bks' => 'BKS',
+            'pgsql_jkt' => 'JKT',
+            'pgsql_ptk' => 'PTK',
+            'pgsql_lmp' => 'LMP',
+            'pgsql_bjm' => 'BJM',
+            'pgsql_crb' => 'CRB',
+            'pgsql_bdg' => 'BDG',
+            'pgsql_mks' => 'MKS',
+            'pgsql_sby' => 'SBY',
+            'pgsql_smg' => 'SMG',
+            'pgsql_pwt' => 'PWT',
+            'pgsql_dps' => 'DPS',
+            'pgsql_plb' => 'PLB',
+            'pgsql_pdg' => 'PDG',
+            'pgsql_mdn' => 'MDN',
+            'pgsql_pku' => 'PKU',
+        ];
 
-        $totalOverdue = $data->sum('total_overdue');
+        // Create a mapping of branch name to data
+        $dataByBranchName = $data->keyBy('branch_name');
+
+        // Initialize ordered arrays
+        $orderedLabels = [];
+        $orderedData = [];
+
+        // Process branches in the specified order
+        foreach ($branchOrder as $connection) {
+            $abbr = $connectionToAbbr[$connection] ?? strtoupper(str_replace('pgsql_', '', $connection));
+            $orderedLabels[] = $abbr;
+
+            // Check if this branch failed/offline
+            if (in_array($connection, $failedBranches)) {
+                // Add offline placeholder data
+                if ($filter === 'all') {
+                    $orderedData[] = [
+                        'range_0_104' => null,
+                        'range_105_120' => null,
+                        'range_120_plus' => null,
+                        'total_overdue' => 0,
+                        'is_offline' => true,
+                    ];
+                } else {
+                    $orderedData[] = [
+                        'range_105_120' => null,
+                        'range_120_plus' => null,
+                        'total_overdue' => 0,
+                        'is_offline' => true,
+                    ];
+                }
+            } else {
+                // Find matching data by branch name
+                $branchData = null;
+                foreach ($dataByBranchName as $branchName => $item) {
+                    $itemAbbr = self::getBranchAbbreviation($branchName);
+                    if ($itemAbbr === $abbr) {
+                        $branchData = $item;
+                        break;
+                    }
+                }
+
+                if ($branchData) {
+                    if ($filter === 'all') {
+                        $orderedData[] = [
+                            'range_0_104' => $branchData->range_0_104 ?? 0,
+                            'range_105_120' => $branchData->range_105_120 ?? 0,
+                            'range_120_plus' => $branchData->range_120_plus ?? 0,
+                            'total_overdue' => $branchData->total_overdue ?? 0,
+                            'is_offline' => false,
+                        ];
+                    } else {
+                        $orderedData[] = [
+                            'range_105_120' => $branchData->range_105_120 ?? 0,
+                            'range_120_plus' => $branchData->range_120_plus ?? 0,
+                            'total_overdue' => $branchData->total_overdue ?? 0,
+                            'is_offline' => false,
+                        ];
+                    }
+                } else {
+                    // Branch has no data (might have failed query)
+                    if ($filter === 'all') {
+                        $orderedData[] = [
+                            'range_0_104' => null,
+                            'range_105_120' => null,
+                            'range_120_plus' => null,
+                            'total_overdue' => 0,
+                            'is_offline' => true,
+                        ];
+                    } else {
+                        $orderedData[] = [
+                            'range_105_120' => null,
+                            'range_120_plus' => null,
+                            'total_overdue' => 0,
+                            'is_offline' => true,
+                        ];
+                    }
+                }
+            }
+        }
+
+        // Calculate total (only from online branches)
+        $totalOverdue = collect($orderedData)
+            ->where('is_offline', false)
+            ->sum('total_overdue');
 
         // Build datasets based on filter type
         if ($filter === 'all') {
@@ -198,19 +299,19 @@ class ChartHelper
             $datasets = [
                 [
                     'label' => '0 - 104 Hari',
-                    'data' => $data->pluck('range_0_104')->all(),
+                    'data' => collect($orderedData)->pluck('range_0_104')->all(),
                     'backgroundColor' => 'rgba(34, 197, 94, 0.8)', // Green
                     'borderRadius' => 5,
                 ],
                 [
                     'label' => '105 - 120 Hari',
-                    'data' => $data->pluck('range_105_120')->all(),
+                    'data' => collect($orderedData)->pluck('range_105_120')->all(),
                     'backgroundColor' => 'rgba(234, 179, 8, 0.8)', // Yellow
                     'borderRadius' => 5,
                 ],
                 [
                     'label' => '> 120 Hari',
-                    'data' => $data->pluck('range_120_plus')->all(),
+                    'data' => collect($orderedData)->pluck('range_120_plus')->all(),
                     'backgroundColor' => 'rgba(239, 68, 68, 0.8)', // Red
                     'borderRadius' => 5,
                 ],
@@ -220,25 +321,68 @@ class ChartHelper
             $datasets = [
                 [
                     'label' => '105 - 120 Hari',
-                    'data' => $data->pluck('range_105_120')->all(),
+                    'data' => collect($orderedData)->pluck('range_105_120')->all(),
                     'backgroundColor' => 'rgba(234, 179, 8, 0.8)', // Yellow
                     'borderRadius' => 5,
                 ],
                 [
                     'label' => '> 120 Hari',
-                    'data' => $data->pluck('range_120_plus')->all(),
+                    'data' => collect($orderedData)->pluck('range_120_plus')->all(),
                     'backgroundColor' => 'rgba(239, 68, 68, 0.8)', // Red
                     'borderRadius' => 5,
                 ],
             ];
         }
 
+        // Calculate max value from online branches for OFFLINE bar sizing
+        $maxValue = 0;
+        foreach ($orderedData as $item) {
+            if (!$item['is_offline']) {
+                if ($filter === 'all') {
+                    $total = ($item['range_0_104'] ?? 0) + ($item['range_105_120'] ?? 0) + ($item['range_120_plus'] ?? 0);
+                } else {
+                    $total = ($item['range_105_120'] ?? 0) + ($item['range_120_plus'] ?? 0);
+                }
+                $maxValue = max($maxValue, $total);
+            }
+        }
+
+        // Add OFFLINE dataset (displayed as gray striped pattern)
+        // Use 50% of max value for visibility
+        $offlineBarValue = max($maxValue * 0.5, 50000000);
+        $offlineData = [];
+        foreach ($orderedData as $item) {
+            $offlineData[] = $item['is_offline'] ? $offlineBarValue : null;
+        }
+
+        $datasets[] = [
+            'label' => 'OFFLINE',
+            'data' => $offlineData,
+            'backgroundColor' => 'rgba(156, 163, 175, 0.3)', // Gray with transparency
+            'borderColor' => 'rgba(107, 114, 128, 0.8)', // Darker gray border
+            'borderWidth' => 2,
+            'borderRadius' => 5,
+            'borderDash' => [5, 5], // Dashed border pattern
+            'datalabels' => [
+                'display' => true,
+                'color' => 'rgba(75, 85, 99, 0.9)',
+                'font' => [
+                    'weight' => 'bold',
+                    'size' => 14,
+                ],
+                'rotation' => -90, // Rotate text vertically
+            ],
+        ];
+
         return [
-            'labels' => $labels,
+            'labels' => $orderedLabels,
             'datasets' => $datasets,
             'total' => 'Rp ' . number_format($totalOverdue, 0, ',', '.'),
             'date' => \Carbon\Carbon::parse($currentDate)->format('l, d F Y'),
             'filter' => $filter,
+            'offlineBranches' => collect($orderedData)->map(function($item, $index) use ($orderedLabels) {
+                return $item['is_offline'] ? $orderedLabels[$index] : null;
+            })->filter()->values()->all(),
         ];
     }
 
