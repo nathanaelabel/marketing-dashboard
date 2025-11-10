@@ -233,14 +233,14 @@ class SyncAllCommand extends Command
         $this->info('====================================================================');
         $this->info('Production Adempiere Data Synchronization Process Completed');
         $this->info('====================================================================');
-        
+
         // Mark batch as completed
         $this->currentBatch->markAsCompleted();
         $this->info("Batch {$this->batchId} completed successfully.");
         $this->info("Total duration: {$this->currentBatch->duration_seconds} seconds");
         $this->info("Completed tables: {$this->currentBatch->completed_tables}/{$this->currentBatch->total_tables}");
         $this->info("Failed tables: {$this->currentBatch->failed_tables}");
-        
+
         return Command::SUCCESS;
     }
 
