@@ -206,6 +206,8 @@ php artisan view:cache
 
 Laravel Scheduler memerlukan cron job yang berjalan setiap menit untuk memanggil `schedule:run`. Tanpa ini, scheduler tidak akan berjalan otomatis.
 
+**Catatan**: Jika Anda ingin menggunakan **Supervisor** sebagai alternatif yang lebih reliable, lihat dokumentasi di `PRODUCTION_SYNC_SUPERVISOR.md`. Supervisor menggunakan `schedule:work` yang berjalan kontinyu dan tidak memerlukan cron job.
+
 #### 7.1. Edit Crontab
 ```bash
 # Edit crontab untuk user yang menjalankan aplikasi (biasanya www-data atau user aplikasi)
@@ -220,18 +222,18 @@ Tambahkan baris berikut di crontab (ganti `/path/to/marketing-dashboard` dengan 
 
 ```cron
 # Laravel Scheduler - Jalankan setiap menit
-* * * * * cd /var/www/marketing-dashboard && php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /var/www/html/web/marketing-dashboard && php artisan schedule:run >> /dev/null 2>&1
 ```
 
 **Penjelasan:**
 - `* * * * *` = Setiap menit
-- `cd /var/www/marketing-dashboard` = Navigate ke directory aplikasi
+- `cd /var/www/html/web/marketing-dashboard` = Navigate ke directory aplikasi
 - `php artisan schedule:run` = Jalankan Laravel scheduler
 - `>> /dev/null 2>&1` = Redirect output (opsional, bisa diubah ke log file)
 
 **Alternatif dengan logging:**
 ```cron
-* * * * * cd /var/www/marketing-dashboard && php artisan schedule:run >> /var/www/marketing-dashboard/storage/logs/scheduler-cron.log 2>&1
+* * * * * cd /var/www/html/web/marketing-dashboard && php artisan schedule:run >> /var/www/html/web/marketing-dashboard/storage/logs/scheduler-cron.log 2>&1
 ```
 
 #### 7.3. Verifikasi Cron Job
@@ -240,7 +242,7 @@ Tambahkan baris berikut di crontab (ganti `/path/to/marketing-dashboard` dengan 
 sudo crontab -l -u www-data
 
 # Test manual apakah scheduler berjalan
-cd /var/www/marketing-dashboard
+cd /var/www/html/web/marketing-dashboard
 php artisan schedule:run
 
 # Lihat scheduled tasks
@@ -256,88 +258,17 @@ tail -f storage/logs/scheduler-cron.log
 tail -f storage/logs/laravel.log
 ```
 
-### 8. Setup Supervisor (Recommended untuk Production)
-
-Supervisor memastikan Laravel Scheduler berjalan secara konsisten dan otomatis restart jika crash.
-
-#### 8.1. Install Supervisor
-```bash
-sudo apt install -y supervisor
-```
-
-#### 8.2. Buat Konfigurasi Supervisor
-```bash
-sudo nano /etc/supervisor/conf.d/marketing-dashboard-scheduler.conf
-```
-
-Isi dengan konfigurasi berikut (sesuaikan path dan user):
-
-```ini
-[program:marketing-dashboard-scheduler]
-process_name=%(program_name)s
-command=php /var/www/marketing-dashboard/artisan schedule:work
-autostart=true
-autorestart=true
-stopasgroup=true
-killasgroup=true
-user=www-data
-numprocs=1
-redirect_stderr=true
-stdout_logfile=/var/www/marketing-dashboard/storage/logs/scheduler.log
-stopwaitsecs=3600
-```
-
-**Catatan:**
-- `schedule:work` adalah command yang menjalankan scheduler secara kontinyu (lebih baik daripada cron)
-- Jika menggunakan `schedule:work`, **TIDAK PERLU** setup cron job di step 7
-- `schedule:work` lebih reliable untuk production karena tidak bergantung pada cron
-
-#### 8.3. Aktifkan dan Start Supervisor
-```bash
-# Reload konfigurasi supervisor
-sudo supervisorctl reread
-sudo supervisorctl update
-
-# Start program
-sudo supervisorctl start marketing-dashboard-scheduler
-
-# Check status
-sudo supervisorctl status marketing-dashboard-scheduler
-
-# Monitor log
-tail -f /var/www/marketing-dashboard/storage/logs/scheduler.log
-```
-
-#### 8.4. Supervisor Commands (Reference)
-```bash
-# Start service
-sudo supervisorctl start marketing-dashboard-scheduler
-
-# Stop service
-sudo supervisorctl stop marketing-dashboard-scheduler
-
-# Restart service
-sudo supervisorctl restart marketing-dashboard-scheduler
-
-# Reload konfigurasi
-sudo supervisorctl reread
-sudo supervisorctl update
-
-# Lihat semua program
-sudo supervisorctl status
-```
-
-### 9. Setup Log Rotation
+### 8. Setup Log Rotation
 Mencegah log files menjadi terlalu besar dan memenuhi disk space.
 
-#### 9.1. Buat Konfigurasi Logrotate
+#### 8.1. Buat Konfigurasi Logrotate
 ```bash
 sudo nano /etc/logrotate.d/marketing-dashboard
 ```
 
 Isi dengan:
 ```
-/var/www/marketing-dashboard/storage/logs/*.log {
+/var/www/html/web/marketing-dashboard/storage/logs/*.log {
     daily
     missingok
     rotate 14
@@ -346,13 +277,10 @@ Isi dengan:
     notifempty
     create 0640 www-data www-data
     sharedscripts
-    postrotate
-        [ -f /var/www/marketing-dashboard/storage/logs/scheduler.log ] && supervisorctl restart marketing-dashboard-scheduler > /dev/null 2>&1 || true
-    endscript
 }
 ```
 
-#### 9.2. Test Logrotate
+#### 8.2. Test Logrotate
 ```bash
 # Test konfigurasi logrotate
 sudo logrotate -d /etc/logrotate.d/marketing-dashboard
@@ -361,10 +289,10 @@ sudo logrotate -d /etc/logrotate.d/marketing-dashboard
 sudo logrotate -f /etc/logrotate.d/marketing-dashboard
 ```
 
-### 10. Set Permissions
+### 9. Set Permissions
 ```bash
 # Set ownership untuk storage dan cache
-cd /var/www/marketing-dashboard
+cd /var/www/html/web/marketing-dashboard
 sudo chown -R www-data:www-data storage bootstrap/cache
 sudo chmod -R 775 storage bootstrap/cache
 
@@ -372,9 +300,12 @@ sudo chmod -R 775 storage bootstrap/cache
 sudo chmod +x artisan
 ```
 
-### 11. Verifikasi Setup Lengkap
+### 10. Verifikasi Setup Lengkap
 
-#### 11.1. Test Manual Commands
+> **⚠️ PENTING**: Setelah setup cron job selesai, jangan langsung meninggalkan server! 
+> Lihat **`FIRST_RUN_CHECKLIST.md`** untuk panduan verifikasi lengkap sebelum server berjalan otomatis 24/7.
+
+#### 10.1. Test Manual Commands
 ```bash
 # Test sync command
 php artisan app:sync-all --tables=MProduct --connection=pgsql_sby
@@ -386,21 +317,19 @@ php artisan schedule:list
 php artisan schedule:run
 ```
 
-#### 11.2. Monitor Scheduler
+#### 10.2. Monitor Scheduler
 ```bash
-# Check apakah scheduler berjalan (jika menggunakan Supervisor)
-sudo supervisorctl status marketing-dashboard-scheduler
-
-# Check cron job (jika menggunakan cron)
+# Check cron job
 sudo crontab -l -u www-data
 
 # Monitor log files
-tail -f storage/logs/scheduler.log
+tail -f storage/logs/scheduler-cron.log
 tail -f storage/logs/sync-full.log
 tail -f storage/logs/sync-incremental.log
+tail -f storage/logs/laravel.log
 ```
 
-#### 11.3. Check Scheduled Tasks
+#### 10.3. Check Scheduled Tasks
 ```bash
 # Lihat semua scheduled tasks
 php artisan schedule:list
@@ -536,18 +465,15 @@ ORDER BY table_name;
 # 1. Check apakah cron job sudah di-set
 sudo crontab -l -u www-data
 
-# 2. Check apakah Supervisor berjalan (jika menggunakan Supervisor)
-sudo supervisorctl status marketing-dashboard-scheduler
-
-# 3. Test manual scheduler
-cd /var/www/marketing-dashboard
+# 2. Test manual scheduler
+cd /var/www/html/web/marketing-dashboard
 php artisan schedule:run
 
-# 4. Check log untuk error
-tail -f storage/logs/scheduler.log
+# 3. Check log untuk error
+tail -f storage/logs/scheduler-cron.log
 tail -f storage/logs/laravel.log
 
-# 5. Pastikan timezone sudah benar
+# 4. Pastikan timezone sudah benar
 php artisan tinker
 >>> config('app.timezone')
 # Harus return: "Asia/Jakarta"
@@ -571,25 +497,6 @@ sudo tail -f /var/log/syslog | grep CRON
 # 4. Pastikan path di crontab benar (gunakan absolute path)
 which php
 # Gunakan full path: /usr/bin/php
-```
-
-### Supervisor Tidak Start
-**Gejala**: Supervisor service tidak bisa start
-
-**Solusi**:
-```bash
-# 1. Check konfigurasi syntax
-sudo supervisorctl reread
-
-# 2. Check log supervisor
-sudo tail -f /var/log/supervisor/supervisord.log
-
-# 3. Check apakah user www-data ada
-id www-data
-
-# 4. Pastikan path dan permission benar
-ls -la /var/www/marketing-dashboard/artisan
-sudo chmod +x /var/www/marketing-dashboard/artisan
 ```
 
 ### Connection Timeout
@@ -651,12 +558,11 @@ $model->upsert($chunk->toArray(), $keyColumns);
 Jika perlu rollback ke sistem lama:
 ```bash
 # 1. Update Kernel.php ke scheduling lama
-# 2. Restart scheduler
-sudo supervisorctl restart marketing-dashboard-scheduler
-
-# 3. Clear cache
+# 2. Clear cache
 php artisan config:clear
 php artisan cache:clear
+
+# 3. Cron job akan otomatis menggunakan konfigurasi baru setelah cache clear
 ```
 
 ## Support & Contact
@@ -671,8 +577,9 @@ Untuk issue atau pertanyaan:
 ### Version 1.1.0 (Current)
 - ✅ **Optimized first sync**: Deteksi otomatis first sync dan gunakan bulk INSERT
 - ✅ **Subsequent sync optimization**: UPSERT otomatis untuk INSERT new + UPDATE changed
-- ✅ **Comprehensive production setup guide**: Panduan lengkap setup cron job dan Supervisor
+- ✅ **Comprehensive production setup guide**: Panduan lengkap setup cron job
 - ✅ **Enhanced monitoring**: Logging untuk first sync vs subsequent sync
+- ✅ **Separated documentation**: Supervisor setup dipisah ke file terpisah
 
 ### Version 1.0.0 (Production Release)
 - ✅ Full sync dengan upsert mechanism
