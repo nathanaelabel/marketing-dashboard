@@ -55,7 +55,7 @@ class SyncTableCommand extends Command
                     ->where('connection_name', $connectionName)
                     ->where('model_name', $modelName)
                     ->first();
-                
+
                 if ($progress) {
                     $progress->update([
                         'records_processed' => $recordsProcessed['processed'],
@@ -376,17 +376,45 @@ class SyncTableCommand extends Command
             Log::channel('sync')->info('Sample processed data for ' . $modelName . ':', [reset($dataToUpsert)]);
         }
 
-        // Use upsert to insert new records and update existing ones
-        // This ensures 1:1 parity with source databases
-        $this->executeWithRetry(function () use ($dataToUpsert, $model, $keyColumns) {
-            collect($dataToUpsert)->chunk(500)->each(function ($chunk) use ($model, $keyColumns) {
-                $model->upsert($chunk->toArray(), $keyColumns);
-            });
-        }, $connectionName, "Upserting data for {$tableName}");
+        // Check if this is the first sync (table is empty)
+        // First sync: INSERT new data only (table is empty, so all records are new)
+        // Subsequent syncs: UPSERT (INSERT new + UPDATE existing changed records)
+        $isFirstSync = $this->isFirstSync($tableName);
 
-        $this->line(''); // Add spacing
-        $this->info("Upsert complete for {$tableName} from {$connectionName}. Total records: " . count($dataToUpsert));
-        
+        if ($isFirstSync) {
+            // First sync: Use insertOrIgnore for better performance when table is empty
+            // This will INSERT new records and ignore any duplicates (from other connections in same batch)
+            $this->comment("First sync detected for {$tableName}. Using bulk INSERT (new data only)...");
+            $this->executeWithRetry(function () use ($dataToUpsert, $model, $keyColumns) {
+                collect($dataToUpsert)->chunk(500)->each(function ($chunk) use ($model, $keyColumns) {
+                    // Use insertOrIgnore for first sync to handle potential duplicates from multiple connections
+                    // This is faster than upsert when table is empty
+                    try {
+                        DB::table($model->getTable())->insertOrIgnore($chunk->toArray());
+                    } catch (\Exception $e) {
+                        // Fallback to upsert if insertOrIgnore fails (e.g., missing unique constraint)
+                        $model->upsert($chunk->toArray(), $keyColumns);
+                    }
+                });
+            }, $connectionName, "Inserting data for {$tableName}");
+
+            $this->line(''); // Add spacing
+            $this->info("Bulk INSERT complete for {$tableName} from {$connectionName}. Total records inserted: " . count($dataToUpsert));
+        } else {
+            // Subsequent syncs: Use upsert to automatically detect and update only changed records
+            // Upsert will INSERT new records and UPDATE existing ones based on primary key
+            // This ensures data parity and only processes changed records efficiently
+            $this->comment("Subsequent sync detected for {$tableName}. Using UPSERT (INSERT new + UPDATE changed records)...");
+            $this->executeWithRetry(function () use ($dataToUpsert, $model, $keyColumns) {
+                collect($dataToUpsert)->chunk(500)->each(function ($chunk) use ($model, $keyColumns) {
+                    $model->upsert($chunk->toArray(), $keyColumns);
+                });
+            }, $connectionName, "Upserting data for {$tableName}");
+
+            $this->line(''); // Add spacing
+            $this->info("UPSERT complete for {$tableName} from {$connectionName}. Total records processed: " . count($dataToUpsert));
+        }
+
         // Return counts for progress tracking
         return [
             'processed' => count($dataToUpsert),
@@ -467,6 +495,23 @@ class SyncTableCommand extends Command
         }
 
         throw $lastException;
+    }
+
+    /**
+     * Check if this is the first sync for the table (table is empty)
+     */
+    private function isFirstSync(string $tableName): bool
+    {
+        try {
+            $recordCount = DB::table($tableName)->count();
+            return $recordCount === 0;
+        } catch (\Exception $e) {
+            // If we can't check, assume it's not first sync to be safe
+            Log::warning("SyncTable: Could not check if first sync for {$tableName}", [
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
     }
 
     /**
