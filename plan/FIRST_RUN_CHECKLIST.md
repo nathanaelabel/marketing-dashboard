@@ -100,47 +100,114 @@ tail -f storage/logs/laravel.log
 - ✅ **YA, jika Anda ingin data langsung terisi sekarang** (tidak perlu tunggu sampai besok jam 08:30)
 - ❌ **TIDAK, jika Anda tidak terburu-buru** (akan jalan otomatis besok jam 08:30 WIB)
 
-**Jika memilih YA:**
+**Jika memilih YA - ⚠️ PENTING: Gunakan Screen/Tmux!**
 
 ```bash
-# Run full sync manual pertama kali
+# 1. Install screen (jika belum ada)
+sudo apt install -y screen
+
+# 2. Start screen session
+screen -S sync-all
+
+# 3. Run full sync di dalam screen
+cd /var/www/html/web/marketing-dashboard
 php artisan app:sync-all
 
-# Proses ini akan memakan waktu cukup lama (tergantung jumlah data)
-# Monitor progress dan pastikan tidak ada error fatal
+# 4. Detach dari screen (TIDAK stop process):
+#    Tekan: Ctrl+A, kemudian D
+#    Sekarang Anda bisa close Putty dengan aman!
 
-# Setelah selesai, check log
+# 5. Monitor progress nanti (reattach):
+screen -r sync-all
+
+# 6. Setelah selesai, check log
 tail -f storage/logs/sync-full.log
 ```
 
 **Catatan Penting:**
+- ⚠️ **JANGAN tutup Putty tanpa detach dari screen!** Process akan terhenti
 - Full sync pertama kali akan menggunakan **bulk INSERT** (lebih cepat)
 - Proses bisa memakan waktu 1-3 jam tergantung jumlah data dari 17 cabang
-- Jangan tutup terminal/SSH selama proses berjalan (atau gunakan `screen`/`tmux`)
+- Dengan screen, Anda bisa close Putty dan process tetap berjalan
 
 **Jika memilih TIDAK:**
 - Full sync akan jalan otomatis **besok jam 08:30 WIB**
 - Incremental sync akan jalan otomatis **setiap 30 menit** mulai dari sekarang
 - Data akan terisi secara bertahap melalui incremental sync
 
-### 7. Setup Screen/Tmux (Recommended untuk Long-Running Process)
+### 7. Setup Screen/Tmux (WAJIB untuk Long-Running Process)
 
-Jika Anda memilih run full sync manual, gunakan `screen` atau `tmux` agar proses tetap berjalan meskipun SSH disconnect:
+⚠️ **PENTING**: Jika Anda menjalankan `php artisan app:sync-all` langsung di terminal Putty tanpa `screen`/`tmux`, **proses akan TERHENTI** ketika Anda menutup Putty!
+
+**Solusi: Gunakan Screen atau Tmux**
+
+#### Opsi 1: Menggunakan Screen (Recommended)
 
 ```bash
-# Install screen (jika belum ada)
+# 1. Install screen (jika belum ada)
 sudo apt install -y screen
 
-# Start screen session
+# 2. Start screen session dengan nama "sync-all"
 screen -S sync-all
 
-# Run full sync
+# 3. Run full sync di dalam screen
 cd /var/www/html/web/marketing-dashboard
 php artisan app:sync-all
 
-# Detach dari screen: Tekan Ctrl+A kemudian D
-# Reattach ke screen: screen -r sync-all
+# 4. Detach dari screen (TIDAK menutup process):
+#    Tekan: Ctrl+A, kemudian tekan D (jangan tekan Ctrl+C!)
+#    Atau ketik: screen -d
+
+# 5. Sekarang Anda bisa close Putty dengan aman
+#    Process akan tetap berjalan di background
+
+# 6. Untuk reattach (cek progress) nanti:
+screen -r sync-all
+
+# 7. Untuk list semua screen sessions:
+screen -ls
 ```
+
+**Cara Detach yang Benar:**
+- ❌ **JANGAN** tekan `Ctrl+C` (akan stop process)
+- ✅ **TEKAN** `Ctrl+A`, lalu `D` (detach tanpa stop)
+- ✅ Atau ketik `screen -d` di terminal lain
+
+#### Opsi 2: Menggunakan Tmux
+
+```bash
+# 1. Install tmux (jika belum ada)
+sudo apt install -y tmux
+
+# 2. Start tmux session
+tmux new -s sync-all
+
+# 3. Run full sync
+cd /var/www/html/web/marketing-dashboard
+php artisan app:sync-all
+
+# 4. Detach: Tekan Ctrl+B, kemudian D
+# 5. Reattach: tmux attach -t sync-all
+```
+
+#### Opsi 3: Menggunakan Nohup (Alternatif)
+
+```bash
+# Run dengan nohup (tidak terpengaruh HUP signal)
+cd /var/www/html/web/marketing-dashboard
+nohup php artisan app:sync-all > storage/logs/sync-all-manual.log 2>&1 &
+
+# Check process ID
+echo $!
+
+# Monitor log
+tail -f storage/logs/sync-all-manual.log
+```
+
+**Catatan:**
+- Dengan `nohup`, output akan masuk ke file log
+- Process akan berjalan di background
+- Lebih sulit untuk monitor real-time dibanding screen/tmux
 
 ### 8. Final Verification Checklist
 
