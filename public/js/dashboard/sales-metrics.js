@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Use yesterday (H-1) as max date since dashboard is updated daily at night
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    
+
     const today = new Date();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
@@ -108,12 +108,59 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
+    // Fetch only AR data (when AR date changes)
+    function fetchArOnly() {
+        const location = locationFilter.value;
+
+        // Get current date from AR section
+        const arCurrentDateInput = document.getElementById('ar_current_date');
+        const arCurrentDate = arCurrentDateInput ? arCurrentDateInput.value : null;
+
+        if (!arCurrentDate) {
+            return; // No AR date available, skip
+        }
+
+        const url = new URL(salesMetricsUrl);
+        url.searchParams.append('location', location);
+        url.searchParams.append('ar_current_date', arCurrentDate);
+        url.searchParams.append('ar_only', 'true'); // Flag to only fetch AR data
+
+        // Show loading state only for AR
+        arPieTotal.textContent = 'Loading...';
+
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw err;
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw data;
+                }
+                // Only update AR pie chart
+                if (data.ar_pie_chart) {
+                    updateArPieChart(data.ar_pie_chart);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching AR data:', error.error || error);
+                arPieTotal.textContent = 'Error';
+
+                // Also display a proper error message in the chart area
+                ChartHelper.showErrorMessage(arPieChart, arPieChartCanvas, 'Failed to load AR data. Please try again.');
+            });
+    }
+
     // Fetch and update sales metrics data
     function fetchSalesMetrics(source = 'initial') {
         const location = locationFilter.value;
         const startDate = startDateFilter.value;
         const endDate = endDateFilter.value;
-        
+
         // Get current date from AR section
         const arCurrentDateInput = document.getElementById('ar_current_date');
         const arCurrentDate = arCurrentDateInput ? arCurrentDateInput.value : null;
@@ -122,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function () {
         url.searchParams.append('location', location);
         url.searchParams.append('start_date', startDate);
         url.searchParams.append('end_date', endDate);
-        
+
         // Pass AR current date if available
         if (arCurrentDate) {
             url.searchParams.append('ar_current_date', arCurrentDate);
@@ -242,11 +289,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Add event listeners
     locationFilter.addEventListener('change', () => fetchSalesMetrics('location'));
-    
-    // Listen for AR current date changes to refresh pie chart
+
+    // Listen for AR current date changes to refresh only AR pie chart
     // Using custom event dispatched from accounts-receivable.js
     document.addEventListener('ar-date-changed', () => {
-        fetchSalesMetrics('location');
+        fetchArOnly(); // Only fetch AR data, not other metrics
     });
 
     // Initial load

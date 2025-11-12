@@ -380,7 +380,7 @@ class ChartHelper
             'total' => 'Rp ' . number_format($totalOverdue, 0, ',', '.'),
             'date' => \Carbon\Carbon::parse($currentDate)->format('l, d F Y'),
             'filter' => $filter,
-            'offlineBranches' => collect($orderedData)->map(function($item, $index) use ($orderedLabels) {
+            'offlineBranches' => collect($orderedData)->map(function ($item, $index) use ($orderedLabels) {
                 return $item['is_offline'] ? $orderedLabels[$index] : null;
             })->filter()->values()->all(),
         ];
@@ -451,7 +451,7 @@ class ChartHelper
     }
 
     /**
-     * Build accounts receivable aging query with subqueries
+     * Build accounts receivable aging query with subqueries (sementara tidak dipakai dulu untuk range aging ini)
      */
     public static function buildAccountsReceivableQuery(string $locationFilter = null): array
     {
@@ -592,6 +592,37 @@ class ChartHelper
         ];
 
         return $displayNames[$branchName] ?? $branchName;
+    }
+
+    /**
+     * Map branch name to database connection
+     *
+     * @param string $branchName Full branch name (e.g., 'PWM Bandung', 'MPM Tangerang')
+     * @return string|null Database connection name (e.g., 'pgsql_bdg', 'pgsql_trg') or null if not found
+     */
+    public static function getBranchConnection(string $branchName): ?string
+    {
+        $branchToConnection = [
+            'PWM Medan' => 'pgsql_mdn',
+            'PWM Makassar' => 'pgsql_mks',
+            'PWM Palembang' => 'pgsql_plb',
+            'PWM Denpasar' => 'pgsql_dps',
+            'PWM Surabaya' => 'pgsql_sby',
+            'PWM Pekanbaru' => 'pgsql_pku',
+            'PWM Cirebon' => 'pgsql_crb',
+            'MPM Tangerang' => 'pgsql_trg',
+            'PWM Bekasi' => 'pgsql_bks',
+            'PWM Semarang' => 'pgsql_smg',
+            'PWM Banjarmasin' => 'pgsql_bjm',
+            'PWM Bandung' => 'pgsql_bdg',
+            'PWM Lampung' => 'pgsql_lmp',
+            'PWM Jakarta' => 'pgsql_jkt',
+            'PWM Pontianak' => 'pgsql_ptk',
+            'PWM Purwokerto' => 'pgsql_pwt',
+            'PWM Padang' => 'pgsql_pdg',
+        ];
+
+        return $branchToConnection[$branchName] ?? null;
     }
 
     /**

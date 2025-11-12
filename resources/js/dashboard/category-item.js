@@ -104,8 +104,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 labels: data.chartData.labels,
                 datasets: data.chartData.datasets.map(dataset => ({
                     ...dataset,
-                    data: dataset.data.map(point => point.y || 0),
-                    originalData: dataset.data // Keep original data for tooltips
+                    data: dataset.data.map(point => Math.max(0, point.y || 0)),
+                    originalData: dataset.data.map(point => ({
+                        ...point,
+                        y: Math.max(0, point.y || 0), // Ensure original data also has no negative percentages
+                        v: Math.max(0, point.v || 0) // Ensure revenue values are never negative
+                    }))
                 }))
             };
 
@@ -117,13 +121,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 transformedData.labels.forEach((label, branchIndex) => {
                     const visibleTotal = visibleDatasets.reduce((sum, dataset) => {
-                        return sum + (dataset.originalData[branchIndex]?.y || 0);
+                        const value = dataset.originalData[branchIndex]?.y || 0;
+                        return sum + Math.max(0, value);
                     }, 0);
 
                     if (visibleTotal > 0) {
                         visibleDatasets.forEach(dataset => {
                             const originalValue = dataset.originalData[branchIndex]?.y || 0;
-                            dataset.data[branchIndex] = originalValue / visibleTotal;
+                            const normalizedValue = Math.max(0, originalValue) / visibleTotal;
+                            dataset.data[branchIndex] = Math.max(0, normalizedValue); // Ensure percentage is never negative
+                        });
+                    } else {
+                        // If total is 0 or negative, set all to 0
+                        visibleDatasets.forEach(dataset => {
+                            dataset.data[branchIndex] = 0;
                         });
                     }
                 });
@@ -155,6 +166,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         y: {
                             stacked: true,
                             beginAtZero: true,
+                            min: 0,
                             max: 1,
                             grid: {
                                 display: false
@@ -162,7 +174,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             ticks: {
                                 callback: function (value) {
                                     return (value * 100) + '%';
-                                }
+                                },
+                                stepSize: 0.2
                             }
                         }
                     },
@@ -182,11 +195,12 @@ document.addEventListener('DOMContentLoaded', function () {
                                 },
                                 label: function (context) {
                                     const originalData = transformedData.datasets[context.datasetIndex].originalData[context.dataIndex];
-                                    if (!originalData || !originalData.v) return '';
-                                    const total = originalData.value;
-                                    const percentage = total > 0 ? ((originalData.v / total) * 100).toFixed(2) : 0;
+                                    if (!originalData || !originalData.v || originalData.v <= 0) return '';
+                                    const total = Math.max(0, originalData.value || 0);
+                                    const revenue = Math.max(0, originalData.v || 0);
+                                    const percentage = total > 0 ? Math.max(0, ((revenue / total) * 100)).toFixed(2) : 0;
                                     // Show full value with Indonesian number formatting
-                                    const fullValue = Math.round(originalData.v).toLocaleString('id-ID');
+                                    const fullValue = Math.round(revenue).toLocaleString('id-ID');
                                     return `${context.dataset.label}: ${fullValue} (${percentage}%)`;
                                 }
                             }
@@ -213,14 +227,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
                                 transformedData.labels.forEach((label, branchIndex) => {
                                     const visibleTotal = visibleDatasets.reduce((sum, dataset) => {
-                                        return sum + (dataset.originalData[branchIndex]?.y || 0);
+                                        const value = dataset.originalData[branchIndex]?.y || 0;
+                                        return sum + Math.max(0, value); // Ensure no negative values
                                     }, 0);
 
                                     if (visibleTotal > 0) {
                                         transformedData.datasets.forEach((dataset, idx) => {
                                             if (chart.isDatasetVisible(idx)) {
                                                 const originalValue = dataset.originalData[branchIndex]?.y || 0;
-                                                dataset.data[branchIndex] = originalValue / visibleTotal;
+                                                const normalizedValue = Math.max(0, originalValue) / visibleTotal;
+                                                dataset.data[branchIndex] = Math.max(0, normalizedValue); // Ensure percentage is never negative
+                                            }
+                                        });
+                                    } else {
+                                        // If total is 0 or negative, set all visible to 0
+                                        transformedData.datasets.forEach((dataset, idx) => {
+                                            if (chart.isDatasetVisible(idx)) {
+                                                dataset.data[branchIndex] = 0;
                                             }
                                         });
                                     }
