@@ -115,21 +115,25 @@ class CategoryItemController extends Controller
         $dataByBranch = $data->groupBy('branch');
 
         $branchTotals = $paginatedBranches->mapWithKeys(function ($branch) use ($dataByBranch) {
-            return [$branch => $dataByBranch->get($branch, collect())->sum('total_revenue')];
+            // Ensure branch total is never negative
+            return [$branch => max(0, $dataByBranch->get($branch, collect())->sum('total_revenue'))];
         });
 
-        $totalRevenueForPage = $branchTotals->sum();
+        $totalRevenueForPage = max(0, $branchTotals->sum());
 
         $categoryColors = ChartHelper::getCategoryColors();
 
         $datasets = $categories->map(function ($category) use ($paginatedBranches, $dataByBranch, $branchTotals, $totalRevenueForPage, $categoryColors) {
             $dataPoints = $paginatedBranches->map(function ($branch) use ($category, $dataByBranch, $branchTotals, $totalRevenueForPage) {
                 $branchData = $dataByBranch->get($branch, collect());
-                $revenue = $branchData->where('category', $category)->sum('total_revenue');
+                // Ensure revenue is never negative
+                $revenue = max(0, $branchData->where('category', $category)->sum('total_revenue'));
                 $totalForBranch = $branchTotals->get($branch, 0);
+                // Ensure percentage is never negative
+                $percentage = $totalForBranch > 0 ? ($revenue / $totalForBranch) : 0;
                 return [
                     'x' => $branch,
-                    'y' => $totalForBranch > 0 ? ($revenue / $totalForBranch) : 0,
+                    'y' => max(0, $percentage),
                     'v' => $revenue,
                     'value' => $totalForBranch,
                     'width' => $totalRevenueForPage > 0 ? ($totalForBranch / $totalRevenueForPage) : 0
@@ -340,14 +344,14 @@ class CategoryItemController extends Controller
                 <td>' . htmlspecialchars(ChartHelper::getBranchAbbreviation($branch)) . '</td>';
 
             foreach ($categories as $category) {
-                $revenue = $branchData->where('category', $category)->sum('total_revenue');
+                $revenue = max(0, $branchData->where('category', $category)->sum('total_revenue')); // Ensure no negative values
                 $categoryTotals[$category] += $revenue;
                 $branchTotal += $revenue;
                 $html .= '<td class="number">' . number_format($revenue, 2, '.', ',') . '</td>';
             }
 
             $grandTotal += $branchTotal;
-            $html .= '<td class="number">' . number_format($branchTotal, 2, '.', ',') . '</td>';
+            $html .= '<td class="number">' . number_format(max(0, $branchTotal), 2, '.', ',') . '</td>';
             $html .= '</tr>';
         }
 
@@ -356,11 +360,11 @@ class CategoryItemController extends Controller
                         <td colspan="3" style="text-align: right;"><strong>TOTAL</strong></td>';
 
         foreach ($categories as $category) {
-            $html .= '<td class="number"><strong>' . number_format($categoryTotals[$category], 2, '.', ',') . '</strong></td>';
+            $html .= '<td class="number"><strong>' . number_format(max(0, $categoryTotals[$category]), 2, '.', ',') . '</strong></td>';
         }
 
         $html .= '
-                        <td class="number"><strong>' . number_format($grandTotal, 2, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format(max(0, $grandTotal), 2, '.', ',') . '</strong></td>
                     </tr>
                 </tbody>
             </table>
@@ -542,14 +546,14 @@ class CategoryItemController extends Controller
                 <td>' . htmlspecialchars(ChartHelper::getBranchAbbreviation($branch)) . '</td>';
 
             foreach ($categories as $category) {
-                $revenue = $branchData->where('category', $category)->sum('total_revenue');
+                $revenue = max(0, $branchData->where('category', $category)->sum('total_revenue')); // Ensure no negative values
                 $categoryTotals[$category] += $revenue;
                 $branchTotal += $revenue;
                 $html .= '<td class="number">' . number_format($revenue, 2, '.', ',') . '</td>';
             }
 
             $grandTotal += $branchTotal;
-            $html .= '<td class="number">' . number_format($branchTotal, 2, '.', ',') . '</td>';
+            $html .= '<td class="number">' . number_format(max(0, $branchTotal), 2, '.', ',') . '</td>';
             $html .= '</tr>';
         }
 
@@ -558,11 +562,11 @@ class CategoryItemController extends Controller
                         <td colspan="3" style="text-align: right;"><strong>TOTAL</strong></td>';
 
         foreach ($categories as $category) {
-            $html .= '<td class="number"><strong>' . number_format($categoryTotals[$category], 2, '.', ',') . '</strong></td>';
+            $html .= '<td class="number"><strong>' . number_format(max(0, $categoryTotals[$category]), 2, '.', ',') . '</strong></td>';
         }
 
         $html .= '
-                        <td class="number"><strong>' . number_format($grandTotal, 2, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format(max(0, $grandTotal), 2, '.', ',') . '</strong></td>
                     </tr>
                 </tbody>
             </table>
