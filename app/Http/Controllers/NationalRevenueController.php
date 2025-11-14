@@ -12,7 +12,7 @@ class NationalRevenueController extends Controller
 
     public function data(Request $request)
     {
-        // Use yesterday (H-1) since dashboard is updated daily at night
+        // Use yesterday (H-1) since dashboard is updated daily
         $yesterday = date('Y-m-d', strtotime('-1 day'));
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', $yesterday);
@@ -82,7 +82,7 @@ class NationalRevenueController extends Controller
 
     public function exportExcel(Request $request)
     {
-        // Use yesterday (H-1) since dashboard is updated daily at night
+        // Use yesterday (H-1) since dashboard is updated daily
         $yesterday = date('Y-m-d', strtotime('-1 day'));
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', $yesterday);
@@ -146,7 +146,9 @@ class NationalRevenueController extends Controller
                 ->get();
         }
 
-        // Calculate total
+        // Sort by branch order
+        $queryResult = ChartHelper::sortByBranchOrder(collect($queryResult), 'branch_name');
+
         $totalRevenue = $queryResult->sum('total_revenue');
 
         // Format dates for filename and display
@@ -271,7 +273,7 @@ class NationalRevenueController extends Controller
 
     public function exportPdf(Request $request)
     {
-        // Use yesterday (H-1) since dashboard is updated daily at night
+        // Use yesterday (H-1) since dashboard is updated daily
         $yesterday = date('Y-m-d', strtotime('-1 day'));
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', $yesterday);
@@ -334,6 +336,9 @@ class NationalRevenueController extends Controller
                 ->orderBy('total_revenue', 'desc')
                 ->get();
         }
+
+        // Sort by branch order
+        $queryResult = ChartHelper::sortByBranchOrder(collect($queryResult), 'branch_name');
 
         // Calculate total
         $totalRevenue = $queryResult->sum('total_revenue');

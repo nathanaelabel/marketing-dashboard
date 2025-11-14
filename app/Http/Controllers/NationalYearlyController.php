@@ -259,7 +259,10 @@ class NationalYearlyController extends Controller
                 // Ignore reset error
             }
 
-            return $result;
+            // Sort result by branch order
+            $sortedResult = ChartHelper::sortByBranchOrder(collect($result), 'branch_name');
+
+            return $sortedResult->all();
         } catch (\PDOException $e) {
             // Reset statement timeout on error (only for PostgreSQL)
             try {
@@ -418,6 +421,9 @@ class NationalYearlyController extends Controller
         }
 
         $filename = 'Penjualan_Tahunan_Nasional_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
+
+        // Sort branches by ChartHelper branch order for exportExcel
+        $allBranches = ChartHelper::sortByBranchOrder($allBranches, null);
 
         // Create XLS content using HTML table format
         $headers = [
@@ -603,6 +609,9 @@ class NationalYearlyController extends Controller
             $previousEndDateFormatted = date('j F', strtotime($previousYearEndDate));
             $dateRangeInfo = 'Periode: 1 Januari - ' . $previousEndDateFormatted . ' ' . $previousYear . ' VS 1 Januari - ' . $currentEndDateFormatted . ' ' . $year;
         }
+
+        // Sort branches by ChartHelper branch order for exportPdf
+        $allBranches = ChartHelper::sortByBranchOrder($allBranches, null);
 
         // Create HTML for PDF
         $html = '

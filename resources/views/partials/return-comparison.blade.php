@@ -50,13 +50,13 @@
                                 style="font-size: 1.25rem; margin-right: 0.75rem;"></i>
                             Export to Excel
                         </button>
-                        <button type="button" id="rcExportPdfBtn"
+                        {{-- <button type="button" id="rcExportPdfBtn"
                             class="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 whitespace-nowrap"
                             role="menuitem">
                             <i class="bi bi-file-pdf text-gray-700"
                                 style="font-size: 1.25rem; margin-right: 0.75rem;"></i>
                             Export to PDF
-                        </button>
+                        </button> --}}
                     </div>
                 </div>
             </div>

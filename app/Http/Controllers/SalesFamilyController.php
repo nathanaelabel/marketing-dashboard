@@ -198,23 +198,23 @@ class SalesFamilyController extends Controller
                         <tr>
                             <th style="width: 90px; text-align: right;">NO</th>
                             <th style="width: 400px;">NAMA FAMILY</th>
-                            <th style="width: 250px;">MDN</th>
-                            <th style="width: 250px;">MKS</th>
-                            <th style="width: 250px;">PLB</th>
-                            <th style="width: 250px;">DPS</th>
-                            <th style="width: 250px;">SBY</th>
-                            <th style="width: 250px;">PKU</th>
-                            <th style="width: 250px;">CRB</th>
                             <th style="width: 250px;">TGR</th>
                             <th style="width: 250px;">BKS</th>
-                            <th style="width: 250px;">SMG</th>
-                            <th style="width: 250px;">BJM</th>
-                            <th style="width: 250px;">BDG</th>
-                            <th style="width: 250px;">LMP</th>
                             <th style="width: 250px;">JKT</th>
                             <th style="width: 250px;">PTK</th>
+                            <th style="width: 250px;">LMP</th>
+                            <th style="width: 250px;">BJM</th>
+                            <th style="width: 250px;">CRB</th>
+                            <th style="width: 250px;">BDG</th>
+                            <th style="width: 250px;">MKS</th>
+                            <th style="width: 250px;">SBY</th>
+                            <th style="width: 250px;">SMG</th>
                             <th style="width: 250px;">PWT</th>
+                            <th style="width: 250px;">DPS</th>
+                            <th style="width: 250px;">PLB</th>
                             <th style="width: 250px;">PDG</th>
+                            <th style="width: 250px;">MDN</th>
+                            <th style="width: 250px;">PKU</th>
                             <th style="width: 270px;">NASIONAL</th>
                         </tr>
                     </thead>
@@ -230,23 +230,23 @@ class SalesFamilyController extends Controller
                 $html .= '<tr>
                     <td style="text-align: right;">' . $no++ . '</td>
                     <td>' . htmlspecialchars($item['family_name']) . '</td>
-                    <td class="number">' . $formatValue($item['mdn']) . '</td>
-                    <td class="number">' . $formatValue($item['mks']) . '</td>
-                    <td class="number">' . $formatValue($item['plb']) . '</td>
-                    <td class="number">' . $formatValue($item['dps']) . '</td>
-                    <td class="number">' . $formatValue($item['sby']) . '</td>
-                    <td class="number">' . $formatValue($item['pku']) . '</td>
-                    <td class="number">' . $formatValue($item['crb']) . '</td>
                     <td class="number">' . $formatValue($item['tgr']) . '</td>
                     <td class="number">' . $formatValue($item['bks']) . '</td>
-                    <td class="number">' . $formatValue($item['smg']) . '</td>
-                    <td class="number">' . $formatValue($item['bjm']) . '</td>
-                    <td class="number">' . $formatValue($item['bdg']) . '</td>
-                    <td class="number">' . $formatValue($item['lmp']) . '</td>
                     <td class="number">' . $formatValue($item['jkt']) . '</td>
                     <td class="number">' . $formatValue($item['ptk']) . '</td>
+                    <td class="number">' . $formatValue($item['lmp']) . '</td>
+                    <td class="number">' . $formatValue($item['bjm']) . '</td>
+                    <td class="number">' . $formatValue($item['crb']) . '</td>
+                    <td class="number">' . $formatValue($item['bdg']) . '</td>
+                    <td class="number">' . $formatValue($item['mks']) . '</td>
+                    <td class="number">' . $formatValue($item['sby']) . '</td>
+                    <td class="number">' . $formatValue($item['smg']) . '</td>
                     <td class="number">' . $formatValue($item['pwt']) . '</td>
+                    <td class="number">' . $formatValue($item['dps']) . '</td>
+                    <td class="number">' . $formatValue($item['plb']) . '</td>
                     <td class="number">' . $formatValue($item['pdg']) . '</td>
+                    <td class="number">' . $formatValue($item['mdn']) . '</td>
+                    <td class="number">' . $formatValue($item['pku']) . '</td>
                     <td class="number"><strong>' . $formatValue($item['nasional']) . '</strong></td>
                 </tr>';
             }
@@ -371,23 +371,23 @@ class SalesFamilyController extends Controller
                         <tr>
                             <th style="width: 30px; text-align: right;">NO</th>
                             <th style="width: 200px;">NAMA FAMILY</th>
-                            <th style="width: 60px;">MDN</th>
-                            <th style="width: 60px;">MKS</th>
-                            <th style="width: 60px;">PLB</th>
-                            <th style="width: 60px;">DPS</th>
-                            <th style="width: 60px;">SBY</th>
-                            <th style="width: 60px;">PKU</th>
-                            <th style="width: 60px;">CRB</th>
                             <th style="width: 60px;">TGR</th>
                             <th style="width: 60px;">BKS</th>
-                            <th style="width: 60px;">SMG</th>
-                            <th style="width: 60px;">BJM</th>
-                            <th style="width: 60px;">BDG</th>
-                            <th style="width: 60px;">LMP</th>
                             <th style="width: 60px;">JKT</th>
                             <th style="width: 60px;">PTK</th>
+                            <th style="width: 60px;">LMP</th>
+                            <th style="width: 60px;">BJM</th>
+                            <th style="width: 60px;">CRB</th>
+                            <th style="width: 60px;">BDG</th>
+                            <th style="width: 60px;">MKS</th>
+                            <th style="width: 60px;">SBY</th>
+                            <th style="width: 60px;">SMG</th>
                             <th style="width: 60px;">PWT</th>
+                            <th style="width: 60px;">DPS</th>
+                            <th style="width: 60px;">PLB</th>
                             <th style="width: 60px;">PDG</th>
+                            <th style="width: 60px;">MDN</th>
+                            <th style="width: 60px;">PKU</th>
                             <th style="width: 80px;">NASIONAL</th>
                         </tr>
                     </thead>
@@ -403,23 +403,23 @@ class SalesFamilyController extends Controller
                 $html .= '<tr>
                     <td style="text-align: right;">' . $no++ . '</td>
                     <td class="family-name">' . htmlspecialchars($item['family_name']) . '</td>
-                    <td class="number">' . $formatValue($item['mdn']) . '</td>
-                    <td class="number">' . $formatValue($item['mks']) . '</td>
-                    <td class="number">' . $formatValue($item['plb']) . '</td>
-                    <td class="number">' . $formatValue($item['dps']) . '</td>
-                    <td class="number">' . $formatValue($item['sby']) . '</td>
-                    <td class="number">' . $formatValue($item['pku']) . '</td>
-                    <td class="number">' . $formatValue($item['crb']) . '</td>
                     <td class="number">' . $formatValue($item['tgr']) . '</td>
                     <td class="number">' . $formatValue($item['bks']) . '</td>
-                    <td class="number">' . $formatValue($item['smg']) . '</td>
-                    <td class="number">' . $formatValue($item['bjm']) . '</td>
-                    <td class="number">' . $formatValue($item['bdg']) . '</td>
-                    <td class="number">' . $formatValue($item['lmp']) . '</td>
                     <td class="number">' . $formatValue($item['jkt']) . '</td>
                     <td class="number">' . $formatValue($item['ptk']) . '</td>
+                    <td class="number">' . $formatValue($item['lmp']) . '</td>
+                    <td class="number">' . $formatValue($item['bjm']) . '</td>
+                    <td class="number">' . $formatValue($item['crb']) . '</td>
+                    <td class="number">' . $formatValue($item['bdg']) . '</td>
+                    <td class="number">' . $formatValue($item['mks']) . '</td>
+                    <td class="number">' . $formatValue($item['sby']) . '</td>
+                    <td class="number">' . $formatValue($item['smg']) . '</td>
                     <td class="number">' . $formatValue($item['pwt']) . '</td>
+                    <td class="number">' . $formatValue($item['dps']) . '</td>
+                    <td class="number">' . $formatValue($item['plb']) . '</td>
                     <td class="number">' . $formatValue($item['pdg']) . '</td>
+                    <td class="number">' . $formatValue($item['mdn']) . '</td>
+                    <td class="number">' . $formatValue($item['pku']) . '</td>
                     <td class="number"><strong>' . $formatValue($item['nasional']) . '</strong></td>
                 </tr>';
             }
