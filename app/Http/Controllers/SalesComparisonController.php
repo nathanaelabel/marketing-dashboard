@@ -13,23 +13,23 @@ class SalesComparisonController extends Controller
     private function getBranchConfig()
     {
         return [
-            'PWM Pontianak' => ['pricelist_version_id' => 120000004, 'locator_id' => 1000010],
-            'PWM Medan' => ['pricelist_version_id' => 120000001, 'locator_id' => 1000001],
-            'PWM Makassar' => ['pricelist_version_id' => 120000006, 'locator_id' => 1000006],
-            'PWM Palembang' => ['pricelist_version_id' => 120000007, 'locator_id' => 1000007],
-            'PWM Denpasar' => ['pricelist_version_id' => 120000008, 'locator_id' => 1000008],
-            'PWM Surabaya' => ['pricelist_version_id' => 120000009, 'locator_id' => 1000009],
-            'PWM Pekanbaru' => ['pricelist_version_id' => 120000005, 'locator_id' => 1000005],
-            'PWM Cirebon' => ['pricelist_version_id' => 120000013, 'locator_id' => 1000013],
             'MPM Tangerang' => ['pricelist_version_id' => 120000000, 'locator_id' => 1000000],
             'PWM Bekasi' => ['pricelist_version_id' => 120000002, 'locator_id' => 1000002],
-            'PWM Semarang' => ['pricelist_version_id' => 120000012, 'locator_id' => 1000012],
-            'PWM Banjarmasin' => ['pricelist_version_id' => 120000014, 'locator_id' => 1000014],
-            'PWM Bandung' => ['pricelist_version_id' => 120000003, 'locator_id' => 1000003],
-            'PWM Lampung' => ['pricelist_version_id' => 120000015, 'locator_id' => 1000015],
             'PWM Jakarta' => ['pricelist_version_id' => 120000011, 'locator_id' => 1000011],
+            'PWM Pontianak' => ['pricelist_version_id' => 120000004, 'locator_id' => 1000010],
+            'PWM Lampung' => ['pricelist_version_id' => 120000015, 'locator_id' => 1000015],
+            'PWM Banjarmasin' => ['pricelist_version_id' => 120000014, 'locator_id' => 1000014],
+            'PWM Cirebon' => ['pricelist_version_id' => 120000013, 'locator_id' => 1000013],
+            'PWM Bandung' => ['pricelist_version_id' => 120000003, 'locator_id' => 1000003],
+            'PWM Makassar' => ['pricelist_version_id' => 120000006, 'locator_id' => 1000006],
+            'PWM Surabaya' => ['pricelist_version_id' => 120000009, 'locator_id' => 1000009],
+            'PWM Semarang' => ['pricelist_version_id' => 120000012, 'locator_id' => 1000012],
             'PWM Purwokerto' => ['pricelist_version_id' => 120000016, 'locator_id' => 1000016],
+            'PWM Denpasar' => ['pricelist_version_id' => 120000008, 'locator_id' => 1000008],
+            'PWM Palembang' => ['pricelist_version_id' => 120000007, 'locator_id' => 1000007],
             'PWM Padang' => ['pricelist_version_id' => 120000017, 'locator_id' => 1000017],
+            'PWM Medan' => ['pricelist_version_id' => 120000001, 'locator_id' => 1000001],
+            'PWM Pekanbaru' => ['pricelist_version_id' => 120000005, 'locator_id' => 1000005],
         ];
     }
 

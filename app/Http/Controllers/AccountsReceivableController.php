@@ -18,31 +18,20 @@ class AccountsReceivableController extends Controller
 
         // Get current date from request or default to today
         $currentDate = $request->input('current_date', now()->toDateString());
-        $filter = $request->input('filter', 'overdue'); // Default to 'overdue'
+        $filter = $request->input('filter', 'overdue');
 
-        // Define all branch database connections in desired display order
-        $branchConnections = [
-            'pgsql_trg',  // 1. Tangerang (TGR)
-            'pgsql_bks',  // 2. Bekasi (BKS)
-            'pgsql_jkt',  // 3. Jakarta (JKT)
-            'pgsql_ptk',  // 4. Pontianak (PTK)
-            'pgsql_lmp',  // 5. Lampung (LMP)
-            'pgsql_bjm',  // 6. Banjarmasin (BJM)
-            'pgsql_crb',  // 7. Cirebon (CRB)
-            'pgsql_bdg',  // 8. Bandung (BDG)
-            'pgsql_mks',  // 9. Makassar (MKS) - Offline/Anomali
-            'pgsql_sby',  // 10. Surabaya (SBY) - Offline/Anomali
-            'pgsql_smg',  // 11. Semarang (SMG)
-            'pgsql_pwt',  // 12. Purwokerto (PWT)
-            'pgsql_dps',  // 13. Denpasar (DPS)
-            'pgsql_plb',  // 14. Palembang (PLB)
-            'pgsql_pdg',  // 15. Padang (PDG)
-            'pgsql_mdn',  // 16. Medan (MDN)
-            'pgsql_pku',  // 17. Pekanbaru (PKU)
-        ];
+        // Get branch connections from ChartHelper
+        $branchOrder = ChartHelper::getBranchOrder();
+        $branchConnections = [];
+        foreach ($branchOrder as $branchName) {
+            $connection = ChartHelper::getBranchConnection($branchName);
+            if ($connection) {
+                $branchConnections[] = $connection;
+            }
+        }
 
-        // Define branches that are known to be offline or have anomalies
-        $offlineBranches = ['pgsql_mks', 'pgsql_sby'];
+        // Define branches that are known to have anomalies
+        $anomalyBranches = ['pgsql_mks', 'pgsql_sby'];
 
         // Build SQL query based on filter type
         if ($filter === 'all') {
@@ -150,9 +139,9 @@ class AccountsReceivableController extends Controller
         $failedBranches = [];
 
         foreach ($branchConnections as $connection) {
-            // Skip offline branches - they will be added as OFFLINE bars
-            if (in_array($connection, $offlineBranches)) {
-                $failedBranches[] = $connection;
+            // Skip anomaly branches - they will be added as ANOMALY bars
+            if (in_array($connection, $anomalyBranches)) {
+                // Don't add to failedBranches, will be handled separately
                 continue;
             }
 
@@ -165,31 +154,25 @@ class AccountsReceivableController extends Controller
 
             try {
                 // Set shorter timeout per connection (30 seconds)
-                DB::connection($connection)->statement("SET statement_timeout = 30000"); // 30 seconds
+                DB::connection($connection)->statement("SET statement_timeout = 30000");
 
                 $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate]);
                 $allResults = $allResults->merge($branchResults);
 
-                // Reset timeout
                 DB::connection($connection)->statement("SET statement_timeout = 0");
             } catch (\Exception $e) {
-                // Log error and track failed branch
                 Log::warning("Failed to query {$connection}: " . $e->getMessage());
                 $failedBranches[] = $connection;
 
-                // Try to reset timeout even on error
                 try {
                     DB::connection($connection)->statement("SET statement_timeout = 0");
                 } catch (\Exception $resetError) {
                     // Ignore reset errors
                 }
-
-                // Continue to next branch without breaking
                 continue;
             }
         }
 
-        // Log summary of failed branches if any
         if (!empty($failedBranches)) {
             Log::info("Accounts Receivable - Failed branches: " . implode(', ', $failedBranches));
         }
@@ -208,13 +191,14 @@ class AccountsReceivableController extends Controller
             return $item;
         });
 
-        // Pass branch order and failed branches to formatter
+        // Pass branch order, failed branches, and anomaly branches to formatter
         $formattedData = ChartHelper::formatAccountsReceivableData(
             $queryResult,
             $currentDate,
             $filter,
             $branchConnections,
-            $failedBranches
+            $failedBranches,
+            $anomalyBranches
         );
 
         return response()->json($formattedData);
@@ -261,42 +245,29 @@ class AccountsReceivableController extends Controller
 
         // Get current date and filter from request
         $currentDate = $request->input('current_date', now()->toDateString());
-        $filter = $request->input('filter', 'overdue');
+        $filter = 'all'; // Always use 'all' filter for export
 
-        // Define all branch database connections
-        $branchConnections = [
-            'pgsql_jkt',
-            'pgsql_bdg',
-            'pgsql_smg',
-            'pgsql_mdn',
-            'pgsql_plb',
-            'pgsql_bjm',
-            'pgsql_dps',
-            'pgsql_mks',
-            'pgsql_pku',
-            'pgsql_sby',
-            'pgsql_ptk',
-            'pgsql_crb',
-            'pgsql_pdg',
-            'pgsql_pwt',
-            'pgsql_bks',
-            'pgsql_lmp',
-            'pgsql_trg',
-        ];
+        // Get branch connections from ChartHelper
+        $branchOrder = ChartHelper::getBranchOrder();
+        $branchConnections = [];
+        foreach ($branchOrder as $branchName) {
+            $connection = ChartHelper::getBranchConnection($branchName);
+            if ($connection) {
+                $branchConnections[] = $connection;
+            }
+        }
 
-        // Use correlated subquery to calculate payment per invoice (matching original query logic)
+        // Use correlated subquery to calculate payment per invoice with new aging ranges (0-104, 105-120, >120)
         $sql = "
         SELECT
             branch_name,
-            SUM(CASE WHEN age >= 1 AND age <= 30 AND (totallines - (bayar * pengali)) <> 0
-                THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_1_30,
-            SUM(CASE WHEN age >= 31 AND age <= 60 AND (totallines - (bayar * pengali)) <> 0
-                THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_31_60,
-            SUM(CASE WHEN age >= 61 AND age <= 90 AND (totallines - (bayar * pengali)) <> 0
-                THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_61_90,
-            SUM(CASE WHEN age > 90 AND (totallines - (bayar * pengali)) <> 0
-                THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_90_plus,
-            SUM(CASE WHEN age >= 1 AND (totallines - (bayar * pengali)) <> 0
+            SUM(CASE WHEN age >= 0 AND age <= 104 AND (totallines - (bayar * pengali)) <> 0
+                THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_0_104,
+            SUM(CASE WHEN age >= 105 AND age <= 120 AND (totallines - (bayar * pengali)) <> 0
+                THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_105_120,
+            SUM(CASE WHEN age > 120 AND (totallines - (bayar * pengali)) <> 0
+                THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_120_plus,
+            SUM(CASE WHEN age >= 0 AND (totallines - (bayar * pengali)) <> 0
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as total_overdue
         FROM (
             SELECT
@@ -332,7 +303,7 @@ class AccountsReceivableController extends Controller
                 AND inv.totallines IS NOT NULL
         ) as source
         WHERE (totallines - (bayar * pengali)) <> 0
-            AND age >= 1
+            AND age >= 0
         GROUP BY branch_name
         ORDER BY total_overdue DESC
         ";
@@ -373,20 +344,39 @@ class AccountsReceivableController extends Controller
             Log::info("Export Excel - Failed branches: " . implode(', ', $failedBranches));
         }
 
+        // Fix branch names and convert to float
         $queryResult = $allResults->map(function ($item) {
-            $item->overdue_1_30 = (float) $item->overdue_1_30;
-            $item->overdue_31_60 = (float) $item->overdue_31_60;
-            $item->overdue_61_90 = (float) $item->overdue_61_90;
-            $item->overdue_90_plus = (float) $item->overdue_90_plus;
-            $item->total_overdue = (float) $item->total_overdue;
+            // Replace old branch names with standardized branch names used in getBranchOrder()
+            if ($item->branch_name === 'PT. Putra Mandiri Damai') {
+                $item->branch_name = 'PWM Makassar';
+            }
+            if ($item->branch_name === 'PT. CIPTA ARDANA KENCANA') {
+                // This partner represents MPM Tangerang (TGR) in the branch order
+                $item->branch_name = 'MPM Tangerang';
+            }
+
+            // Normalize overdue values (treat very small amounts as 0)
+            $fields = ['overdue_0_104', 'overdue_105_120', 'overdue_120_plus', 'total_overdue'];
+            foreach ($fields as $field) {
+                $value = (float) ($item->{$field} ?? 0);
+                $item->{$field} = (abs($value) < 1) ? 0.0 : $value;
+            }
+
             return $item;
         });
 
+        // Exclude branches with known anomaly from export (PWM Makassar, PWM Surabaya)
+        $queryResult = $queryResult->reject(function ($item) {
+            return in_array($item->branch_name, ['PWM Makassar', 'PWM Surabaya'], true);
+        })->values();
+
+        // Sort by branch order
+        $queryResult = ChartHelper::sortByBranchOrder($queryResult, 'branch_name');
+
         // Calculate totals
-        $total_1_30 = $queryResult->sum('overdue_1_30');
-        $total_31_60 = $queryResult->sum('overdue_31_60');
-        $total_61_90 = $queryResult->sum('overdue_61_90');
-        $total_90_plus = $queryResult->sum('overdue_90_plus');
+        $total_0_104 = $queryResult->sum('overdue_0_104');
+        $total_105_120 = $queryResult->sum('overdue_105_120');
+        $total_120_plus = $queryResult->sum('overdue_120_plus');
         $grandTotal = $queryResult->sum('total_overdue');
 
         // Format date for filename and display
@@ -472,17 +462,15 @@ class AccountsReceivableController extends Controller
                     <col class="col-amount">
                     <col class="col-amount">
                     <col class="col-amount">
-                    <col class="col-amount">
                 </colgroup>
                 <thead>
                     <tr>
                         <th>NO</th>
                         <th>NAMA CABANG</th>
                         <th>KODE CABANG</th>
-                        <th style="text-align: right;">1-30 DAYS (RP)</th>
-                        <th style="text-align: right;">31-60 DAYS (RP)</th>
-                        <th style="text-align: right;">61-90 DAYS (RP)</th>
-                        <th style="text-align: right;">&gt; 90 DAYS (RP)</th>
+                        <th style="text-align: right;">0-104 DAYS (RP)</th>
+                        <th style="text-align: right;">105-120 DAYS (RP)</th>
+                        <th style="text-align: right;">&gt;120 DAYS (RP)</th>
                         <th style="text-align: right;">TOTAL (RP)</th>
                     </tr>
                 </thead>
@@ -490,25 +478,29 @@ class AccountsReceivableController extends Controller
 
         $no = 1;
         foreach ($queryResult as $row) {
+            // Skip offline branches (show as empty or dash)
+            $val_0_104 = number_format($row->overdue_0_104, 2, '.', ',');
+            $val_105_120 = number_format($row->overdue_105_120, 2, '.', ',');
+            $val_120_plus = number_format($row->overdue_120_plus, 2, '.', ',');
+            $val_total = number_format($row->total_overdue, 2, '.', ',');
+
             $html .= '<tr>
                 <td>' . $no++ . '</td>
                 <td>' . htmlspecialchars($row->branch_name) . '</td>
                 <td>' . htmlspecialchars(ChartHelper::getBranchAbbreviation($row->branch_name)) . '</td>
-                <td class="number">' . number_format($row->overdue_1_30, 2, '.', ',') . '</td>
-                <td class="number">' . number_format($row->overdue_31_60, 2, '.', ',') . '</td>
-                <td class="number">' . number_format($row->overdue_61_90, 2, '.', ',') . '</td>
-                <td class="number">' . number_format($row->overdue_90_plus, 2, '.', ',') . '</td>
-                <td class="number">' . number_format($row->total_overdue, 2, '.', ',') . '</td>
+                <td class="number">' . $val_0_104 . '</td>
+                <td class="number">' . $val_105_120 . '</td>
+                <td class="number">' . $val_120_plus . '</td>
+                <td class="number">' . $val_total . '</td>
             </tr>';
         }
 
         $html .= '
                     <tr class="total-row">
                         <td colspan="3" style="text-align: right;"><strong>TOTAL</strong></td>
-                        <td class="number"><strong>' . number_format($total_1_30, 2, '.', ',') . '</strong></td>
-                        <td class="number"><strong>' . number_format($total_31_60, 2, '.', ',') . '</strong></td>
-                        <td class="number"><strong>' . number_format($total_61_90, 2, '.', ',') . '</strong></td>
-                        <td class="number"><strong>' . number_format($total_90_plus, 2, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($total_0_104, 2, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($total_105_120, 2, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($total_120_plus, 2, '.', ',') . '</strong></td>
                         <td class="number"><strong>' . number_format($grandTotal, 2, '.', ',') . '</strong></td>
                     </tr>
                 </tbody>
@@ -530,42 +522,29 @@ class AccountsReceivableController extends Controller
 
         // Get current date and filter from request
         $currentDate = $request->input('current_date', now()->toDateString());
-        $filter = $request->input('filter', 'overdue');
+        $filter = 'all'; // Always use 'all' filter for export
 
-        // Define all branch database connections
-        $branchConnections = [
-            'pgsql_jkt',
-            'pgsql_bdg',
-            'pgsql_smg',
-            'pgsql_mdn',
-            'pgsql_plb',
-            'pgsql_bjm',
-            'pgsql_dps',
-            'pgsql_mks',
-            'pgsql_pku',
-            'pgsql_sby',
-            'pgsql_ptk',
-            'pgsql_crb',
-            'pgsql_pdg',
-            'pgsql_pwt',
-            'pgsql_bks',
-            'pgsql_lmp',
-            'pgsql_trg',
-        ];
+        // Get branch connections from ChartHelper
+        $branchOrder = ChartHelper::getBranchOrder();
+        $branchConnections = [];
+        foreach ($branchOrder as $branchName) {
+            $connection = ChartHelper::getBranchConnection($branchName);
+            if ($connection) {
+                $branchConnections[] = $connection;
+            }
+        }
 
-        // Use correlated subquery to calculate payment per invoice (matching original query logic)
+        // Use correlated subquery to calculate payment per invoice with new aging ranges (0-104, 105-120, >120)
         $sql = "
         SELECT
             branch_name,
-            SUM(CASE WHEN age >= 1 AND age <= 30 AND (totallines - (bayar * pengali)) <> 0
-                THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_1_30,
-            SUM(CASE WHEN age >= 31 AND age <= 60 AND (totallines - (bayar * pengali)) <> 0
-                THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_31_60,
-            SUM(CASE WHEN age >= 61 AND age <= 90 AND (totallines - (bayar * pengali)) <> 0
-                THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_61_90,
-            SUM(CASE WHEN age > 90 AND (totallines - (bayar * pengali)) <> 0
-                THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_90_plus,
-            SUM(CASE WHEN age >= 1 AND (totallines - (bayar * pengali)) <> 0
+            SUM(CASE WHEN age >= 0 AND age <= 104 AND (totallines - (bayar * pengali)) <> 0
+                THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_0_104,
+            SUM(CASE WHEN age >= 105 AND age <= 120 AND (totallines - (bayar * pengali)) <> 0
+                THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_105_120,
+            SUM(CASE WHEN age > 120 AND (totallines - (bayar * pengali)) <> 0
+                THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_120_plus,
+            SUM(CASE WHEN age >= 0 AND (totallines - (bayar * pengali)) <> 0
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as total_overdue
         FROM (
             SELECT
@@ -601,7 +580,7 @@ class AccountsReceivableController extends Controller
                 AND inv.totallines IS NOT NULL
         ) as source
         WHERE (totallines - (bayar * pengali)) <> 0
-            AND age >= 1
+            AND age >= 0
         GROUP BY branch_name
         ORDER BY total_overdue DESC
         ";
@@ -642,20 +621,39 @@ class AccountsReceivableController extends Controller
             Log::info("Export PDF - Failed branches: " . implode(', ', $failedBranches));
         }
 
+        // Fix branch names and convert to float
         $queryResult = $allResults->map(function ($item) {
-            $item->overdue_1_30 = (float) $item->overdue_1_30;
-            $item->overdue_31_60 = (float) $item->overdue_31_60;
-            $item->overdue_61_90 = (float) $item->overdue_61_90;
-            $item->overdue_90_plus = (float) $item->overdue_90_plus;
-            $item->total_overdue = (float) $item->total_overdue;
+            // Replace old branch names with standardized branch names used in getBranchOrder()
+            if ($item->branch_name === 'PT. Putra Mandiri Damai') {
+                $item->branch_name = 'PWM Makassar';
+            }
+            if ($item->branch_name === 'PT. CIPTA ARDANA KENCANA') {
+                // This partner represents MPM Tangerang (TGR) in the branch order
+                $item->branch_name = 'MPM Tangerang';
+            }
+
+            // Normalize overdue values (treat very small amounts as 0)
+            $fields = ['overdue_0_104', 'overdue_105_120', 'overdue_120_plus', 'total_overdue'];
+            foreach ($fields as $field) {
+                $value = (float) ($item->{$field} ?? 0);
+                $item->{$field} = (abs($value) < 1) ? 0.0 : $value;
+            }
+
             return $item;
         });
 
+        // Exclude branches with known anomaly from export (PWM Makassar, PWM Surabaya)
+        $queryResult = $queryResult->reject(function ($item) {
+            return in_array($item->branch_name, ['PWM Makassar', 'PWM Surabaya'], true);
+        })->values();
+
+        // Sort by branch order
+        $queryResult = ChartHelper::sortByBranchOrder($queryResult, 'branch_name');
+
         // Calculate totals
-        $total_1_30 = $queryResult->sum('overdue_1_30');
-        $total_31_60 = $queryResult->sum('overdue_31_60');
-        $total_61_90 = $queryResult->sum('overdue_61_90');
-        $total_90_plus = $queryResult->sum('overdue_90_plus');
+        $total_0_104 = $queryResult->sum('overdue_0_104');
+        $total_105_120 = $queryResult->sum('overdue_105_120');
+        $total_120_plus = $queryResult->sum('overdue_120_plus');
         $grandTotal = $queryResult->sum('total_overdue');
 
         // Format date for filename and display
@@ -732,10 +730,9 @@ class AccountsReceivableController extends Controller
                         <th style="width: 30px; text-align: left;">NO</th>
                         <th style="width: 150px; text-align: left;">NAMA CABANG</th>
                         <th style="width: 70px; text-align: left;">KODE CABANG</th>
-                        <th style="width: 100px; text-align: right;">1-30 DAYS</th>
-                        <th style="width: 100px; text-align: right;">31-60 DAYS</th>
-                        <th style="width: 100px; text-align: right;">61-90 DAYS</th>
-                        <th style="width: 100px; text-align: right;">&gt; 90 DAYS</th>
+                        <th style="width: 120px; text-align: right;">0-104 DAYS</th>
+                        <th style="width: 120px; text-align: right;">105-120 DAYS</th>
+                        <th style="width: 120px; text-align: right;">&gt;120 DAYS</th>
                         <th style="width: 120px; text-align: right;">TOTAL</th>
                     </tr>
                 </thead>
@@ -743,25 +740,29 @@ class AccountsReceivableController extends Controller
 
         $no = 1;
         foreach ($queryResult as $row) {
+            // Values are already normalized; always render numeric 0 instead of '-'
+            $val_0_104 = number_format($row->overdue_0_104, 2, '.', ',');
+            $val_105_120 = number_format($row->overdue_105_120, 2, '.', ',');
+            $val_120_plus = number_format($row->overdue_120_plus, 2, '.', ',');
+            $val_total = number_format($row->total_overdue, 2, '.', ',');
+
             $html .= '<tr>
                 <td>' . $no++ . '</td>
                 <td>' . htmlspecialchars($row->branch_name) . '</td>
                 <td>' . htmlspecialchars(ChartHelper::getBranchAbbreviation($row->branch_name)) . '</td>
-                <td class="number">' . number_format($row->overdue_1_30, 2, '.', ',') . '</td>
-                <td class="number">' . number_format($row->overdue_31_60, 2, '.', ',') . '</td>
-                <td class="number">' . number_format($row->overdue_61_90, 2, '.', ',') . '</td>
-                <td class="number">' . number_format($row->overdue_90_plus, 2, '.', ',') . '</td>
-                <td class="number">' . number_format($row->total_overdue, 2, '.', ',') . '</td>
+                <td class="number">' . $val_0_104 . '</td>
+                <td class="number">' . $val_105_120 . '</td>
+                <td class="number">' . $val_120_plus . '</td>
+                <td class="number">' . $val_total . '</td>
             </tr>';
         }
 
         $html .= '
                     <tr class="total-row">
                         <td colspan="3" style="text-align: right;"><strong>TOTAL</strong></td>
-                        <td class="number"><strong>' . number_format($total_1_30, 2, '.', ',') . '</strong></td>
-                        <td class="number"><strong>' . number_format($total_31_60, 2, '.', ',') . '</strong></td>
-                        <td class="number"><strong>' . number_format($total_61_90, 2, '.', ',') . '</strong></td>
-                        <td class="number"><strong>' . number_format($total_90_plus, 2, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($total_0_104, 2, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($total_105_120, 2, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($total_120_plus, 2, '.', ',') . '</strong></td>
                         <td class="number"><strong>' . number_format($grandTotal, 2, '.', ',') . '</strong></td>
                     </tr>
                 </tbody>

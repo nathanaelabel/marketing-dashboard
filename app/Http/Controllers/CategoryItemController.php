@@ -38,10 +38,28 @@ class CategoryItemController extends Controller
         }
 
         $baseQuery->select('org.name as branch')
-            ->groupBy('org.name')
-            ->orderBy('org.name');
+            ->groupBy('org.name');
 
-        $allBranches = $baseQuery->get()->pluck('branch');
+        $rawBranches = $baseQuery->get()->pluck('branch');
+
+        // Sort branches using ChartHelper's branch order
+        $branchOrder = ChartHelper::getBranchOrder();
+
+        $sortedBranches = [];
+        foreach ($branchOrder as $branch) {
+            if ($rawBranches->contains($branch)) {
+                $sortedBranches[] = $branch;
+            }
+        }
+
+        // Add any branches not in predefined order
+        foreach ($rawBranches as $branch) {
+            if (!in_array($branch, $sortedBranches)) {
+                $sortedBranches[] = $branch;
+            }
+        }
+
+        $allBranches = collect($sortedBranches);
 
         // Calculate offset for pagination with different page sizes
         $offset = $page === 1 ? 0 : 9 + (($page - 2) * 8);
@@ -240,6 +258,9 @@ class CategoryItemController extends Controller
         $fileEndDate = Carbon::parse($endDate)->format('d-m-Y');
         $typeLabel = $type === 'NETTO' ? 'Netto' : 'Bruto';
         $filename = 'Kontribusi_Kategori_Barang_' . $typeLabel . '_' . $fileStartDate . '_sampai_' . $fileEndDate . '.xls';
+
+        // Sort branches by ChartHelper branch order for exportExcel
+        $branches = ChartHelper::sortByBranchOrder($branches, null);
 
         // Create XLS content using HTML table format
         $headers = [
@@ -447,6 +468,9 @@ class CategoryItemController extends Controller
         $fileStartDate = Carbon::parse($startDate)->format('d-m-Y');
         $fileEndDate = Carbon::parse($endDate)->format('d-m-Y');
         $typeLabel = $type === 'NETTO' ? 'Netto' : 'Bruto';
+
+        // Sort branches by ChartHelper branch order for exportPdf
+        $branches = ChartHelper::sortByBranchOrder($branches, null);
 
         // Create HTML for PDF
         $html = '

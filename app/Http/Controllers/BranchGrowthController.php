@@ -529,6 +529,9 @@ class BranchGrowthController extends Controller
 
         $allData = DB::select($query, [$category, $startDate, $endDate]);
 
+        // Sort data by branch order
+        $allData = ChartHelper::sortByBranchOrder(collect($allData), 'branch_name')->all();
+
         // Detect last available month in end year data
         $lastAvailableMonth = 0;
         foreach ($allData as $row) {
@@ -837,6 +840,9 @@ class BranchGrowthController extends Controller
         }
 
         $allData = DB::select($query, [$category, $startDate, $endDate]);
+
+        // Sort data by branch order
+        $allData = ChartHelper::sortByBranchOrder(collect($allData), 'branch_name')->all();
 
         // Detect last available month in end year data
         $lastAvailableMonth = 0;

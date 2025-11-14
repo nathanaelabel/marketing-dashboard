@@ -504,6 +504,9 @@ class MonthlyBranchController extends Controller
             // Ignore reset error
         }
 
+        // Sort data by branch order
+        $allData = ChartHelper::sortByBranchOrder(collect($allData), 'branch_name')->all();
+
         // Detect last available month in current year data
         $lastAvailableMonth = 0;
         foreach ($allData as $row) {

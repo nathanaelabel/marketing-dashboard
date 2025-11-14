@@ -12,23 +12,23 @@ class TableHelper
     public static function getBranchMapping()
     {
         return [
-            'PWM Pontianak' => 'PTK',
-            'PWM Medan' => 'MDN',
-            'PWM Makassar' => 'MKS',
-            'PWM Palembang' => 'PLB',
-            'PWM Denpasar' => 'DPS',
-            'PWM Surabaya' => 'SBY',
-            'PWM Pekanbaru' => 'PKU',
-            'PWM Cirebon' => 'CRB',
             'MPM Tangerang' => 'TGR',
             'PWM Bekasi' => 'BKS',
-            'PWM Semarang' => 'SMG',
-            'PWM Banjarmasin' => 'BJM',
-            'PWM Bandung' => 'BDG',
-            'PWM Lampung' => 'LMP',
             'PWM Jakarta' => 'JKT',
+            'PWM Pontianak' => 'PTK',
+            'PWM Lampung' => 'LMP',
+            'PWM Banjarmasin' => 'BJM',
+            'PWM Cirebon' => 'CRB',
+            'PWM Bandung' => 'BDG',
+            'PWM Makassar' => 'MKS',
+            'PWM Surabaya' => 'SBY',
+            'PWM Semarang' => 'SMG',
             'PWM Purwokerto' => 'PWT',
-            'PWM Padang' => 'PDG'
+            'PWM Denpasar' => 'DPS',
+            'PWM Palembang' => 'PLB',
+            'PWM Padang' => 'PDG',
+            'PWM Medan' => 'MDN',
+            'PWM Pekanbaru' => 'PKU'
         ];
     }
 
@@ -37,7 +37,7 @@ class TableHelper
      */
     public static function getBranchCodes()
     {
-        return ['MDN', 'MKS', 'PLB', 'DPS', 'SBY', 'PKU', 'CRB', 'TGR', 'BKS', 'SMG', 'BJM', 'BDG', 'LMP', 'JKT', 'PTK', 'PWT', 'PDG'];
+        return ['TGR', 'BKS', 'JKT', 'PTK', 'LMP', 'BJM', 'CRB', 'BDG', 'MKS', 'SBY', 'SMG', 'PWT', 'DPS', 'PLB', 'PDG', 'MDN', 'PKU'];
     }
 
     /**
