@@ -33,8 +33,8 @@ class ChartHelper
         if ($maxValue >= $billionThreshold) {
             $preferMillions = false;
             if (!empty($allDataValues)) {
-                $nonZeroValues = array_filter($allDataValues, fn($v) => $v > 0.001 * $billionThreshold); // Consider values > 1M as somewhat relevant
-                if (count($nonZeroValues) > 1) { // Only apply this mixed-scale logic if there's more than one bar
+                $nonZeroValues = array_filter($allDataValues, fn($v) => $v > 0.001 * $billionThreshold);
+                if (count($nonZeroValues) > 1) {
                     foreach ($nonZeroValues as $value) {
                         // If there's any significant bar that's considerably smaller than 1B (e.g. < 700M)
                         // then prefer Millions to keep that bar's value readable.
@@ -101,12 +101,10 @@ class ChartHelper
     public static function calculateSuggestedMax(
         float $maxDataValue,
         float $divisor,
-        float $paddingFactor = 1.0, // From 1.2 to 1.15 for tighter Y-axis (adjust)
-        float $minSuggestedMaxDivisorUnits = 5.0 // e.g. default to 5M or 5B if data is tiny/zero
+        float $paddingFactor = 1.0,
+        float $minSuggestedMaxDivisorUnits = 5.0
     ): float {
         if ($maxDataValue <= 0) {
-            // If no data or zero/negative max, return a minimum sensible default.
-            // e.g., if divisor is 1e6 (Millions), return 5 * 1e6 = 5 Million.
             return $minSuggestedMaxDivisorUnits * $divisor;
         }
 
@@ -118,7 +116,6 @@ class ChartHelper
             return 5 * $divisor;
         }
 
-        // Determine rounding increment and padding based on value range
         $padding = 0;
         $roundedUp = 0;
 
@@ -127,15 +124,12 @@ class ChartHelper
             // Example: 6.5 -> round to 7 -> add 1 = 8
             // Example: 8.0 -> round to 8 -> add 2 = 10
             $roundedUp = ceil($scaledValue);
-            // Add 1-2 units: add 1 for values that round up significantly, add 2 for values already near round numbers
             if ($scaledValue <= 7.5) {
-                $padding = 1; // 6.5 -> 7 -> 8, 7.2 -> 8 -> 9
+                $padding = 1;
             } else {
-                $padding = 2; // 8 -> 8 -> 10, 9.5 -> 10 -> 12
+                $padding = 2;
             }
         } elseif ($scaledValue <= 20) {
-            // For values 10-20, round to next 1, then add 2 units
-            // Example: 15.3 -> round to 16 -> add 2 = 18
             $roundedUp = ceil($scaledValue);
             $padding = 2;
         } elseif ($scaledValue <= 50) {
@@ -154,7 +148,6 @@ class ChartHelper
             $padding = 10;
         }
 
-        // Calculate suggested max with padding
         $suggestedMaxScaled = $roundedUp + $padding;
 
         // Round to nearest nice number for cleaner axis labels
@@ -172,10 +165,8 @@ class ChartHelper
             $suggestedMaxScaled = ceil($suggestedMaxScaled / 5) * 5;
         }
 
-        // Convert back to raw units
         $suggestedMax = $suggestedMaxScaled * $divisor;
 
-        // Ensure minimum sensible max
         $minimumSensibleMax = $minSuggestedMaxDivisorUnits * $divisor;
         if ($suggestedMax < $minimumSensibleMax) {
             return $minimumSensibleMax;
@@ -184,7 +175,7 @@ class ChartHelper
         return $suggestedMax;
     }
 
-    public static function formatAccountsReceivableData($data, $currentDate, $filter = 'overdue', $branchOrder = [], $failedBranches = [])
+    public static function formatAccountsReceivableData($data, $currentDate, $filter = 'overdue', $branchOrder = [], $failedBranches = [], $anomalyBranches = [])
     {
         // Create a mapping of branch connection to abbreviation
         $connectionToAbbr = [
@@ -219,23 +210,49 @@ class ChartHelper
             $abbr = $connectionToAbbr[$connection] ?? strtoupper(str_replace('pgsql_', '', $connection));
             $orderedLabels[] = $abbr;
 
-            // Check if this branch failed/offline
-            if (in_array($connection, $failedBranches)) {
-                // Add offline placeholder data
+            // Check if this branch has anomaly
+            if (in_array($connection, $anomalyBranches)) {
+                // Add anomaly placeholder data
                 if ($filter === 'all') {
                     $orderedData[] = [
                         'range_0_104' => null,
                         'range_105_120' => null,
                         'range_120_plus' => null,
                         'total_overdue' => 0,
-                        'is_offline' => true,
+                        'is_offline' => false,
+                        'is_anomaly' => true,
+                        'is_connection_failed' => false,
                     ];
                 } else {
                     $orderedData[] = [
                         'range_105_120' => null,
                         'range_120_plus' => null,
                         'total_overdue' => 0,
-                        'is_offline' => true,
+                        'is_offline' => false,
+                        'is_anomaly' => true,
+                        'is_connection_failed' => false,
+                    ];
+                }
+            } elseif (in_array($connection, $failedBranches)) {
+                // Add connection failed placeholder data
+                if ($filter === 'all') {
+                    $orderedData[] = [
+                        'range_0_104' => null,
+                        'range_105_120' => null,
+                        'range_120_plus' => null,
+                        'total_overdue' => 0,
+                        'is_offline' => false,
+                        'is_anomaly' => false,
+                        'is_connection_failed' => true,
+                    ];
+                } else {
+                    $orderedData[] = [
+                        'range_105_120' => null,
+                        'range_120_plus' => null,
+                        'total_overdue' => 0,
+                        'is_offline' => false,
+                        'is_anomaly' => false,
+                        'is_connection_failed' => true,
                     ];
                 }
             } else {
@@ -257,6 +274,8 @@ class ChartHelper
                             'range_120_plus' => $branchData->range_120_plus ?? 0,
                             'total_overdue' => $branchData->total_overdue ?? 0,
                             'is_offline' => false,
+                            'is_anomaly' => false,
+                            'is_connection_failed' => false,
                         ];
                     } else {
                         $orderedData[] = [
@@ -264,6 +283,8 @@ class ChartHelper
                             'range_120_plus' => $branchData->range_120_plus ?? 0,
                             'total_overdue' => $branchData->total_overdue ?? 0,
                             'is_offline' => false,
+                            'is_anomaly' => false,
+                            'is_connection_failed' => false,
                         ];
                     }
                 } else {
@@ -274,14 +295,18 @@ class ChartHelper
                             'range_105_120' => null,
                             'range_120_plus' => null,
                             'total_overdue' => 0,
-                            'is_offline' => true,
+                            'is_offline' => false,
+                            'is_anomaly' => false,
+                            'is_connection_failed' => true,
                         ];
                     } else {
                         $orderedData[] = [
                             'range_105_120' => null,
                             'range_120_plus' => null,
                             'total_overdue' => 0,
-                            'is_offline' => true,
+                            'is_offline' => false,
+                            'is_anomaly' => false,
+                            'is_connection_failed' => true,
                         ];
                     }
                 }
@@ -334,10 +359,10 @@ class ChartHelper
             ];
         }
 
-        // Calculate max value from online branches for OFFLINE bar sizing
+        // Calculate max value from online branches for special bar sizing
         $maxValue = 0;
         foreach ($orderedData as $item) {
-            if (!$item['is_offline']) {
+            if (!$item['is_offline'] && !$item['is_anomaly'] && !$item['is_connection_failed']) {
                 if ($filter === 'all') {
                     $total = ($item['range_0_104'] ?? 0) + ($item['range_105_120'] ?? 0) + ($item['range_120_plus'] ?? 0);
                 } else {
@@ -347,17 +372,44 @@ class ChartHelper
             }
         }
 
-        // Add OFFLINE dataset (displayed as gray striped pattern)
+        // Add ANOMALY dataset (displayed as orange striped pattern)
         // Use 50% of max value for visibility
-        $offlineBarValue = max($maxValue * 0.5, 50000000);
-        $offlineData = [];
+        $anomalyBarValue = max($maxValue * 0.5, 50000000);
+        $anomalyData = [];
         foreach ($orderedData as $item) {
-            $offlineData[] = $item['is_offline'] ? $offlineBarValue : null;
+            $anomalyData[] = $item['is_anomaly'] ? $anomalyBarValue : null;
         }
 
         $datasets[] = [
-            'label' => 'OFFLINE',
-            'data' => $offlineData,
+            'label' => 'ANOMALY',
+            'data' => $anomalyData,
+            'backgroundColor' => 'rgba(251, 146, 60, 0.3)', // Orange with transparency
+            'borderColor' => 'rgba(249, 115, 22, 0.8)', // Darker orange border
+            'borderWidth' => 2,
+            'borderRadius' => 5,
+            'borderDash' => [5, 5], // Dashed border pattern
+            'datalabels' => [
+                'display' => true,
+                'color' => 'rgba(194, 65, 12, 0.9)',
+                'font' => [
+                    'weight' => 'bold',
+                    'size' => 14,
+                ],
+                'rotation' => -90, // Rotate text vertically
+            ],
+        ];
+
+        // Add Connection Failed dataset (displayed as gray striped pattern)
+        // Use 50% of max value for visibility
+        $connectionFailedBarValue = max($maxValue * 0.5, 50000000);
+        $connectionFailedData = [];
+        foreach ($orderedData as $item) {
+            $connectionFailedData[] = $item['is_connection_failed'] ? $connectionFailedBarValue : null;
+        }
+
+        $datasets[] = [
+            'label' => 'Connection Failed',
+            'data' => $connectionFailedData,
             'backgroundColor' => 'rgba(156, 163, 175, 0.3)', // Gray with transparency
             'borderColor' => 'rgba(107, 114, 128, 0.8)', // Darker gray border
             'borderWidth' => 2,
@@ -380,8 +432,11 @@ class ChartHelper
             'total' => 'Rp ' . number_format($totalOverdue, 0, ',', '.'),
             'date' => \Carbon\Carbon::parse($currentDate)->format('l, d F Y'),
             'filter' => $filter,
-            'offlineBranches' => collect($orderedData)->map(function ($item, $index) use ($orderedLabels) {
-                return $item['is_offline'] ? $orderedLabels[$index] : null;
+            'anomalyBranches' => collect($orderedData)->map(function ($item, $index) use ($orderedLabels) {
+                return $item['is_anomaly'] ? $orderedLabels[$index] : null;
+            })->filter()->values()->all(),
+            'connectionFailedBranches' => collect($orderedData)->map(function ($item, $index) use ($orderedLabels) {
+                return $item['is_connection_failed'] ? $orderedLabels[$index] : null;
             })->filter()->values()->all(),
         ];
     }
@@ -389,23 +444,23 @@ class ChartHelper
     public static function getBranchAbbreviation(string $branchName): string
     {
         $abbreviations = [
-            'PWM Medan' => 'MDN',
-            'PWM Makassar' => 'MKS',
-            'PWM Palembang' => 'PLB',
-            'PWM Denpasar' => 'DPS',
-            'PWM Surabaya' => 'SBY',
-            'PWM Pekanbaru' => 'PKU',
-            'PWM Cirebon' => 'CRB',
             'MPM Tangerang' => 'TGR',
             'PWM Bekasi' => 'BKS',
-            'PWM Semarang' => 'SMG',
-            'PWM Banjarmasin' => 'BJM',
-            'PWM Bandung' => 'BDG',
-            'PWM Lampung' => 'LMP',
             'PWM Jakarta' => 'JKT',
             'PWM Pontianak' => 'PTK',
+            'PWM Lampung' => 'LMP',
+            'PWM Banjarmasin' => 'BJM',
+            'PWM Cirebon' => 'CRB',
+            'PWM Bandung' => 'BDG',
+            'PWM Makassar' => 'MKS',
+            'PWM Surabaya' => 'SBY',
+            'PWM Semarang' => 'SMG',
             'PWM Purwokerto' => 'PWT',
+            'PWM Denpasar' => 'DPS',
+            'PWM Palembang' => 'PLB',
             'PWM Padang' => 'PDG',
+            'PWM Medan' => 'MDN',
+            'PWM Pekanbaru' => 'PKU',
             'PT. Putra Mandiri Damai' => 'MKS',
             'PT. CIPTA ARDANA KENCANA' => 'TGR',
         ];
@@ -451,7 +506,7 @@ class ChartHelper
     }
 
     /**
-     * Build accounts receivable aging query with subqueries (sementara tidak dipakai dulu untuk range aging ini)
+     * Build accounts receivable aging query with subqueries (sudah tidak dipakai untuk range aging ini)
      */
     public static function buildAccountsReceivableQuery(string $locationFilter = null): array
     {
@@ -504,11 +559,14 @@ class ChartHelper
 
     public static function formatNationalRevenueData($queryResult)
     {
-        $totalRevenue = $queryResult->sum('total_revenue');
-        $labels = $queryResult->pluck('branch_name')->map(fn($name) => self::getBranchAbbreviation($name));
-        $dataValues = $queryResult->pluck('total_revenue')->all();
+        // Sort data according to branch order
+        $sortedData = self::sortByBranchOrder(collect($queryResult), 'branch_name');
 
-        $maxRevenue = $queryResult->max('total_revenue') ?? 0;
+        $totalRevenue = $sortedData->sum('total_revenue');
+        $labels = $sortedData->pluck('branch_name')->map(fn($name) => self::getBranchAbbreviation($name));
+        $dataValues = $sortedData->pluck('total_revenue')->all();
+
+        $maxRevenue = $sortedData->max('total_revenue') ?? 0;
 
         $yAxisConfig = self::getYAxisConfig($maxRevenue, null, $dataValues);
 
@@ -530,16 +588,109 @@ class ChartHelper
         ];
     }
 
+    /**
+     * Get the standard branch order
+     */
+    public static function getBranchOrder()
+    {
+        return [
+            'MPM Tangerang',
+            'PWM Bekasi',
+            'PWM Jakarta',
+            'PWM Pontianak',
+            'PWM Lampung',
+            'PWM Banjarmasin',
+            'PWM Cirebon',
+            'PWM Bandung',
+            'PWM Makassar',
+            'PWM Surabaya',
+            'PWM Semarang',
+            'PWM Purwokerto',
+            'PWM Denpasar',
+            'PWM Palembang',
+            'PWM Padang',
+            'PWM Medan',
+            'PWM Pekanbaru',
+        ];
+    }
+
+    /**
+     * Sort collection by branch order
+     */
+    public static function sortByBranchOrder($collection, $branchFieldName = 'branch_name')
+    {
+        $branchOrder = self::getBranchOrder();
+
+        // Create a mapping of branch name to order index
+        $orderMap = array_flip($branchOrder);
+
+        // Ensure we are working with a Collection instance
+        $collection = $collection instanceof \Illuminate\Support\Collection
+            ? $collection
+            : collect($collection);
+
+        return $collection->sort(function ($a, $b) use ($orderMap, $branchFieldName) {
+            // Support three shapes:
+            // 1) object with property $branchFieldName
+            // 2) array with key $branchFieldName
+            // 3) scalar string when $branchFieldName is null
+
+            if ($branchFieldName === null) {
+                $branchA = is_string($a) ? $a : (string) $a;
+                $branchB = is_string($b) ? $b : (string) $b;
+            } else {
+                if (is_object($a)) {
+                    $branchA = $a->{$branchFieldName} ?? null;
+                } elseif (is_array($a)) {
+                    $branchA = $a[$branchFieldName] ?? null;
+                } else {
+                    $branchA = null;
+                }
+
+                if (is_object($b)) {
+                    $branchB = $b->{$branchFieldName} ?? null;
+                } elseif (is_array($b)) {
+                    $branchB = $b[$branchFieldName] ?? null;
+                } else {
+                    $branchB = null;
+                }
+            }
+
+            $orderA = $orderMap[$branchA] ?? 999;
+            $orderB = $orderMap[$branchB] ?? 999;
+
+            return $orderA <=> $orderB;
+        })->values();
+    }
+
     public static function getLocations()
     {
         try {
+            $branchOrder = self::getBranchOrder();
+
+            // Get all active locations from database
             $rawLocations = DB::table('ad_org')
                 ->where('isactive', 'Y')
                 ->whereNotIn('name', ['*', 'HQ', 'Store', 'PWM Pusat'])
-                ->orderBy('name')
-                ->pluck('name');
+                ->pluck('name')
+                ->toArray();
 
-            return $rawLocations;
+            // Sort locations based on the defined order
+            $sortedLocations = [];
+            foreach ($branchOrder as $branch) {
+                if (in_array($branch, $rawLocations)) {
+                    $sortedLocations[] = $branch;
+                }
+            }
+
+            // Add any locations not in the predefined order at the end
+            foreach ($rawLocations as $location) {
+                if (!in_array($location, $sortedLocations)) {
+                    $sortedLocations[] = $location;
+                }
+            }
+
+            return collect($sortedLocations);
         } catch (\Exception $e) {
             throw new \Exception('Error fetching locations: ' . $e->getMessage());
         }
@@ -572,23 +723,23 @@ class ChartHelper
     public static function getBranchDisplayName(string $branchName): string
     {
         $displayNames = [
-            'PWM Medan' => 'Medan',
-            'PWM Makassar' => 'Makassar',
-            'PWM Palembang' => 'Palembang',
-            'PWM Denpasar' => 'Denpasar',
-            'PWM Surabaya' => 'Surabaya',
-            'PWM Pekanbaru' => 'Pekanbaru',
-            'PWM Cirebon' => 'Cirebon',
             'MPM Tangerang' => 'Tangerang',
             'PWM Bekasi' => 'Bekasi',
-            'PWM Semarang' => 'Semarang',
-            'PWM Banjarmasin' => 'Banjarmasin',
-            'PWM Bandung' => 'Bandung',
-            'PWM Lampung' => 'Lampung',
             'PWM Jakarta' => 'Jakarta',
             'PWM Pontianak' => 'Pontianak',
+            'PWM Lampung' => 'Lampung',
+            'PWM Banjarmasin' => 'Banjarmasin',
+            'PWM Cirebon' => 'Cirebon',
+            'PWM Bandung' => 'Bandung',
+            'PWM Makassar' => 'Makassar',
+            'PWM Surabaya' => 'Surabaya',
+            'PWM Semarang' => 'Semarang',
             'PWM Purwokerto' => 'Purwokerto',
+            'PWM Denpasar' => 'Denpasar',
+            'PWM Palembang' => 'Palembang',
             'PWM Padang' => 'Padang',
+            'PWM Medan' => 'Medan',
+            'PWM Pekanbaru' => 'Pekanbaru',
         ];
 
         return $displayNames[$branchName] ?? $branchName;
@@ -603,23 +754,23 @@ class ChartHelper
     public static function getBranchConnection(string $branchName): ?string
     {
         $branchToConnection = [
-            'PWM Medan' => 'pgsql_mdn',
-            'PWM Makassar' => 'pgsql_mks',
-            'PWM Palembang' => 'pgsql_plb',
-            'PWM Denpasar' => 'pgsql_dps',
-            'PWM Surabaya' => 'pgsql_sby',
-            'PWM Pekanbaru' => 'pgsql_pku',
-            'PWM Cirebon' => 'pgsql_crb',
             'MPM Tangerang' => 'pgsql_trg',
             'PWM Bekasi' => 'pgsql_bks',
-            'PWM Semarang' => 'pgsql_smg',
-            'PWM Banjarmasin' => 'pgsql_bjm',
-            'PWM Bandung' => 'pgsql_bdg',
-            'PWM Lampung' => 'pgsql_lmp',
             'PWM Jakarta' => 'pgsql_jkt',
             'PWM Pontianak' => 'pgsql_ptk',
+            'PWM Lampung' => 'pgsql_lmp',
+            'PWM Banjarmasin' => 'pgsql_bjm',
+            'PWM Cirebon' => 'pgsql_crb',
+            'PWM Bandung' => 'pgsql_bdg',
+            'PWM Makassar' => 'pgsql_mks',
+            'PWM Surabaya' => 'pgsql_sby',
+            'PWM Semarang' => 'pgsql_smg',
             'PWM Purwokerto' => 'pgsql_pwt',
+            'PWM Denpasar' => 'pgsql_dps',
+            'PWM Palembang' => 'pgsql_plb',
             'PWM Padang' => 'pgsql_pdg',
+            'PWM Medan' => 'pgsql_mdn',
+            'PWM Pekanbaru' => 'pgsql_pku',
         ];
 
         return $branchToConnection[$branchName] ?? null;

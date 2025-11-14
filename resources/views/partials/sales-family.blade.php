@@ -50,13 +50,13 @@
                                 style="font-size: 1.25rem; margin-right: 0.75rem;"></i>
                             Export to Excel
                         </button>
-                        <button type="button" id="sfExportPdfBtn"
+                        {{-- <button type="button" id="sfExportPdfBtn"
                             class="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 whitespace-nowrap"
                             role="menuitem">
                             <i class="bi bi-file-pdf text-gray-700"
                                 style="font-size: 1.25rem; margin-right: 0.75rem;"></i>
                             Export to PDF
-                        </button>
+                        </button> --}}
                     </div>
                 </div>
             </div>
@@ -186,43 +186,10 @@
                                 Family Name</th>
                             <th
                                 class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                MDN</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                MKS</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                PLB</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                DPS</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                SBY</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                PKU</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                CRB</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
                                 TGR</th>
                             <th
                                 class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
                                 BKS</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                SMG</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                BJM</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                BDG</th>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                LMP</th>
                             <th
                                 class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
                                 JKT</th>
@@ -231,10 +198,43 @@
                                 PTK</th>
                             <th
                                 class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                LMP</th>
+                            <th
+                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                BJM</th>
+                            <th
+                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                CRB</th>
+                            <th
+                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                BDG</th>
+                            <th
+                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                MKS</th>
+                            <th
+                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                SBY</th>
+                            <th
+                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                SMG</th>
+                            <th
+                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
                                 PWT</th>
                             <th
                                 class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                DPS</th>
+                            <th
+                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                PLB</th>
+                            <th
+                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
                                 PDG</th>
+                            <th
+                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                MDN</th>
+                            <th
+                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                PKU</th>
                             <th
                                 class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50">
                                 Nasional</th>

@@ -131,6 +131,9 @@ class TargetRevenueController extends Controller
 
             $results = DB::select($query, [$category, $month, $year, $category, $month, $year]);
 
+            // Sort results by branch order
+            $results = ChartHelper::sortByBranchOrder(collect($results), 'cabang')->all();
+
             // Convert to associative array with branch name as key
             $data = [];
             foreach ($results as $result) {
@@ -186,7 +189,22 @@ class TargetRevenueController extends Controller
         try {
             // Get all branch names from both actual and target data
             $allBranches = array_unique(array_merge(array_keys($actualData), array_keys($targetData)));
-            sort($allBranches);
+
+            // Sort branches using ChartHelper branch order
+            $branchOrder = ChartHelper::getBranchOrder();
+            $sortedBranches = [];
+            foreach ($branchOrder as $branch) {
+                if (in_array($branch, $allBranches)) {
+                    $sortedBranches[] = $branch;
+                }
+            }
+            // Add any branches not in predefined order
+            foreach ($allBranches as $branch) {
+                if (!in_array($branch, $sortedBranches)) {
+                    $sortedBranches[] = $branch;
+                }
+            }
+            $allBranches = $sortedBranches;
 
             $labels = [];
             $targetValues = [];
@@ -272,7 +290,22 @@ class TargetRevenueController extends Controller
 
         // Get all branch names
         $allBranches = array_unique(array_merge(array_keys($actualData), array_keys($targetData)));
-        sort($allBranches);
+
+        // Sort branches using ChartHelper branch order
+        $branchOrder = ChartHelper::getBranchOrder();
+        $sortedBranches = [];
+        foreach ($branchOrder as $branch) {
+            if (in_array($branch, $allBranches)) {
+                $sortedBranches[] = $branch;
+            }
+        }
+        // Add any branches not in predefined order
+        foreach ($allBranches as $branch) {
+            if (!in_array($branch, $sortedBranches)) {
+                $sortedBranches[] = $branch;
+            }
+        }
+        $allBranches = $sortedBranches;
 
         // Calculate totals
         $totalTarget = array_sum($targetData);
@@ -442,7 +475,22 @@ class TargetRevenueController extends Controller
 
         // Get all branch names
         $allBranches = array_unique(array_merge(array_keys($actualData), array_keys($targetData)));
-        sort($allBranches);
+
+        // Sort branches using ChartHelper branch order
+        $branchOrder = ChartHelper::getBranchOrder();
+        $sortedBranches = [];
+        foreach ($branchOrder as $branch) {
+            if (in_array($branch, $allBranches)) {
+                $sortedBranches[] = $branch;
+            }
+        }
+        // Add any branches not in predefined order
+        foreach ($allBranches as $branch) {
+            if (!in_array($branch, $sortedBranches)) {
+                $sortedBranches[] = $branch;
+            }
+        }
+        $allBranches = $sortedBranches;
 
         // Calculate totals
         $totalTarget = array_sum($targetData);

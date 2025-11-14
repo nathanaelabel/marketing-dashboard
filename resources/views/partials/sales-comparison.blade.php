@@ -51,13 +51,13 @@
                                 style="font-size: 1.25rem; margin-right: 0.75rem;"></i>
                             Export to Excel
                         </button>
-                        <button type="button" id="scExportPdfBtn"
+                        {{-- <button type="button" id="scExportPdfBtn"
                             class="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 whitespace-nowrap"
                             role="menuitem">
                             <i class="bi bi-file-pdf text-gray-700"
                                 style="font-size: 1.25rem; margin-right: 0.75rem;"></i>
                             Export to PDF
-                        </button>
+                        </button> --}}
                     </div>
                 </div>
             </div>
@@ -68,7 +68,8 @@
             <div class="flex-1 min-w-[200px]">
                 <label for="sales-comp-date-select" class="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
                 {{-- Use yesterday (H-1) since dashboard is updated daily at night --}}
-                <input type="date" id="sales-comp-date-select" value="{{ date('Y-m-d', strtotime('-1 day')) }}" max="{{ date('Y-m-d', strtotime('-1 day')) }}"
+                <input type="date" id="sales-comp-date-select" value="{{ date('Y-m-d', strtotime('-1 day')) }}"
+                    max="{{ date('Y-m-d', strtotime('-1 day')) }}"
                     class="block w-full pl-3 pr-3 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
             </div>
         </div>

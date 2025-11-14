@@ -127,23 +127,23 @@ class SalesMetricsController extends Controller
 
             // Define all branch database connections in desired display order
             $branchConnections = [
-                'pgsql_trg',  // 1. Tangerang (TGR)
-                'pgsql_bks',  // 2. Bekasi (BKS)
-                'pgsql_jkt',  // 3. Jakarta (JKT)
-                'pgsql_ptk',  // 4. Pontianak (PTK)
-                'pgsql_lmp',  // 5. Lampung (LMP)
-                'pgsql_bjm',  // 6. Banjarmasin (BJM)
-                'pgsql_crb',  // 7. Cirebon (CRB)
-                'pgsql_bdg',  // 8. Bandung (BDG)
-                'pgsql_mks',  // 9. Makassar (MKS) - Offline/Anomali
-                'pgsql_sby',  // 10. Surabaya (SBY) - Offline/Anomali
-                'pgsql_smg',  // 11. Semarang (SMG)
-                'pgsql_pwt',  // 12. Purwokerto (PWT)
-                'pgsql_dps',  // 13. Denpasar (DPS)
-                'pgsql_plb',  // 14. Palembang (PLB)
-                'pgsql_pdg',  // 15. Padang (PDG)
-                'pgsql_mdn',  // 16. Medan (MDN)
-                'pgsql_pku',  // 17. Pekanbaru (PKU)
+                'pgsql_trg',
+                'pgsql_bks',
+                'pgsql_jkt',
+                'pgsql_ptk',
+                'pgsql_lmp',
+                'pgsql_bjm',
+                'pgsql_crb',
+                'pgsql_bdg',
+                'pgsql_mks',
+                'pgsql_sby',
+                'pgsql_smg',
+                'pgsql_pwt',
+                'pgsql_dps',
+                'pgsql_plb',
+                'pgsql_pdg',
+                'pgsql_mdn',
+                'pgsql_pku',
             ];
 
             // Define branches that are known to be offline or have anomalies

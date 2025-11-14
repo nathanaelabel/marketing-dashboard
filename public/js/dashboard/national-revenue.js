@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Use yesterday (H-1) as max date since dashboard is updated daily at night
+    // Use yesterday (H-1) as max date since dashboard is updated daily
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     
@@ -263,7 +263,6 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             e.stopPropagation();
 
-            // Close dropdown
             if (dropdownMenu) {
                 dropdownMenu.classList.add('hidden');
             }
@@ -295,7 +294,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            // Close dropdown
             if (dropdownMenu) {
                 dropdownMenu.classList.add('hidden');
             }
@@ -305,13 +303,10 @@ document.addEventListener('DOMContentLoaded', function () {
             exportBtn.disabled = true;
             exportBtn.innerHTML = 'Exporting...';
 
-            // Create download URL with parameters
             const exportUrl = `/national-revenue/export-excel?start_date=${currentStartDate}&end_date=${currentEndDate}&type=${currentType}`;
 
-            // Use window.location for direct download (more reliable than creating link)
             window.location.href = exportUrl;
 
-            // Reset button state after a short delay
             setTimeout(() => {
                 exportBtn.disabled = false;
                 exportBtn.innerHTML = originalContent;
@@ -335,7 +330,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            // Close dropdown
             if (dropdownMenu) {
                 dropdownMenu.classList.add('hidden');
             }
@@ -345,13 +339,10 @@ document.addEventListener('DOMContentLoaded', function () {
             exportPdfBtn.disabled = true;
             exportPdfBtn.innerHTML = 'Exporting...';
 
-            // Create download URL with parameters
             const exportPdfUrl = `/national-revenue/export-pdf?start_date=${currentStartDate}&end_date=${currentEndDate}&type=${currentType}`;
 
-            // Use window.location for direct download
             window.location.href = exportPdfUrl;
 
-            // Reset button state after a short delay
             setTimeout(() => {
                 exportPdfBtn.disabled = false;
                 exportPdfBtn.innerHTML = originalContent;
