@@ -119,6 +119,7 @@ class SalesItemController extends Controller
                 " . TableHelper::getValueCalculation($valueField) . " AS {$totalField}
             FROM c_invoiceline d
             INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+            INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
             INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
             INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
             WHERE h.ad_client_id = 1000001
@@ -128,6 +129,7 @@ class SalesItemController extends Controller
                 AND d.qtyinvoiced > 0
                 AND d.linenetamt > 0
                 AND DATE(h.dateinvoiced) BETWEEN ? AND ?
+                AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
             GROUP BY org.name, prd.name, prd.status
             ORDER BY prd.name
         ";

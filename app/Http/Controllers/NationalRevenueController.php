@@ -32,6 +32,7 @@ class NationalRevenueController extends Controller
                     c_invoice inv
                     INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
                     INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+                    INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
                 WHERE
                     inv.ad_client_id = 1000001
                     AND inv.issotrx = 'Y'
@@ -42,6 +43,7 @@ class NationalRevenueController extends Controller
                     AND org.name LIKE ?
                     AND DATE(inv.dateinvoiced) BETWEEN ? AND ?
                     AND SUBSTR(inv.documentno, 1, 3) IN ('INC', 'CNC')
+                    AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     org.name
                 ORDER BY
@@ -60,6 +62,7 @@ class NationalRevenueController extends Controller
             $queryResult = DB::table('c_invoice as inv')
                 ->join('c_invoiceline as invl', 'inv.c_invoice_id', '=', 'invl.c_invoice_id')
                 ->join('ad_org as org', 'inv.ad_org_id', '=', 'org.ad_org_id')
+                ->join('c_bpartner as cust', 'inv.c_bpartner_id', '=', 'cust.c_bpartner_id')
                 ->select('org.name as branch_name', DB::raw('SUM(invl.linenetamt) as total_revenue'))
                 ->where('inv.ad_client_id', 1000001)
                 ->where('inv.issotrx', 'Y')
@@ -70,6 +73,7 @@ class NationalRevenueController extends Controller
                 ->where('org.name', 'like', $organization)
                 ->whereBetween(DB::raw('DATE(inv.dateinvoiced)'), [$startDate, $endDate])
                 ->where('inv.documentno', 'like', 'INC%')
+                ->whereRaw('UPPER(cust.name) NOT LIKE ?', ['%KARYAWAN%'])
                 ->groupBy('org.name')
                 ->orderBy('total_revenue', 'desc')
                 ->get();
@@ -103,6 +107,7 @@ class NationalRevenueController extends Controller
                     c_invoice inv
                     INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
                     INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+                    INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
                 WHERE
                     inv.ad_client_id = 1000001
                     AND inv.issotrx = 'Y'
@@ -113,6 +118,7 @@ class NationalRevenueController extends Controller
                     AND org.name LIKE ?
                     AND DATE(inv.dateinvoiced) BETWEEN ? AND ?
                     AND SUBSTR(inv.documentno, 1, 3) IN ('INC', 'CNC')
+                    AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     org.name
                 ORDER BY
@@ -131,6 +137,7 @@ class NationalRevenueController extends Controller
             $queryResult = DB::table('c_invoice as inv')
                 ->join('c_invoiceline as invl', 'inv.c_invoice_id', '=', 'invl.c_invoice_id')
                 ->join('ad_org as org', 'inv.ad_org_id', '=', 'org.ad_org_id')
+                ->join('c_bpartner as cust', 'inv.c_bpartner_id', '=', 'cust.c_bpartner_id')
                 ->select('org.name as branch_name', DB::raw('SUM(invl.linenetamt) as total_revenue'))
                 ->where('inv.ad_client_id', 1000001)
                 ->where('inv.issotrx', 'Y')
@@ -141,6 +148,7 @@ class NationalRevenueController extends Controller
                 ->where('org.name', 'like', $organization)
                 ->whereBetween(DB::raw('DATE(inv.dateinvoiced)'), [$startDate, $endDate])
                 ->where('inv.documentno', 'like', 'INC%')
+                ->whereRaw('UPPER(cust.name) NOT LIKE ?', ['%KARYAWAN%'])
                 ->groupBy('org.name')
                 ->orderBy('total_revenue', 'desc')
                 ->get();
@@ -294,6 +302,7 @@ class NationalRevenueController extends Controller
                     c_invoice inv
                     INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
                     INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+                    INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
                 WHERE
                     inv.ad_client_id = 1000001
                     AND inv.issotrx = 'Y'
@@ -304,6 +313,7 @@ class NationalRevenueController extends Controller
                     AND org.name LIKE ?
                     AND DATE(inv.dateinvoiced) BETWEEN ? AND ?
                     AND SUBSTR(inv.documentno, 1, 3) IN ('INC', 'CNC')
+                    AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     org.name
                 ORDER BY
@@ -322,6 +332,7 @@ class NationalRevenueController extends Controller
             $queryResult = DB::table('c_invoice as inv')
                 ->join('c_invoiceline as invl', 'inv.c_invoice_id', '=', 'invl.c_invoice_id')
                 ->join('ad_org as org', 'inv.ad_org_id', '=', 'org.ad_org_id')
+                ->join('c_bpartner as cust', 'inv.c_bpartner_id', '=', 'cust.c_bpartner_id')
                 ->select('org.name as branch_name', DB::raw('SUM(invl.linenetamt) as total_revenue'))
                 ->where('inv.ad_client_id', 1000001)
                 ->where('inv.issotrx', 'Y')
@@ -332,6 +343,7 @@ class NationalRevenueController extends Controller
                 ->where('org.name', 'like', $organization)
                 ->whereBetween(DB::raw('DATE(inv.dateinvoiced)'), [$startDate, $endDate])
                 ->where('inv.documentno', 'like', 'INC%')
+                ->whereRaw('UPPER(cust.name) NOT LIKE ?', ['%KARYAWAN%'])
                 ->groupBy('org.name')
                 ->orderBy('total_revenue', 'desc')
                 ->get();

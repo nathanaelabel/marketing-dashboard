@@ -82,6 +82,7 @@ class TargetRevenueController extends Controller
                         c_invoiceline d
                         INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
                         INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                        INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                         INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                         INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                     WHERE
@@ -94,6 +95,7 @@ class TargetRevenueController extends Controller
                         AND cat.name = ?
                         AND EXTRACT(month FROM h.dateinvoiced) = ?
                         AND EXTRACT(year FROM h.dateinvoiced) = ?
+                        AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                     GROUP BY
                         org.name
 
@@ -108,6 +110,7 @@ class TargetRevenueController extends Controller
                         c_invoiceline d
                         INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
                         INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                        INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                         INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                         INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                     WHERE
@@ -120,6 +123,7 @@ class TargetRevenueController extends Controller
                         AND cat.name = ?
                         AND EXTRACT(month FROM h.dateinvoiced) = ?
                         AND EXTRACT(year FROM h.dateinvoiced) = ?
+                        AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                     GROUP BY
                         org.name
                 ) AS ss
