@@ -5,25 +5,27 @@
 class TableHelper {
     constructor(config) {
         this.config = {
-            apiEndpoint: config.apiEndpoint || '',
-            tableBodySelector: config.tableBodySelector || '#table-body',
-            loadingSelector: config.loadingSelector || '#loading-indicator',
-            errorSelector: config.errorSelector || '#error-message',
-            errorTextSelector: config.errorTextSelector || '#error-text',
-            noDataSelector: config.noDataSelector || '#no-data-message',
-            tableContainerSelector: config.tableContainerSelector || '#table-container',
-            periodInfoSelector: config.periodInfoSelector || '#period-info',
-            paginationInfoSelector: config.paginationInfoSelector || '#pagination-info',
-            prevPageBtnSelector: config.prevPageBtnSelector || '#prev-page',
-            nextPageBtnSelector: config.nextPageBtnSelector || '#next-page',
-            pageNumbersSelector: config.pageNumbersSelector || '#page-numbers',
+            apiEndpoint: config.apiEndpoint || "",
+            tableBodySelector: config.tableBodySelector || "#table-body",
+            loadingSelector: config.loadingSelector || "#loading-indicator",
+            errorSelector: config.errorSelector || "#error-message",
+            errorTextSelector: config.errorTextSelector || "#error-text",
+            noDataSelector: config.noDataSelector || "#no-data-message",
+            tableContainerSelector:
+                config.tableContainerSelector || "#table-container",
+            periodInfoSelector: config.periodInfoSelector || "#period-info",
+            paginationInfoSelector:
+                config.paginationInfoSelector || "#pagination-info",
+            prevPageBtnSelector: config.prevPageBtnSelector || "#prev-page",
+            nextPageBtnSelector: config.nextPageBtnSelector || "#next-page",
+            pageNumbersSelector: config.pageNumbersSelector || "#page-numbers",
             // Don't set defaults for monthSelect and yearSelect - only use if explicitly configured
             monthSelectSelector: config.monthSelectSelector || null,
             yearSelectSelector: config.yearSelectSelector || null,
             perPage: config.perPage || 50,
             disablePagination: config.disablePagination || false, // Option to disable pagination
             requestTimeout: config.requestTimeout || 60000, // Default 60s timeout for complex queries
-            ...config
+            ...config,
         };
 
         this.currentPage = 1;
@@ -40,10 +42,12 @@ class TableHelper {
 
     initializeElements() {
         this.elements = {};
-        Object.keys(this.config).forEach(key => {
-            if (key.endsWith('Selector') && this.config[key]) {
-                const elementKey = key.replace('Selector', '');
-                this.elements[elementKey] = document.querySelector(this.config[key]);
+        Object.keys(this.config).forEach((key) => {
+            if (key.endsWith("Selector") && this.config[key]) {
+                const elementKey = key.replace("Selector", "");
+                this.elements[elementKey] = document.querySelector(
+                    this.config[key]
+                );
             }
         });
     }
@@ -51,14 +55,14 @@ class TableHelper {
     bindEvents() {
         // Filter change events - these reload data from server
         if (this.elements.monthSelect) {
-            this.elements.monthSelect.addEventListener('change', () => {
+            this.elements.monthSelect.addEventListener("change", () => {
                 this.currentPage = 1;
                 this.loadData();
             });
         }
 
         if (this.elements.yearSelect) {
-            this.elements.yearSelect.addEventListener('change', () => {
+            this.elements.yearSelect.addEventListener("change", () => {
                 this.currentPage = 1;
                 this.loadData();
             });
@@ -66,7 +70,7 @@ class TableHelper {
 
         // Client-side pagination events
         if (this.elements.prevPageBtn) {
-            this.elements.prevPageBtn.addEventListener('click', () => {
+            this.elements.prevPageBtn.addEventListener("click", () => {
                 if (this.currentPage > 1) {
                     this.currentPage--;
                     this.renderCurrentPage();
@@ -75,7 +79,7 @@ class TableHelper {
         }
 
         if (this.elements.nextPageBtn) {
-            this.elements.nextPageBtn.addEventListener('click', () => {
+            this.elements.nextPageBtn.addEventListener("click", () => {
                 if (this.currentPage < this.totalPages) {
                     this.currentPage++;
                     this.renderCurrentPage();
@@ -84,10 +88,11 @@ class TableHelper {
         }
 
         // Entries per page change - use configured selector or default
-        const entriesSelector = this.config.entriesPerPageSelector || '#entries-per-page';
+        const entriesSelector =
+            this.config.entriesPerPageSelector || "#entries-per-page";
         const entriesSelect = document.querySelector(entriesSelector);
         if (entriesSelect) {
-            entriesSelect.addEventListener('change', () => {
+            entriesSelect.addEventListener("change", () => {
                 this.perPage = parseInt(entriesSelect.value);
                 this.currentPage = 1;
                 this.renderCurrentPage();
@@ -96,10 +101,12 @@ class TableHelper {
 
         // Search filter - only bind if searchInputSelector is configured
         if (this.config.searchInputSelector) {
-            const searchInput = document.querySelector(this.config.searchInputSelector);
+            const searchInput = document.querySelector(
+                this.config.searchInputSelector
+            );
             if (searchInput) {
                 let searchTimeout;
-                searchInput.addEventListener('input', () => {
+                searchInput.addEventListener("input", () => {
                     clearTimeout(searchTimeout);
                     searchTimeout = setTimeout(() => {
                         this.currentPage = 1;
@@ -126,10 +133,10 @@ class TableHelper {
     showLoading() {
         this.hideMessages();
         if (this.elements.loading) {
-            this.elements.loading.classList.remove('hidden');
+            this.elements.loading.classList.remove("hidden");
         }
         if (this.elements.tableContainer) {
-            this.elements.tableContainer.classList.add('hidden');
+            this.elements.tableContainer.classList.add("hidden");
         }
         // Disable pagination buttons during loading
         this.disablePaginationButtons(true);
@@ -137,14 +144,14 @@ class TableHelper {
 
     hideLoading() {
         if (this.elements.loading) {
-            this.elements.loading.classList.add('hidden');
+            this.elements.loading.classList.add("hidden");
         }
     }
 
     hideMessages() {
-        ['loading', 'error', 'noData'].forEach(element => {
+        ["loading", "error", "noData"].forEach((element) => {
             if (this.elements[element]) {
-                this.elements[element].classList.add('hidden');
+                this.elements[element].classList.add("hidden");
             }
         });
     }
@@ -155,27 +162,27 @@ class TableHelper {
             this.elements.errorText.textContent = message;
         }
         if (this.elements.error) {
-            this.elements.error.classList.remove('hidden');
+            this.elements.error.classList.remove("hidden");
         }
         if (this.elements.tableContainer) {
-            this.elements.tableContainer.classList.add('hidden');
+            this.elements.tableContainer.classList.add("hidden");
         }
     }
 
     showNoData() {
         this.hideMessages();
         if (this.elements.noData) {
-            this.elements.noData.classList.remove('hidden');
+            this.elements.noData.classList.remove("hidden");
         }
         if (this.elements.tableContainer) {
-            this.elements.tableContainer.classList.add('hidden');
+            this.elements.tableContainer.classList.add("hidden");
         }
     }
 
     showTable() {
         this.hideMessages();
         if (this.elements.tableContainer) {
-            this.elements.tableContainer.classList.remove('hidden');
+            this.elements.tableContainer.classList.remove("hidden");
         }
         // Re-enable pagination buttons
         this.disablePaginationButtons(false);
@@ -190,8 +197,9 @@ class TableHelper {
         }
         // Disable page number buttons
         if (this.elements.pageNumbers) {
-            const pageButtons = this.elements.pageNumbers.querySelectorAll('button');
-            pageButtons.forEach(btn => {
+            const pageButtons =
+                this.elements.pageNumbers.querySelectorAll("button");
+            pageButtons.forEach((btn) => {
                 btn.disabled = disabled;
             });
         }
@@ -199,38 +207,59 @@ class TableHelper {
 
     // Formatting utilities
     static formatCurrency(value) {
-        if (!value || value === 0) return '-';
+        if (!value || value === 0) return "-";
 
-        return new Intl.NumberFormat('id-ID', {
-            style: 'currency',
-            currency: 'IDR',
+        return new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR",
             minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        }).format(value).replace('IDR', 'Rp').trim();
+            maximumFractionDigits: 0,
+        })
+            .format(value)
+            .replace("IDR", "Rp")
+            .trim();
     }
 
     static formatNumber(value, decimals = 0) {
-        if (!value || value === 0) return '-';
+        if (!value || value === 0) return "-";
 
-        return new Intl.NumberFormat('id-ID', {
+        return new Intl.NumberFormat("id-ID", {
             minimumFractionDigits: decimals,
-            maximumFractionDigits: decimals
+            maximumFractionDigits: decimals,
         }).format(value);
     }
 
     static formatPercent(value, decimals = 1) {
-        if (!value || value === 0) return '-';
+        if (!value || value === 0) return "-";
 
-        return new Intl.NumberFormat('id-ID', {
-            style: 'percent',
+        return new Intl.NumberFormat("id-ID", {
+            style: "percent",
             minimumFractionDigits: decimals,
-            maximumFractionDigits: decimals
+            maximumFractionDigits: decimals,
         }).format(value / 100);
     }
 
     // Branch codes mapping
     static getBranchCodes() {
-        return ['mdn', 'mks', 'plb', 'dps', 'sby', 'pku', 'crb', 'tgr', 'bks', 'smg', 'bjm', 'bdg', 'lmp', 'jkt', 'ptk', 'pwt', 'pdg'];
+        return [
+            "mdn",
+            "mks",
+            "plb",
+            "dps",
+            "sby",
+            "pku",
+            "crb",
+            "tgr",
+            "bks",
+            "smg",
+            "bjm",
+            "bdg",
+            "lmp",
+            "jkt",
+            "ptk",
+            "pwt",
+            "pdg",
+        ];
     }
 
     // API Request handling
@@ -254,7 +283,7 @@ class TableHelper {
 
     getFilters() {
         const filters = {
-            page: this.currentPage
+            page: this.currentPage,
         };
 
         // Only include month/year if those selectors were explicitly configured
@@ -275,12 +304,18 @@ class TableHelper {
 
     validateFilters(filters) {
         // Basic validation - can be extended
-        if (filters.month && (!filters.month || filters.month < 1 || filters.month > 12)) {
-            this.showError('Invalid month selected');
+        if (
+            filters.month &&
+            (!filters.month || filters.month < 1 || filters.month > 12)
+        ) {
+            this.showError("Invalid month selected");
             return false;
         }
-        if (filters.year && (!filters.year || filters.year < 2020 || filters.year > 2030)) {
-            this.showError('Invalid year selected');
+        if (
+            filters.year &&
+            (!filters.year || filters.year < 2020 || filters.year > 2030)
+        ) {
+            this.showError("Invalid year selected");
             return false;
         }
         return true;
@@ -289,34 +324,42 @@ class TableHelper {
     async fetchData(filters) {
         const url = new URL(this.config.apiEndpoint, window.location.origin);
 
-        Object.keys(filters).forEach(key => {
+        Object.keys(filters).forEach((key) => {
             if (filters[key] !== undefined && filters[key] !== null) {
                 url.searchParams.append(key, filters[key]);
             }
         });
 
         // Add cache busting to prevent browser cache issues
-        url.searchParams.append('_', Date.now());
+        url.searchParams.append("_", Date.now());
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), this.config.requestTimeout); // Configurable timeout
+        const timeoutId = setTimeout(
+            () => controller.abort(),
+            this.config.requestTimeout
+        ); // Configurable timeout
 
         try {
             const response = await fetch(url.toString(), {
-                method: 'GET',
+                method: "GET",
                 headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                    'Cache-Control': 'no-cache'
+                    Accept: "application/json",
+                    "X-Requested-With": "XMLHttpRequest",
+                    "X-CSRF-TOKEN":
+                        document
+                            .querySelector('meta[name="csrf-token"]')
+                            ?.getAttribute("content") || "",
+                    "Cache-Control": "no-cache",
                 },
-                signal: controller.signal
+                signal: controller.signal,
             });
 
             clearTimeout(timeoutId);
 
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                throw new Error(
+                    `HTTP ${response.status}: ${response.statusText}`
+                );
             }
 
             return response.json();
@@ -330,7 +373,9 @@ class TableHelper {
         this.hideLoading();
 
         if (data.error) {
-            this.showError(data.message || 'An error occurred while loading data.');
+            this.showError(
+                data.message || "An error occurred while loading data."
+            );
             return;
         }
 
@@ -362,8 +407,8 @@ class TableHelper {
 
     handleError(error) {
         this.hideLoading();
-        console.error('Error loading table data:', error);
-        this.showError('Failed to load data. Please try again.');
+        console.error("Error loading table data:", error);
+        this.showError("Failed to load data. Please try again.");
     }
 
     // Client-side filtering and pagination methods
@@ -371,14 +416,20 @@ class TableHelper {
         if (!this.allData) return;
 
         // Apply search filter using configured selector and field
-        const searchSelector = this.config.searchInputSelector || '#search-input';
-        const searchField = this.config.searchField || 'product_name';
+        const searchSelector =
+            this.config.searchInputSelector || "#search-input";
+        const searchField = this.config.searchField || "product_name";
         const searchInput = document.querySelector(searchSelector);
-        const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        const searchTerm = searchInput
+            ? searchInput.value.toLowerCase().trim()
+            : "";
 
         if (searchTerm) {
-            this.filteredData = this.allData.filter(item => {
-                return item[searchField] && item[searchField].toLowerCase().includes(searchTerm);
+            this.filteredData = this.allData.filter((item) => {
+                return (
+                    item[searchField] &&
+                    item[searchField].toLowerCase().includes(searchTerm)
+                );
             });
         } else {
             this.filteredData = [...this.allData];
@@ -407,13 +458,13 @@ class TableHelper {
         // Render table with current page data
         const dataForRender = {
             ...this.currentData,
-            data: pageData
+            data: pageData,
         };
 
         if (this.config.renderTable) {
             this.config.renderTable.call(this, dataForRender);
         } else {
-            console.warn('renderTable method not implemented');
+            console.warn("renderTable method not implemented");
         }
 
         // Update pagination controls
@@ -423,8 +474,14 @@ class TableHelper {
     updateClientSidePagination(totalItems) {
         // Update pagination info
         if (this.elements.paginationInfo) {
-            const startItem = totalItems === 0 ? 0 : ((this.currentPage - 1) * this.perPage) + 1;
-            const endItem = Math.min(this.currentPage * this.perPage, totalItems);
+            const startItem =
+                totalItems === 0
+                    ? 0
+                    : (this.currentPage - 1) * this.perPage + 1;
+            const endItem = Math.min(
+                this.currentPage * this.perPage,
+                totalItems
+            );
             this.elements.paginationInfo.textContent = `Showing ${startItem}-${endItem} of ${totalItems} entries`;
         }
 
@@ -433,7 +490,8 @@ class TableHelper {
             this.elements.prevPageBtn.disabled = this.currentPage <= 1;
         }
         if (this.elements.nextPageBtn) {
-            this.elements.nextPageBtn.disabled = this.currentPage >= this.totalPages;
+            this.elements.nextPageBtn.disabled =
+                this.currentPage >= this.totalPages;
         }
 
         // Generate page numbers
@@ -445,7 +503,7 @@ class TableHelper {
         if (this.config.renderTable) {
             this.config.renderTable.call(this, data);
         } else {
-            console.warn('renderTable method not implemented');
+            console.warn("renderTable method not implemented");
         }
     }
 
@@ -458,8 +516,11 @@ class TableHelper {
 
         // Update pagination info
         if (this.elements.paginationInfo) {
-            const startItem = ((this.currentPage - 1) * pagination.per_page) + 1;
-            const endItem = Math.min(this.currentPage * pagination.per_page, pagination.total);
+            const startItem = (this.currentPage - 1) * pagination.per_page + 1;
+            const endItem = Math.min(
+                this.currentPage * pagination.per_page,
+                pagination.total
+            );
             this.elements.paginationInfo.textContent = `Showing ${startItem}-${endItem} of ${pagination.total} items`;
         }
 
@@ -478,7 +539,7 @@ class TableHelper {
     generatePageNumbers(current, total) {
         if (!this.elements.pageNumbers) return;
 
-        this.elements.pageNumbers.innerHTML = '';
+        this.elements.pageNumbers.innerHTML = "";
 
         if (total <= 1) return;
 
@@ -514,15 +575,16 @@ class TableHelper {
     }
 
     addPageButton(page, isActive = false) {
-        const button = document.createElement('button');
+        const button = document.createElement("button");
         button.textContent = page;
-        button.className = `px-3 py-1 border rounded-md text-sm ${isActive
-            ? 'bg-blue-600 text-white border-blue-600'
-            : 'text-gray-500 border-gray-300 hover:bg-gray-50'
-            }`;
+        button.className = `px-3 py-1 border rounded-md text-sm ${
+            isActive
+                ? "bg-blue-600 text-white border-blue-600"
+                : "text-gray-500 border-gray-300 hover:bg-gray-50"
+        }`;
 
         if (!isActive) {
-            button.addEventListener('click', () => {
+            button.addEventListener("click", () => {
                 this.currentPage = page;
                 this.renderCurrentPage();
             });
@@ -532,9 +594,9 @@ class TableHelper {
     }
 
     addPageDots() {
-        const dots = document.createElement('span');
-        dots.textContent = '...';
-        dots.className = 'px-2 py-1 text-gray-500';
+        const dots = document.createElement("span");
+        dots.textContent = "...";
+        dots.className = "px-2 py-1 text-gray-500";
         this.elements.pageNumbers.appendChild(dots);
     }
 
@@ -546,42 +608,55 @@ class TableHelper {
 
     // Generic table row builder
     static buildTableRow(item, columns, options = {}) {
-        const rowClass = options.rowClass || 'hover:bg-gray-50';
-        const cellClass = options.cellClass || 'px-3 py-2 text-sm text-gray-900 border-r border-gray-200';
+        const rowClass = options.rowClass || "hover:bg-gray-50";
+        const cellClass =
+            options.cellClass ||
+            "px-3 py-2 text-sm text-gray-900 border-r border-gray-200";
 
         let html = `<tr class="${rowClass}">`;
 
         columns.forEach((column, index) => {
-            const value = TableHelper.formatCellValue(item[column.field], column.type);
-            const alignment = column.align || (column.type === 'currency' || column.type === 'number' ? 'text-right' : 'text-left');
-            const extraClass = column.class || '';
+            const value = TableHelper.formatCellValue(
+                item[column.field],
+                column.type
+            );
+            const alignment =
+                column.align ||
+                (column.type === "currency" || column.type === "number"
+                    ? "text-right"
+                    : "text-left");
+            const extraClass = column.class || "";
             const isLast = index === columns.length - 1;
 
-            html += `<td class="${cellClass} ${alignment} ${extraClass} ${isLast ? '' : 'border-r border-gray-200'}">`;
+            html += `<td class="${cellClass} ${alignment} ${extraClass} ${
+                isLast ? "" : "border-r border-gray-200"
+            }">`;
 
-            if (column.type === 'text' && column.maxWidth) {
-                html += `<div class="truncate max-w-${column.maxWidth}" title="${item[column.field]}">${value}</div>`;
+            if (column.type === "text" && column.maxWidth) {
+                html += `<div class="truncate max-w-${
+                    column.maxWidth
+                }" title="${item[column.field]}">${value}</div>`;
             } else {
                 html += value;
             }
 
-            html += '</td>';
+            html += "</td>";
         });
 
-        html += '</tr>';
+        html += "</tr>";
         return html;
     }
 
     static formatCellValue(value, type) {
         switch (type) {
-            case 'currency':
+            case "currency":
                 return TableHelper.formatCurrency(value);
-            case 'number':
+            case "number":
                 return TableHelper.formatNumber(value);
-            case 'percent':
+            case "percent":
                 return TableHelper.formatPercent(value);
             default:
-                return value || '-';
+                return value || "-";
         }
     }
 
