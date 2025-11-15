@@ -120,6 +120,9 @@ class ReturnComparisonController extends Controller
             FROM c_invoice inv
             INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
             INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+            INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
+            INNER JOIN m_product prd ON invl.m_product_id = prd.m_product_id
+            INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
             WHERE inv.ad_client_id = 1000001
                 AND inv.issotrx = 'Y'
                 AND invl.qtyinvoiced > 0
@@ -128,6 +131,8 @@ class ReturnComparisonController extends Controller
                 AND inv.isactive = 'Y'
                 AND EXTRACT(year FROM inv.dateinvoiced) = ?
                 AND EXTRACT(month FROM inv.dateinvoiced) = ?
+                AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
+                AND cat.name = 'MIKA'
             GROUP BY org.name
         ";
 
@@ -182,11 +187,16 @@ class ReturnComparisonController extends Controller
             FROM c_invoiceline d
             INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
             INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+            INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
+            INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
+            INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
             WHERE h.documentno LIKE 'CNC%'
                 AND h.docstatus IN ('CO', 'CL')
                 AND h.issotrx = 'Y'
                 AND EXTRACT(year FROM h.dateinvoiced) = ?
                 AND EXTRACT(month FROM h.dateinvoiced) = ?
+                AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
+                AND cat.name = 'MIKA'
             GROUP BY org.name
         ";
 

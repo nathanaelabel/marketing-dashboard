@@ -23,75 +23,83 @@ const ChartHelper = {
         } else if (scaledValue > 0) {
             return scaledValue.toFixed(1);
         } else {
-            return '0';
+            return "0";
         }
     },
 
     formatYAxisLabel(value) {
         if (value >= 1000000) {
-            return (value / 1000000) + 'Jt';
+            return value / 1000000 + "Jt";
         } else if (value >= 1000) {
-            return (value / 1000) + 'rb';
+            return value / 1000 + "rb";
         }
         return value;
     },
 
     showLoadingIndicator(chartContainer) {
-        const loadingOverlay = document.createElement('div');
-        loadingOverlay.className = 'absolute inset-0 bg-white bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-10 loading-overlay';
+        const loadingOverlay = document.createElement("div");
+        loadingOverlay.className =
+            "absolute inset-0 bg-white bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-10 loading-overlay";
         loadingOverlay.innerHTML = `
             <div class="text-center">
                 <p class="text-lg font-semibold text-gray-700">Loading chart data...</p>
             </div>
         `;
-        chartContainer.style.position = 'relative';
+        chartContainer.style.position = "relative";
         chartContainer.appendChild(loadingOverlay);
     },
 
     showChartLoadingIndicator(chartElement) {
-        const loadingOverlay = document.createElement('div');
-        loadingOverlay.className = 'absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10 chart-loading-overlay';
+        const loadingOverlay = document.createElement("div");
+        loadingOverlay.className =
+            "absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10 chart-loading-overlay";
         loadingOverlay.innerHTML = `
             <div class="text-center">
                 <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
                 <p class="text-sm font-medium text-gray-700">Loading chart data...</p>
             </div>
         `;
-        chartElement.style.position = 'relative';
+        chartElement.style.position = "relative";
         chartElement.appendChild(loadingOverlay);
     },
 
     hideChartLoadingIndicator(chartElement) {
-        const loadingOverlay = chartElement.querySelector('.chart-loading-overlay');
+        const loadingOverlay = chartElement.querySelector(
+            ".chart-loading-overlay"
+        );
         if (loadingOverlay) {
             loadingOverlay.remove();
         }
     },
 
     disableFilters(filterSelectors) {
-        filterSelectors.forEach(selector => {
-            const element = document.querySelector(selector) || document.getElementById(selector);
+        filterSelectors.forEach((selector) => {
+            const element =
+                document.querySelector(selector) ||
+                document.getElementById(selector);
             if (element) {
                 element.disabled = true;
-                element.style.opacity = '0.6';
-                element.style.cursor = 'not-allowed';
+                element.style.opacity = "0.6";
+                element.style.cursor = "not-allowed";
             }
         });
     },
 
     enableFilters(filterSelectors) {
-        filterSelectors.forEach(selector => {
-            const element = document.querySelector(selector) || document.getElementById(selector);
+        filterSelectors.forEach((selector) => {
+            const element =
+                document.querySelector(selector) ||
+                document.getElementById(selector);
             if (element) {
                 element.disabled = false;
-                element.style.opacity = '1';
-                element.style.cursor = 'pointer';
+                element.style.opacity = "1";
+                element.style.cursor = "pointer";
             }
         });
     },
 
     hideLoadingIndicator(chartContainer) {
-        const loadingOverlay = chartContainer.querySelector('.loading-overlay');
+        const loadingOverlay = chartContainer.querySelector(".loading-overlay");
         if (loadingOverlay) {
             loadingOverlay.remove();
         }
@@ -107,13 +115,14 @@ const ChartHelper = {
         const chartContainer = chartContext.parentElement;
 
         // Clear previous messages
-        const existingError = chartContainer.querySelector('.error-message');
+        const existingError = chartContainer.querySelector(".error-message");
         if (existingError) {
             existingError.remove();
         }
 
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'error-message text-center p-4 text-red-500 flex items-center justify-center';
+        const errorDiv = document.createElement("div");
+        errorDiv.className =
+            "error-message text-center p-4 text-red-500 flex items-center justify-center";
         errorDiv.innerHTML = `
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -135,9 +144,9 @@ const ChartHelper = {
         }
 
         const growth = ((currentValue - previousValue) / previousValue) * 100;
-        const prefix = growth >= 0 ? '' : '';
+        const prefix = growth >= 0 ? "" : "";
 
-        return prefix + growth.toFixed(decimalPlaces) + '%';
+        return prefix + growth.toFixed(decimalPlaces) + "%";
     },
 
     /**
@@ -155,13 +164,18 @@ const ChartHelper = {
 
         const scaledValue = value / divisor;
 
-        if (unit === 'M') {
-            const rounded = Math.round(scaledValue * Math.pow(10, decimalPlaces)) / Math.pow(10, decimalPlaces);
-            const display = (rounded % 1 === 0) ? rounded.toFixed(0) : rounded.toFixed(decimalPlaces);
-            return display + 'M';
+        if (unit === "M") {
+            const rounded =
+                Math.round(scaledValue * Math.pow(10, decimalPlaces)) /
+                Math.pow(10, decimalPlaces);
+            const display =
+                rounded % 1 === 0
+                    ? rounded.toFixed(0)
+                    : rounded.toFixed(decimalPlaces);
+            return display + "M";
         }
 
-        return Math.round(scaledValue).toFixed(0) + 'Jt';
+        return Math.round(scaledValue).toFixed(0) + "Jt";
     },
 
     /**
@@ -177,11 +191,18 @@ const ChartHelper = {
                 const previousValue = datasets[0].data[context.dataIndex];
 
                 // Only show growth on the higher bar
-                const isHigherBar = (context.datasetIndex === 1 && currentValue >= previousValue) ||
-                    (context.datasetIndex === 0 && previousValue > currentValue);
+                const isHigherBar =
+                    (context.datasetIndex === 1 &&
+                        currentValue >= previousValue) ||
+                    (context.datasetIndex === 0 &&
+                        previousValue > currentValue);
 
                 if (isHigherBar && currentValue > 0 && previousValue > 0) {
-                    return this.calculatePercentageGrowth(currentValue, previousValue, decimalPlaces);
+                    return this.calculatePercentageGrowth(
+                        currentValue,
+                        previousValue,
+                        decimalPlaces
+                    );
                 }
             }
             return null;
@@ -195,20 +216,22 @@ const ChartHelper = {
      * @returns {string} Formatted display string
      */
     formatNumberForDisplay(value, divisor) {
-        if (value === 0) return '0';
+        if (value === 0) return "0";
 
         const scaledValue = value / divisor;
 
-        if (divisor === 1000000000) { // Billions
-            if (scaledValue % 1 === 0) return scaledValue.toFixed(0) + 'M';
-            return scaledValue.toFixed(1) + 'M';
-        } else if (divisor === 1000000) { // Millions
-            return Math.round(scaledValue) + 'Jt';
+        if (divisor === 1000000000) {
+            // Billions
+            if (scaledValue % 1 === 0) return scaledValue.toFixed(0) + "M";
+            return scaledValue.toFixed(1) + "M";
+        } else if (divisor === 1000000) {
+            // Millions
+            return Math.round(scaledValue) + "Jt";
         } else {
             // For raw values or thousands
-            return new Intl.NumberFormat('id-ID', {
+            return new Intl.NumberFormat("id-ID", {
                 minimumFractionDigits: 0,
-                maximumFractionDigits: 0
+                maximumFractionDigits: 0,
             }).format(scaledValue);
         }
     },
@@ -229,13 +252,14 @@ const ChartHelper = {
         const chartContainer = chartContext.parentElement;
 
         // Clear previous messages
-        const existingMessage = chartContainer.querySelector('.no-data-message');
+        const existingMessage =
+            chartContainer.querySelector(".no-data-message");
         if (existingMessage) {
             existingMessage.remove();
         }
 
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'no-data-message text-center p-4 text-gray-600';
+        const messageDiv = document.createElement("div");
+        messageDiv.className = "no-data-message text-center p-4 text-gray-600";
         messageDiv.innerHTML = `<i class="fas fa-info-circle mr-2"></i>${message}`;
         chartContainer.appendChild(messageDiv);
     },
@@ -248,7 +272,7 @@ const ChartHelper = {
      * @returns {string} Formatted currency string
      */
     formatCurrencyDisplay(value, precision = 1, includeRp = true) {
-        const prefix = includeRp ? 'Rp ' : '';
+        const prefix = includeRp ? "Rp " : "";
 
         if (Math.abs(value) >= 1e9) {
             return `${prefix}${(value / 1e9).toFixed(precision)}M`;
@@ -272,8 +296,18 @@ const ChartHelper = {
         if (currentYear == currentYearNum) {
             // For current year, show the actual period being compared
             const monthNames = [
-                'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-                'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+                "Januari",
+                "Februari",
+                "Maret",
+                "April",
+                "Mei",
+                "Juni",
+                "Juli",
+                "Agustus",
+                "September",
+                "Oktober",
+                "November",
+                "Desember",
             ];
             const currentMonth = monthNames[today.getMonth()];
             const currentDay = today.getDate();
@@ -283,5 +317,5 @@ const ChartHelper = {
             // For historical years, show full year comparison
             return `Perbandingan periode penuh: Januari - Desember untuk kedua tahun`;
         }
-    }
+    },
 };

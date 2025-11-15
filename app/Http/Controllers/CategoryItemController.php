@@ -24,11 +24,13 @@ class CategoryItemController extends Controller
         // Must filter by document type to match the main query
         $baseQuery = DB::table('c_invoice as h')
             ->join('ad_org as org', 'h.ad_org_id', '=', 'org.ad_org_id')
+            ->join('c_bpartner as cust', 'h.c_bpartner_id', '=', 'cust.c_bpartner_id')
             ->where('h.ad_client_id', 1000001)
             ->where('h.issotrx', 'Y')
             ->whereIn('h.docstatus', ['CO', 'CL'])
             ->where('h.isactive', 'Y')
-            ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate]);
+            ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate])
+            ->whereRaw('UPPER(cust.name) NOT LIKE ?', ['%KARYAWAN%']);
 
         // Apply document type filter based on revenue type
         if ($type === 'NETTO') {
@@ -82,6 +84,7 @@ class CategoryItemController extends Controller
         $dataQuery = DB::table('c_invoiceline as d')
             ->join('c_invoice as h', 'd.c_invoice_id', '=', 'h.c_invoice_id')
             ->join('ad_org as org', 'h.ad_org_id', '=', 'org.ad_org_id')
+            ->join('c_bpartner as cust', 'h.c_bpartner_id', '=', 'cust.c_bpartner_id')
             ->join('m_product as prd', 'd.m_product_id', '=', 'prd.m_product_id')
             ->join('m_product_category as cat', 'prd.m_product_category_id', '=', 'cat.m_product_category_id')
             ->where('h.ad_client_id', 1000001)
@@ -90,7 +93,8 @@ class CategoryItemController extends Controller
             ->whereIn('h.docstatus', ['CO', 'CL'])
             ->where('h.isactive', 'Y')
             ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate])
-            ->whereIn('org.name', $paginatedBranches);
+            ->whereIn('org.name', $paginatedBranches)
+            ->whereRaw('UPPER(cust.name) NOT LIKE ?', ['%KARYAWAN%']);
 
         // Apply different calculation based on type
         if ($type === 'NETTO') {
@@ -199,6 +203,7 @@ class CategoryItemController extends Controller
         $dataQuery = DB::table('c_invoiceline as d')
             ->join('c_invoice as h', 'd.c_invoice_id', '=', 'h.c_invoice_id')
             ->join('ad_org as org', 'h.ad_org_id', '=', 'org.ad_org_id')
+            ->join('c_bpartner as cust', 'h.c_bpartner_id', '=', 'cust.c_bpartner_id')
             ->join('m_product as prd', 'd.m_product_id', '=', 'prd.m_product_id')
             ->join('m_product_category as cat', 'prd.m_product_category_id', '=', 'cat.m_product_category_id')
             ->where('h.ad_client_id', 1000001)
@@ -206,7 +211,8 @@ class CategoryItemController extends Controller
             ->where('d.qtyinvoiced', '>', 0)
             ->whereIn('h.docstatus', ['CO', 'CL'])
             ->where('h.isactive', 'Y')
-            ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate]);
+            ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate])
+            ->whereRaw('UPPER(cust.name) NOT LIKE ?', ['%KARYAWAN%']);
 
         // Apply different calculation based on type
         if ($type === 'NETTO') {
@@ -410,6 +416,7 @@ class CategoryItemController extends Controller
         $dataQuery = DB::table('c_invoiceline as d')
             ->join('c_invoice as h', 'd.c_invoice_id', '=', 'h.c_invoice_id')
             ->join('ad_org as org', 'h.ad_org_id', '=', 'org.ad_org_id')
+            ->join('c_bpartner as cust', 'h.c_bpartner_id', '=', 'cust.c_bpartner_id')
             ->join('m_product as prd', 'd.m_product_id', '=', 'prd.m_product_id')
             ->join('m_product_category as cat', 'prd.m_product_category_id', '=', 'cat.m_product_category_id')
             ->where('h.ad_client_id', 1000001)
@@ -417,7 +424,8 @@ class CategoryItemController extends Controller
             ->where('d.qtyinvoiced', '>', 0)
             ->whereIn('h.docstatus', ['CO', 'CL'])
             ->where('h.isactive', 'Y')
-            ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate]);
+            ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate])
+            ->whereRaw('UPPER(cust.name) NOT LIKE ?', ['%KARYAWAN%']);
 
         // Apply different calculation based on type
         if ($type === 'NETTO') {

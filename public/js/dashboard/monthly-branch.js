@@ -1,16 +1,16 @@
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener("DOMContentLoaded", function () {
     let monthlyBranchChart = null;
-    const ctx = document.getElementById('monthly-branch-chart');
-    const yearSelect = document.getElementById('monthly-year-select');
-    const branchSelect = document.getElementById('monthly-branch-select');
-    const categorySelect = document.getElementById('monthly-category-select');
-    const typeSelect = document.getElementById('monthly-type-select');
+    const ctx = document.getElementById("monthly-branch-chart");
+    const yearSelect = document.getElementById("monthly-year-select");
+    const branchSelect = document.getElementById("monthly-branch-select");
+    const categorySelect = document.getElementById("monthly-category-select");
+    const typeSelect = document.getElementById("monthly-type-select");
 
     if (!ctx) return;
 
     function updateMonthlyBranchChart(dataFromServer) {
         if (!dataFromServer) {
-            console.error('No data received from server');
+            console.error("No data received from server");
             return;
         }
 
@@ -27,81 +27,87 @@ document.addEventListener('DOMContentLoaded', function () {
             monthlyBranchChart.data.datasets = dataFromServer.datasets;
             monthlyBranchChart.options.scales.y.title.text = yAxisLabel;
             monthlyBranchChart.options.scales.y.suggestedMax = suggestedMax;
-            monthlyBranchChart.options.scales.y.ticks.callback = function (value) {
+            monthlyBranchChart.options.scales.y.ticks.callback = function (
+                value
+            ) {
                 const scaledValue = value / yAxisDivisor;
-                if (dataFromServer.yAxisUnit === 'B') {
+                if (dataFromServer.yAxisUnit === "B") {
                     if (scaledValue % 1 === 0) return scaledValue.toFixed(0);
                     return scaledValue.toFixed(1);
                 } else {
                     return Math.round(scaledValue);
                 }
             };
-            monthlyBranchChart.options.plugins.datalabels.formatter = formatGrowthLabel;
+            monthlyBranchChart.options.plugins.datalabels.formatter =
+                formatGrowthLabel;
             monthlyBranchChart.update();
         } else {
             // Register datalabels + custom legend margin plugin
             const LegendMargin = {
-                id: 'legendMargin',
+                id: "legendMargin",
                 beforeInit(chart, _args, opts) {
                     const fit = chart.legend && chart.legend.fit;
                     if (!fit) return;
                     chart.legend.fit = function fitWithMargin() {
                         fit.bind(this)();
-                        this.height += (opts && opts.margin) ? opts.margin : 0;
+                        this.height += opts && opts.margin ? opts.margin : 0;
                     };
-                }
+                },
             };
 
             Chart.register(ChartDataLabels, LegendMargin);
             monthlyBranchChart = new Chart(ctx, {
-                type: 'bar',
+                type: "bar",
                 data: {
                     labels: chartLabels,
-                    datasets: dataFromServer.datasets
+                    datasets: dataFromServer.datasets,
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
                         title: {
-                            display: false
+                            display: false,
                         },
                         legend: {
                             display: true,
-                            position: 'top',
+                            position: "top",
                             labels: {
-                                padding: 12
-                            }
+                                padding: 12,
+                            },
                         },
                         // extra spacing below legend (to separate from plot area)
                         legendMargin: {
-                            margin: 10
+                            margin: 10,
                         },
                         tooltip: {
                             callbacks: {
                                 label: function (context) {
-                                    let label = context.dataset.label || '';
+                                    let label = context.dataset.label || "";
                                     if (label) {
-                                        label += ': ';
+                                        label += ": ";
                                     }
                                     if (context.parsed.y !== null) {
-                                        label += new Intl.NumberFormat('id-ID', {
-                                            minimumFractionDigits: 0
-                                        }).format(context.parsed.y);
+                                        label += new Intl.NumberFormat(
+                                            "id-ID",
+                                            {
+                                                minimumFractionDigits: 0,
+                                            }
+                                        ).format(context.parsed.y);
                                     }
                                     return label;
-                                }
-                            }
+                                },
+                            },
                         },
                         datalabels: {
-                            anchor: 'end',
-                            align: 'top',
+                            anchor: "end",
+                            align: "top",
                             formatter: formatGrowthLabel,
                             font: {
-                                weight: 'bold'
+                                weight: "bold",
                             },
-                            color: '#444'
-                        }
+                            color: "#444",
+                        },
                     },
                     scales: {
                         y: {
@@ -114,45 +120,61 @@ document.addEventListener('DOMContentLoaded', function () {
                                     top: 0,
                                     left: 0,
                                     right: 0,
-                                    bottom: 20
-                                }
+                                    bottom: 20,
+                                },
                             },
                             ticks: {
                                 callback: function (value) {
                                     const scaledValue = value / yAxisDivisor;
-                                    if (dataFromServer.yAxisUnit === 'B') {
-                                        if (scaledValue % 1 === 0) return scaledValue.toFixed(0);
+                                    if (dataFromServer.yAxisUnit === "B") {
+                                        if (scaledValue % 1 === 0)
+                                            return scaledValue.toFixed(0);
                                         return scaledValue.toFixed(1);
                                     } else {
                                         return Math.round(scaledValue);
                                     }
-                                }
-                            }
+                                },
+                            },
                         },
                         x: {
                             title: {
-                                display: false
-                            }
-                        }
-                    }
-                }
+                                display: false,
+                            },
+                        },
+                    },
+                },
             });
         }
     }
 
-    function fetchAndUpdateMonthlyChart(year, branch, category, type, retryCount = 0) {
-        const url = `/monthly-branch/data?year=${year}&branch=${encodeURIComponent(branch)}&category=${encodeURIComponent(category)}&type=${encodeURIComponent(type)}`;
-        const filterSelectors = ['monthly-year-select', 'monthly-branch-select', 'monthly-category-select', 'monthly-type-select'];
-        const chartContainer = document.getElementById('monthly-branch-chart');
+    function fetchAndUpdateMonthlyChart(
+        year,
+        branch,
+        category,
+        type,
+        retryCount = 0
+    ) {
+        const url = `/monthly-branch/data?year=${year}&branch=${encodeURIComponent(
+            branch
+        )}&category=${encodeURIComponent(category)}&type=${encodeURIComponent(
+            type
+        )}`;
+        const filterSelectors = [
+            "monthly-year-select",
+            "monthly-branch-select",
+            "monthly-category-select",
+            "monthly-type-select",
+        ];
+        const chartContainer = document.getElementById("monthly-branch-chart");
         const maxRetries = 2; // Maximum number of retries
         const retryDelay = 2000; // 2 seconds delay between retries
 
         // Create a wrapper div around canvas if it doesn't exist
-        if (!chartContainer.parentElement.classList.contains('chart-wrapper')) {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'chart-wrapper relative w-full';
-            wrapper.style.width = '100%';
-            wrapper.style.height = 'auto';
+        if (!chartContainer.parentElement.classList.contains("chart-wrapper")) {
+            const wrapper = document.createElement("div");
+            wrapper.className = "chart-wrapper relative w-full";
+            wrapper.style.width = "100%";
+            wrapper.style.height = "auto";
             chartContainer.parentElement.insertBefore(wrapper, chartContainer);
             wrapper.appendChild(chartContainer);
         }
@@ -168,24 +190,33 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch(url, {
             signal: controller.signal,
             headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+                Accept: "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+            },
         })
-            .then(response => {
+            .then((response) => {
                 clearTimeout(timeoutId);
 
                 if (!response.ok) {
                     // Try to get error message from response
-                    return response.json().then(errorData => {
-                        throw new Error(errorData.message || errorData.error || `HTTP error! status: ${response.status}`);
-                    }).catch(() => {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    });
+                    return response
+                        .json()
+                        .then((errorData) => {
+                            throw new Error(
+                                errorData.message ||
+                                    errorData.error ||
+                                    `HTTP error! status: ${response.status}`
+                            );
+                        })
+                        .catch(() => {
+                            throw new Error(
+                                `HTTP error! status: ${response.status}`
+                            );
+                        });
                 }
                 return response.json();
             })
-            .then(data => {
+            .then((data) => {
                 clearTimeout(timeoutId);
 
                 // Check if response contains error
@@ -193,69 +224,107 @@ document.addEventListener('DOMContentLoaded', function () {
                     throw new Error(data.message || data.error);
                 }
 
-                ChartHelper.hideChartLoadingIndicator(chartContainer.parentElement);
+                ChartHelper.hideChartLoadingIndicator(
+                    chartContainer.parentElement
+                );
                 ChartHelper.enableFilters(filterSelectors);
                 updateMonthlyBranchChart(data);
             })
-            .catch(error => {
+            .catch((error) => {
                 clearTimeout(timeoutId);
 
-                console.error('Error fetching Monthly Branch data:', error);
+                console.error("Error fetching Monthly Branch data:", error);
 
                 // Retry logic for timeout or network errors
-                if ((error.name === 'AbortError' || error.message.includes('timeout') || error.message.includes('Failed to fetch')) && retryCount < maxRetries) {
-                    console.log(`Retrying request (attempt ${retryCount + 1}/${maxRetries})...`);
+                if (
+                    (error.name === "AbortError" ||
+                        error.message.includes("timeout") ||
+                        error.message.includes("Failed to fetch")) &&
+                    retryCount < maxRetries
+                ) {
+                    console.log(
+                        `Retrying request (attempt ${
+                            retryCount + 1
+                        }/${maxRetries})...`
+                    );
                     setTimeout(() => {
-                        fetchAndUpdateMonthlyChart(year, branch, category, type, retryCount + 1);
+                        fetchAndUpdateMonthlyChart(
+                            year,
+                            branch,
+                            category,
+                            type,
+                            retryCount + 1
+                        );
                     }, retryDelay);
                     return;
                 }
 
-                ChartHelper.hideChartLoadingIndicator(chartContainer.parentElement);
+                ChartHelper.hideChartLoadingIndicator(
+                    chartContainer.parentElement
+                );
                 ChartHelper.enableFilters(filterSelectors);
 
                 // Show more specific error message
-                let errorMessage = 'Connection timed out. Try refreshing the page.';
+                let errorMessage =
+                    "Connection timed out. Try refreshing the page.";
                 if (error.message) {
-                    if (error.message.includes('timeout') || error.message.includes('Request timeout')) {
-                        errorMessage = 'Request timeout. The server is taking too long to respond. Please wait a moment and try again.';
-                    } else if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
-                        errorMessage = 'Network error. Please check your connection and try again.';
-                    } else if (error.message.includes('HTTP error! status: 500')) {
-                        errorMessage = 'Server error. The query is taking too long. Please try again in a moment.';
+                    if (
+                        error.message.includes("timeout") ||
+                        error.message.includes("Request timeout")
+                    ) {
+                        errorMessage =
+                            "Request timeout. The server is taking too long to respond. Please wait a moment and try again.";
+                    } else if (
+                        error.message.includes("Failed to fetch") ||
+                        error.name === "TypeError"
+                    ) {
+                        errorMessage =
+                            "Network error. Please check your connection and try again.";
+                    } else if (
+                        error.message.includes("HTTP error! status: 500")
+                    ) {
+                        errorMessage =
+                            "Server error. The query is taking too long. Please try again in a moment.";
                     } else {
                         errorMessage = error.message;
                     }
                 }
 
-                ChartHelper.showErrorMessage(monthlyBranchChart, ctx, errorMessage);
+                ChartHelper.showErrorMessage(
+                    monthlyBranchChart,
+                    ctx,
+                    errorMessage
+                );
             });
     }
 
     function loadBranches() {
-        fetch('/monthly-branch/branches')
-            .then(response => response.json())
-            .then(branchOptions => {
-                branchSelect.innerHTML = '';
-                branchOptions.forEach(branchOption => {
-                    const option = document.createElement('option');
+        fetch("/monthly-branch/branches")
+            .then((response) => response.json())
+            .then((branchOptions) => {
+                branchSelect.innerHTML = "";
+                branchOptions.forEach((branchOption) => {
+                    const option = document.createElement("option");
                     option.value = branchOption.value;
                     option.textContent = branchOption.display;
                     branchSelect.appendChild(option);
                 });
 
                 // Set default to National if available
-                const nationalOption = branchOptions.find(option => option.value === 'National');
+                const nationalOption = branchOptions.find(
+                    (option) => option.value === "National"
+                );
                 if (nationalOption) {
-                    branchSelect.value = 'National';
+                    branchSelect.value = "National";
                 }
 
                 // Trigger initial chart load
                 triggerUpdate();
             })
-            .catch(error => {
-                console.error('Error loading branches:', error);
-                branchSelect.innerHTML = '<option value="">Error loading branches</option>';
+            .catch((error) => {
+                console.error("Error loading branches:", error);
+                branchSelect.innerHTML =
+                    '<option value="">Error loading branches</option>';
             });
     }
 
@@ -271,43 +340,46 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // Event listeners
-    yearSelect.addEventListener('change', triggerUpdate);
-    branchSelect.addEventListener('change', triggerUpdate);
-    categorySelect.addEventListener('change', triggerUpdate);
-    typeSelect.addEventListener('change', triggerUpdate);
+    yearSelect.addEventListener("change", triggerUpdate);
+    branchSelect.addEventListener("change", triggerUpdate);
+    categorySelect.addEventListener("change", triggerUpdate);
+    typeSelect.addEventListener("change", triggerUpdate);
 
     // Initialize
     loadBranches();
 
     // Three-dots menu toggle
-    const menuButton = document.getElementById('mbMenuButton');
-    const dropdownMenu = document.getElementById('mbDropdownMenu');
+    const menuButton = document.getElementById("mbMenuButton");
+    const dropdownMenu = document.getElementById("mbDropdownMenu");
 
     if (menuButton && dropdownMenu) {
         // Toggle dropdown on button click
-        menuButton.addEventListener('click', function (e) {
+        menuButton.addEventListener("click", function (e) {
             e.stopPropagation();
-            dropdownMenu.classList.toggle('hidden');
+            dropdownMenu.classList.toggle("hidden");
         });
 
         // Close dropdown when clicking outside
-        document.addEventListener('click', function (e) {
-            if (!menuButton.contains(e.target) && !dropdownMenu.contains(e.target)) {
-                dropdownMenu.classList.add('hidden');
+        document.addEventListener("click", function (e) {
+            if (
+                !menuButton.contains(e.target) &&
+                !dropdownMenu.contains(e.target)
+            ) {
+                dropdownMenu.classList.add("hidden");
             }
         });
     }
 
     // Refresh Data functionality
-    const refreshBtn = document.getElementById('mbRefreshDataBtn');
+    const refreshBtn = document.getElementById("mbRefreshDataBtn");
     if (refreshBtn) {
-        refreshBtn.addEventListener('click', function (e) {
+        refreshBtn.addEventListener("click", function (e) {
             e.preventDefault();
             e.stopPropagation();
 
             // Close dropdown
             if (dropdownMenu) {
-                dropdownMenu.classList.add('hidden');
+                dropdownMenu.classList.add("hidden");
             }
 
             // Refresh the chart
@@ -316,9 +388,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Export to Excel functionality
-    const exportBtn = document.getElementById('mbExportExcelBtn');
+    const exportBtn = document.getElementById("mbExportExcelBtn");
     if (exportBtn) {
-        exportBtn.addEventListener('click', function (e) {
+        exportBtn.addEventListener("click", function (e) {
             e.preventDefault();
             e.stopPropagation();
 
@@ -328,16 +400,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Close dropdown
             if (dropdownMenu) {
-                dropdownMenu.classList.add('hidden');
+                dropdownMenu.classList.add("hidden");
             }
 
             // Show loading state
             const originalContent = exportBtn.innerHTML;
             exportBtn.disabled = true;
-            exportBtn.innerHTML = 'Exporting...';
+            exportBtn.innerHTML = "Exporting...";
 
             // Create download URL with parameters (no branch - exports all branches)
-            const exportUrl = `/monthly-branch/export-excel?year=${currentYear}&category=${encodeURIComponent(currentCategory)}&type=${encodeURIComponent(currentType)}`;
+            const exportUrl = `/monthly-branch/export-excel?year=${currentYear}&category=${encodeURIComponent(
+                currentCategory
+            )}&type=${encodeURIComponent(currentType)}`;
 
             // Use window.location for direct download
             window.location.href = exportUrl;
@@ -351,9 +425,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Export to PDF functionality
-    const exportPdfBtn = document.getElementById('mbExportPdfBtn');
+    const exportPdfBtn = document.getElementById("mbExportPdfBtn");
     if (exportPdfBtn) {
-        exportPdfBtn.addEventListener('click', function (e) {
+        exportPdfBtn.addEventListener("click", function (e) {
             e.preventDefault();
             e.stopPropagation();
 
@@ -364,16 +438,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Close dropdown
             if (dropdownMenu) {
-                dropdownMenu.classList.add('hidden');
+                dropdownMenu.classList.add("hidden");
             }
 
             // Show loading state
             const originalContent = exportPdfBtn.innerHTML;
             exportPdfBtn.disabled = true;
-            exportPdfBtn.innerHTML = 'Exporting...';
+            exportPdfBtn.innerHTML = "Exporting...";
 
             // Create download URL with parameters (includes branch for single branch export)
-            const exportPdfUrl = `/monthly-branch/export-pdf?year=${currentYear}&branch=${encodeURIComponent(currentBranch)}&category=${encodeURIComponent(currentCategory)}&type=${encodeURIComponent(currentType)}`;
+            const exportPdfUrl = `/monthly-branch/export-pdf?year=${currentYear}&branch=${encodeURIComponent(
+                currentBranch
+            )}&category=${encodeURIComponent(
+                currentCategory
+            )}&type=${encodeURIComponent(currentType)}`;
 
             // Use window.location for direct download
             window.location.href = exportPdfUrl;
