@@ -13,6 +13,22 @@ document.addEventListener("DOMContentLoaded", function () {
     // Set initial title
     updateFamilySectionTitle("rp");
 
+    // Initialize date inputs
+    const startDateInput = document.getElementById("sf-start-date");
+    const endDateInput = document.getElementById("sf-end-date");
+
+    // Check if date inputs exist
+    if (!startDateInput || !endDateInput) {
+        console.error("Date input elements not found");
+        return;
+    }
+
+    // Check if flatpickr is available
+    if (typeof flatpickr === "undefined") {
+        console.error("Flatpickr library not loaded");
+        return;
+    }
+
     // Initialize TableHelper for Sales Family with type toggle functionality
     const salesFamilyTable = new TableHelper({
         apiEndpoint: "/sales-family/data",
@@ -25,8 +41,6 @@ document.addEventListener("DOMContentLoaded", function () {
         entriesPerPageSelector: "#family-entries-per-page",
 
         // Override selectors to use family- prefixed IDs
-        monthSelectSelector: "#family-month-select",
-        yearSelectSelector: "#family-year-select",
         tableBodySelector: "#family-table-body",
         loadingSelector: "#family-loading-indicator",
         errorSelector: "#family-error-message",
@@ -39,11 +53,13 @@ document.addEventListener("DOMContentLoaded", function () {
         nextPageBtnSelector: "#family-next-page",
         pageNumbersSelector: "#family-page-numbers",
 
-        // Override getAdditionalFilters to include type
+        // Override getAdditionalFilters to include type and dates
         getAdditionalFilters: function () {
             const typeSelect = document.getElementById("family-type-select");
             return {
                 type: typeSelect ? typeSelect.value : "rp",
+                start_date: startDateInput ? startDateInput.value : "",
+                end_date: endDateInput ? endDateInput.value : "",
             };
         },
 
@@ -90,6 +106,68 @@ document.addEventListener("DOMContentLoaded", function () {
                 .join("");
 
             this.elements.tableBody.innerHTML = rows;
+        },
+    });
+
+    // Initialize Flatpickr date pickers
+    let startDatePicker, endDatePicker;
+
+    const triggerUpdate = () => {
+        const currentStartDate = startDateInput.value;
+        const currentEndDate = endDateInput.value;
+        if (currentStartDate && currentEndDate) {
+            // Validate date range (max 1 year)
+            const start = new Date(currentStartDate);
+            const end = new Date(currentEndDate);
+            const daysDiff = Math.floor((end - start) / (1000 * 60 * 60 * 24));
+
+            if (daysDiff > 365) {
+                alert(
+                    "Date range too large! Maximum date range is 1 year (365 days). Please select a smaller date range."
+                );
+                return;
+            }
+
+            // Reset to page 1 and reload data from server
+            salesFamilyTable.currentPage = 1;
+            salesFamilyTable.loadData();
+        }
+    };
+
+    // Use yesterday (H-1) as max date since dashboard is updated daily
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // Set minimum date to 2020-01-01
+    const minDate = new Date(2020, 0, 1);
+
+    startDatePicker = flatpickr(startDateInput, {
+        altInput: true,
+        altFormat: "d-m-Y",
+        dateFormat: "Y-m-d",
+        defaultDate: startDateInput.value,
+        minDate: minDate,
+        maxDate: endDateInput.value || yesterday,
+        onChange: function (selectedDates, dateStr, instance) {
+            if (endDatePicker) {
+                endDatePicker.set("minDate", selectedDates[0]);
+            }
+            triggerUpdate();
+        },
+    });
+
+    endDatePicker = flatpickr(endDateInput, {
+        altInput: true,
+        altFormat: "d-m-Y",
+        dateFormat: "Y-m-d",
+        defaultDate: endDateInput.value,
+        minDate: startDateInput.value || minDate,
+        maxDate: yesterday,
+        onChange: function (selectedDates, dateStr, instance) {
+            if (startDatePicker) {
+                startDatePicker.set("maxDate", selectedDates[0]);
+            }
+            triggerUpdate();
         },
     });
 
@@ -152,13 +230,15 @@ document.addEventListener("DOMContentLoaded", function () {
             e.preventDefault();
             e.stopPropagation();
 
-            const currentMonth = document.getElementById(
-                "family-month-select"
-            ).value;
-            const currentYear =
-                document.getElementById("family-year-select").value;
+            const currentStartDate = startDateInput.value;
+            const currentEndDate = endDateInput.value;
             const currentType =
                 document.getElementById("family-type-select").value;
+
+            if (!currentStartDate || !currentEndDate) {
+                alert("Please select both start and end dates");
+                return;
+            }
 
             // Close dropdown
             if (dropdownMenu) {
@@ -171,7 +251,7 @@ document.addEventListener("DOMContentLoaded", function () {
             exportBtn.innerHTML = "Exporting...";
 
             // Create download URL with parameters
-            const exportUrl = `/sales-family/export-excel?month=${currentMonth}&year=${currentYear}&type=${currentType}`;
+            const exportUrl = `/sales-family/export-excel?start_date=${currentStartDate}&end_date=${currentEndDate}&type=${currentType}`;
 
             // Use window.location for direct download
             window.location.href = exportUrl;
@@ -191,13 +271,15 @@ document.addEventListener("DOMContentLoaded", function () {
             e.preventDefault();
             e.stopPropagation();
 
-            const currentMonth = document.getElementById(
-                "family-month-select"
-            ).value;
-            const currentYear =
-                document.getElementById("family-year-select").value;
+            const currentStartDate = startDateInput.value;
+            const currentEndDate = endDateInput.value;
             const currentType =
                 document.getElementById("family-type-select").value;
+
+            if (!currentStartDate || !currentEndDate) {
+                alert("Please select both start and end dates");
+                return;
+            }
 
             // Close dropdown
             if (dropdownMenu) {
@@ -210,7 +292,7 @@ document.addEventListener("DOMContentLoaded", function () {
             exportPdfBtn.innerHTML = "Exporting...";
 
             // Create download URL with parameters
-            const exportPdfUrl = `/sales-family/export-pdf?month=${currentMonth}&year=${currentYear}&type=${currentType}`;
+            const exportPdfUrl = `/sales-family/export-pdf?start_date=${currentStartDate}&end_date=${currentEndDate}&type=${currentType}`;
 
             // Use window.location for direct download
             window.location.href = exportPdfUrl;

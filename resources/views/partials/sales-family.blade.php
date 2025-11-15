@@ -74,34 +74,37 @@
             </div>
 
             <div class="flex-1 min-w-[120px]">
-                <label for="family-month-select" class="block text-sm font-medium text-gray-700 mb-1">Bulan</label>
-                <select id="family-month-select"
-                    class="block w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                    <option value="1" {{ date('n') == 1 ? 'selected' : '' }}>Januari</option>
-                    <option value="2" {{ date('n') == 2 ? 'selected' : '' }}>Februari</option>
-                    <option value="3" {{ date('n') == 3 ? 'selected' : '' }}>Maret</option>
-                    <option value="4" {{ date('n') == 4 ? 'selected' : '' }}>April</option>
-                    <option value="5" {{ date('n') == 5 ? 'selected' : '' }}>Mei</option>
-                    <option value="6" {{ date('n') == 6 ? 'selected' : '' }}>Juni</option>
-                    <option value="7" {{ date('n') == 7 ? 'selected' : '' }}>Juli</option>
-                    <option value="8" {{ date('n') == 8 ? 'selected' : '' }}>Agustus</option>
-                    <option value="9" {{ date('n') == 9 ? 'selected' : '' }}>September</option>
-                    <option value="10" {{ date('n') == 10 ? 'selected' : '' }}>Oktober</option>
-                    <option value="11" {{ date('n') == 11 ? 'selected' : '' }}>November</option>
-                    <option value="12" {{ date('n') == 12 ? 'selected' : '' }}>Desember</option>
-                </select>
+                <label for="sf-start-date" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <div class="relative">
+                    <input type="text" name="start_date" id="sf-start-date" value="{{ $startDate }}"
+                        placeholder="Select Date"
+                        class="pl-3 pr-8 py-1.5 w-full text-sm rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <div class="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                            class="h-4 w-4 text-gray-600">
+                            <path fill-rule="evenodd"
+                                d="M5.75 2a.75.75 0 0 1 .75.75V4h7V2.75a.75.75 0 0 1 1.5 0V4h.25A2.75 2.75 0 0 1 18 6.75v8.5A2.75 2.75 0 0 1 15.25 18H4.75A2.75 2.75 0 0 1 2 15.25v-8.5A2.75 2.75 0 0 1 4.75 4H5V2.75A.75.75 0 0 1 5.75 2Zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75Z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                </div>
             </div>
 
             <div class="flex-1 min-w-[120px]">
-                <label for="family-year-select" class="block text-sm font-medium text-gray-700 mb-1">Tahun</label>
-                <select id="family-year-select"
-                    class="block w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                    <option value="2021" {{ date('Y') == 2021 ? 'selected' : '' }}>2021</option>
-                    <option value="2022" {{ date('Y') == 2022 ? 'selected' : '' }}>2022</option>
-                    <option value="2023" {{ date('Y') == 2023 ? 'selected' : '' }}>2023</option>
-                    <option value="2024" {{ date('Y') == 2024 ? 'selected' : '' }}>2024</option>
-                    <option value="2025" {{ date('Y') == 2025 ? 'selected' : '' }}>2025</option>
-                </select>
+                <label for="sf-end-date" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <div class="relative">
+                    <input type="text" name="end_date" id="sf-end-date" value="{{ $endDate }}"
+                        placeholder="Select Date"
+                        class="pl-3 pr-8 py-1.5 w-full text-sm rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <div class="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                            class="h-4 w-4 text-gray-600">
+                            <path fill-rule="evenodd"
+                                d="M5.75 2a.75.75 0 0 1 .75.75V4h7V2.75a.75.75 0 0 1 1.5 0V4h.25A2.75 2.75 0 0 1 18 6.75v8.5A2.75 2.75 0 0 1 15.25 18H4.75A2.75 2.75 0 0 1 2 15.25v-8.5A2.75 2.75 0 0 1 4.75 4H5V2.75A.75.75 0 0 1 5.75 2Zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75Z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                </div>
             </div>
 
             <div class="flex-1 min-w-[200px]">
