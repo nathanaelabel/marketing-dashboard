@@ -10,6 +10,22 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    // Initialize date inputs
+    const startDateInput = document.getElementById("si-start-date");
+    const endDateInput = document.getElementById("si-end-date");
+
+    // Check if date inputs exist
+    if (!startDateInput || !endDateInput) {
+        console.error("Date input elements not found");
+        return;
+    }
+
+    // Check if flatpickr is available
+    if (typeof flatpickr === "undefined") {
+        console.error("Flatpickr library not loaded");
+        return;
+    }
+
     // Initialize TableHelper with type support
     const salesItemTable = new TableHelper({
         apiEndpoint: "/sales-item/data",
@@ -21,18 +37,16 @@ document.addEventListener("DOMContentLoaded", function () {
         // Configure entries per page selector
         entriesPerPageSelector: "#entries-per-page",
 
-        // Explicitly configure month and year selectors
-        monthSelectSelector: "#month-select",
-        yearSelectSelector: "#year-select",
-
         // Add type filter selector
         typeSelectSelector: "#type-select",
 
-        // Override getAdditionalFilters to include type
+        // Override getAdditionalFilters to include type and dates
         getAdditionalFilters: function () {
             const typeSelect = document.getElementById("type-select");
             return {
                 type: typeSelect ? typeSelect.value : "rp",
+                start_date: startDateInput ? startDateInput.value : "",
+                end_date: endDateInput ? endDateInput.value : "",
             };
         },
 
@@ -131,6 +145,68 @@ document.addEventListener("DOMContentLoaded", function () {
         },
     });
 
+    // Initialize Flatpickr date pickers
+    let startDatePicker, endDatePicker;
+
+    const triggerUpdate = () => {
+        const currentStartDate = startDateInput.value;
+        const currentEndDate = endDateInput.value;
+        if (currentStartDate && currentEndDate) {
+            // Validate date range (max 1 year)
+            const start = new Date(currentStartDate);
+            const end = new Date(currentEndDate);
+            const daysDiff = Math.floor((end - start) / (1000 * 60 * 60 * 24));
+
+            if (daysDiff > 365) {
+                alert(
+                    "Date range too large! Maximum date range is 1 year (365 days). Please select a smaller date range."
+                );
+                return;
+            }
+
+            // Reset to page 1 and reload data from server
+            salesItemTable.currentPage = 1;
+            salesItemTable.loadData();
+        }
+    };
+
+    // Use yesterday (H-1) as max date since dashboard is updated daily
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // Set minimum date to 2020-01-01
+    const minDate = new Date(2020, 0, 1);
+
+    startDatePicker = flatpickr(startDateInput, {
+        altInput: true,
+        altFormat: "d-m-Y",
+        dateFormat: "Y-m-d",
+        defaultDate: startDateInput.value,
+        minDate: minDate,
+        maxDate: endDateInput.value || yesterday,
+        onChange: function (selectedDates, dateStr, instance) {
+            if (endDatePicker) {
+                endDatePicker.set("minDate", selectedDates[0]);
+            }
+            triggerUpdate();
+        },
+    });
+
+    endDatePicker = flatpickr(endDateInput, {
+        altInput: true,
+        altFormat: "d-m-Y",
+        dateFormat: "Y-m-d",
+        defaultDate: endDateInput.value,
+        minDate: startDateInput.value || minDate,
+        maxDate: yesterday,
+        onChange: function (selectedDates, dateStr, instance) {
+            if (startDatePicker) {
+                startDatePicker.set("maxDate", selectedDates[0]);
+            }
+            triggerUpdate();
+        },
+    });
+
     // Add event listener for type changes (needs server reload)
     const typeSelect = document.getElementById("type-select");
     if (typeSelect) {
@@ -195,9 +271,14 @@ document.addEventListener("DOMContentLoaded", function () {
             e.preventDefault();
             e.stopPropagation();
 
-            const currentMonth = document.getElementById("month-select").value;
-            const currentYear = document.getElementById("year-select").value;
+            const currentStartDate = startDateInput.value;
+            const currentEndDate = endDateInput.value;
             const currentType = document.getElementById("type-select").value;
+
+            if (!currentStartDate || !currentEndDate) {
+                alert("Please select both start and end dates");
+                return;
+            }
 
             // Close dropdown
             if (dropdownMenu) {
@@ -210,7 +291,7 @@ document.addEventListener("DOMContentLoaded", function () {
             exportBtn.innerHTML = "Exporting...";
 
             // Create download URL with parameters
-            const exportUrl = `/sales-item/export-excel?month=${currentMonth}&year=${currentYear}&type=${currentType}`;
+            const exportUrl = `/sales-item/export-excel?start_date=${currentStartDate}&end_date=${currentEndDate}&type=${currentType}`;
 
             // Use window.location for direct download
             window.location.href = exportUrl;
@@ -230,9 +311,14 @@ document.addEventListener("DOMContentLoaded", function () {
             e.preventDefault();
             e.stopPropagation();
 
-            const currentMonth = document.getElementById("month-select").value;
-            const currentYear = document.getElementById("year-select").value;
+            const currentStartDate = startDateInput.value;
+            const currentEndDate = endDateInput.value;
             const currentType = document.getElementById("type-select").value;
+
+            if (!currentStartDate || !currentEndDate) {
+                alert("Please select both start and end dates");
+                return;
+            }
 
             // Close dropdown
             if (dropdownMenu) {
@@ -245,7 +331,7 @@ document.addEventListener("DOMContentLoaded", function () {
             exportPdfBtn.innerHTML = "Exporting...";
 
             // Create download URL with parameters
-            const exportPdfUrl = `/sales-item/export-pdf?month=${currentMonth}&year=${currentYear}&type=${currentType}`;
+            const exportPdfUrl = `/sales-item/export-pdf?start_date=${currentStartDate}&end_date=${currentEndDate}&type=${currentType}`;
 
             // Use window.location for direct download
             window.location.href = exportPdfUrl;

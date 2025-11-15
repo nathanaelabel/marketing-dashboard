@@ -13,6 +13,7 @@
             @include('partials.sales-comparison')
 
             @push('scripts')
+                <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
                 <script src="{{ asset('js/dashboard/table-helper.js') }}"></script>
                 <script src="{{ asset('js/dashboard/sales-item.js') }}"></script>
                 <script src="{{ asset('js/dashboard/sales-family.js') }}"></script>

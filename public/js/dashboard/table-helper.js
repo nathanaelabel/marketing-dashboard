@@ -318,6 +318,18 @@ class TableHelper {
             this.showError("Invalid year selected");
             return false;
         }
+
+        // Validate date range if present
+        if (filters.start_date && filters.end_date) {
+            const startDate = new Date(filters.start_date);
+            const endDate = new Date(filters.end_date);
+
+            if (startDate > endDate) {
+                this.showError("Start date must be before end date");
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -357,6 +369,15 @@ class TableHelper {
             clearTimeout(timeoutId);
 
             if (!response.ok) {
+                // Try to parse error response from server
+                try {
+                    const errorData = await response.json();
+                    if (errorData.message) {
+                        throw new Error(errorData.message);
+                    }
+                } catch (parseError) {
+                    // If parsing fails, use default error
+                }
                 throw new Error(
                     `HTTP ${response.status}: ${response.statusText}`
                 );
@@ -373,9 +394,10 @@ class TableHelper {
         this.hideLoading();
 
         if (data.error) {
-            this.showError(
-                data.message || "An error occurred while loading data."
-            );
+            // Show specific error message from server
+            const errorMessage =
+                data.message || "An error occurred while loading data.";
+            this.showError(errorMessage);
             return;
         }
 
@@ -602,7 +624,14 @@ class TableHelper {
 
     updatePeriodInfo(period) {
         if (period && this.elements.periodInfo) {
-            this.elements.periodInfo.textContent = `${period.month_name} ${period.year}`;
+            // Support both date range format and month/year format
+            if (period.display) {
+                // Date range format (start_date - end_date)
+                this.elements.periodInfo.textContent = period.display;
+            } else if (period.month_name && period.year) {
+                // Month/year format
+                this.elements.periodInfo.textContent = `${period.month_name} ${period.year}`;
+            }
         }
     }
 
