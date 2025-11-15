@@ -121,7 +121,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 data.datasets.forEach((dataset) => {
                     if (
                         dataset.label !== "ANOMALY" &&
-                        dataset.label !== "Connection Failed"
+                        dataset.label !== "CONNECTION FAILED"
                     ) {
                         dataset.data.forEach((value) => {
                             maxValue = Math.max(maxValue, value || 0);
@@ -140,7 +140,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         data.datasets.forEach((dataset) => {
                             if (
                                 dataset.label !== "ANOMALY" &&
-                                dataset.label !== "Connection Failed"
+                                dataset.label !== "CONNECTION FAILED"
                             ) {
                                 stackTotal += dataset.data[i] || 0;
                             }
@@ -182,7 +182,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                         return (
                                             legendItem.text !== "ANOMALY" &&
                                             legendItem.text !==
-                                                "Connection Failed"
+                                                "CONNECTION FAILED"
                                         );
                                     },
                                 },
@@ -201,7 +201,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                             context.dataset.label ===
                                                 "ANOMALY" ||
                                             context.dataset.label ===
-                                                "Connection Failed"
+                                                "CONNECTION FAILED"
                                         ) {
                                             return null;
                                         }
@@ -234,7 +234,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                                 tooltipItem.dataset.label !==
                                                     "ANOMALY" &&
                                                 tooltipItem.dataset.label !==
-                                                    "Connection Failed"
+                                                    "CONNECTION FAILED"
                                             ) {
                                                 total += tooltipItem.parsed.y;
                                             }
@@ -257,7 +257,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     if (
                                         context.dataset.label === "ANOMALY" ||
                                         context.dataset.label ===
-                                            "Connection Failed"
+                                            "CONNECTION FAILED"
                                     ) {
                                         return (
                                             context.dataset.datalabels
@@ -270,7 +270,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     if (
                                         context.dataset.label === "ANOMALY" ||
                                         context.dataset.label ===
-                                            "Connection Failed"
+                                            "CONNECTION FAILED"
                                     ) {
                                         return (
                                             context.dataset.datalabels?.color ??
@@ -283,7 +283,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     if (
                                         context.dataset.label === "ANOMALY" ||
                                         context.dataset.label ===
-                                            "Connection Failed"
+                                            "CONNECTION FAILED"
                                     ) {
                                         return (
                                             context.dataset.datalabels
@@ -299,7 +299,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     if (
                                         context.dataset.label === "ANOMALY" ||
                                         context.dataset.label ===
-                                            "Connection Failed"
+                                            "CONNECTION FAILED"
                                     ) {
                                         return (
                                             context.dataset.datalabels
@@ -318,10 +318,10 @@ document.addEventListener("DOMContentLoaded", function () {
                                     // For Connection Failed bars, show 'Connection Failed' label
                                     if (
                                         context.dataset.label ===
-                                        "Connection Failed"
+                                        "CONNECTION FAILED"
                                     ) {
                                         return value !== null && value > 0
-                                            ? "Connection Failed"
+                                            ? "CONNECTION FAILED"
                                             : null;
                                     }
                                     // For other datasets, show value if above threshold
