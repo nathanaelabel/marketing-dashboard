@@ -222,6 +222,7 @@ class MonthlyBranchController extends Controller
                     c_invoice inv
                     INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
                     INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+                    INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
                     INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
                 WHERE
@@ -235,6 +236,7 @@ class MonthlyBranchController extends Controller
                     AND inv.dateinvoiced::date BETWEEN ? AND ?
                     AND SUBSTR(inv.documentno, 1, 3) IN ('INC', 'CNC')
                     AND pc.name = ?
+                    AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     EXTRACT(month FROM inv.dateinvoiced)
                 ORDER BY
@@ -250,6 +252,7 @@ class MonthlyBranchController extends Controller
                     c_invoice inv
                     INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
                     INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+                    INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
                     INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
                 WHERE
@@ -263,6 +266,7 @@ class MonthlyBranchController extends Controller
                     AND inv.dateinvoiced::date BETWEEN ? AND ?
                     AND inv.documentno LIKE 'INC%'
                     AND pc.name = ?
+                    AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     EXTRACT(month FROM inv.dateinvoiced)
                 ORDER BY
@@ -438,6 +442,7 @@ class MonthlyBranchController extends Controller
                     c_invoice inv
                     INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
                     INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+                    INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
                     INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
                 WHERE
@@ -453,6 +458,7 @@ class MonthlyBranchController extends Controller
                     )
                     AND SUBSTR(inv.documentno, 1, 3) IN ('INC', 'CNC')
                     AND pc.name = ?
+                    AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     org.name, EXTRACT(month FROM inv.dateinvoiced), EXTRACT(year FROM inv.dateinvoiced)
                 ORDER BY
@@ -470,6 +476,7 @@ class MonthlyBranchController extends Controller
                     c_invoice inv
                     INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
                     INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+                    INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
                     INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
                 WHERE
@@ -485,6 +492,7 @@ class MonthlyBranchController extends Controller
                     )
                     AND inv.documentno LIKE 'INC%'
                     AND pc.name = ?
+                    AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     org.name, EXTRACT(month FROM inv.dateinvoiced), EXTRACT(year FROM inv.dateinvoiced)
                 ORDER BY

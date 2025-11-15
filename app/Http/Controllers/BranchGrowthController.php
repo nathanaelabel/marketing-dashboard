@@ -116,6 +116,7 @@ class BranchGrowthController extends Controller
                         c_invoiceline d
                         INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
                         INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                        INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                         INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                         INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                     WHERE
@@ -125,6 +126,7 @@ class BranchGrowthController extends Controller
                         AND h.documentno LIKE 'INC%'
                         AND cat.name = ?
                         AND DATE(h.dateinvoiced) BETWEEN ? AND ?
+                        AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                         {$branchCondition}
                     GROUP BY
                         EXTRACT(year FROM h.dateinvoiced),
@@ -147,6 +149,7 @@ class BranchGrowthController extends Controller
                         c_invoiceline d
                         INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
                         INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                        INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                         INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                         INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                     WHERE
@@ -156,6 +159,7 @@ class BranchGrowthController extends Controller
                         AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
                         AND cat.name = ?
                         AND DATE(h.dateinvoiced) BETWEEN ? AND ?
+                        AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                         {$branchCondition}
                     GROUP BY
                         EXTRACT(year FROM h.dateinvoiced),
@@ -481,6 +485,7 @@ class BranchGrowthController extends Controller
                     c_invoiceline d
                     INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
                     INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                    INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                     INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                 WHERE
@@ -490,6 +495,7 @@ class BranchGrowthController extends Controller
                     AND h.documentno LIKE 'INC%'
                     AND cat.name = ?
                     AND DATE(h.dateinvoiced) BETWEEN ? AND ?
+                    AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     org.name, EXTRACT(month FROM h.dateinvoiced), EXTRACT(year FROM h.dateinvoiced)
                 ORDER BY
@@ -511,6 +517,7 @@ class BranchGrowthController extends Controller
                     c_invoiceline d
                     INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
                     INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                    INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                     INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                 WHERE
@@ -520,6 +527,7 @@ class BranchGrowthController extends Controller
                     AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
                     AND cat.name = ?
                     AND DATE(h.dateinvoiced) BETWEEN ? AND ?
+                    AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     org.name, EXTRACT(month FROM h.dateinvoiced), EXTRACT(year FROM h.dateinvoiced)
                 ORDER BY
@@ -793,6 +801,7 @@ class BranchGrowthController extends Controller
                     c_invoiceline d
                     INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
                     INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                    INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                     INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                 WHERE
@@ -802,6 +811,7 @@ class BranchGrowthController extends Controller
                     AND h.documentno LIKE 'INC%'
                     AND cat.name = ?
                     AND DATE(h.dateinvoiced) BETWEEN ? AND ?
+                    AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     org.name, EXTRACT(month FROM h.dateinvoiced), EXTRACT(year FROM h.dateinvoiced)
                 ORDER BY
@@ -823,6 +833,7 @@ class BranchGrowthController extends Controller
                     c_invoiceline d
                     INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
                     INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                    INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                     INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                 WHERE
@@ -832,6 +843,7 @@ class BranchGrowthController extends Controller
                     AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
                     AND cat.name = ?
                     AND DATE(h.dateinvoiced) BETWEEN ? AND ?
+                    AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     org.name, EXTRACT(month FROM h.dateinvoiced), EXTRACT(year FROM h.dateinvoiced)
                 ORDER BY

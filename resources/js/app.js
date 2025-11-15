@@ -1,4 +1,4 @@
-import './bootstrap';
+import "./bootstrap";
 import {
     Chart,
     BarController,
@@ -9,16 +9,14 @@ import {
     CategoryScale,
     LinearScale,
     Tooltip,
-    Legend
-} from 'chart.js';
+    Legend,
+} from "chart.js";
 window.Chart = Chart;
-import { TreemapController, TreemapElement } from 'chartjs-chart-treemap';
-import ChartDataLabels from 'chartjs-plugin-datalabels';
+import { TreemapController, TreemapElement } from "chartjs-chart-treemap";
+import ChartDataLabels from "chartjs-plugin-datalabels";
 window.ChartDataLabels = ChartDataLabels;
 
-
-import Alpine from 'alpinejs';
-
+import Alpine from "alpinejs";
 
 // Register Chart.js components
 Chart.register(
@@ -36,11 +34,9 @@ Chart.register(
     ChartDataLabels
 );
 
-
 window.Alpine = Alpine;
 
-
-import './dashboard/category-item.js';
-import './dashboard/accounts-receivable.js';
+import "./dashboard/category-item.js";
+import "./dashboard/accounts-receivable.js";
 
 Alpine.start();

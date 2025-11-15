@@ -1,20 +1,20 @@
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener("DOMContentLoaded", function () {
     let targetRevenueChart = null;
-    const ctx = document.getElementById('target-revenue-chart');
-    const monthSelect = document.getElementById('target-month-select');
-    const yearSelect = document.getElementById('target-year-select');
-    const categorySelect = document.getElementById('target-category-select');
-    const noTargetsMessage = document.getElementById('no-targets-message');
-    const inputTargetBtn = document.getElementById('input-target-btn');
-    const editTargetBtn = document.getElementById('edit-target-btn');
-    const periodText = document.getElementById('period-text');
-    const chartContainer = document.getElementById('target-chart-container');
+    const ctx = document.getElementById("target-revenue-chart");
+    const monthSelect = document.getElementById("target-month-select");
+    const yearSelect = document.getElementById("target-year-select");
+    const categorySelect = document.getElementById("target-category-select");
+    const noTargetsMessage = document.getElementById("no-targets-message");
+    const inputTargetBtn = document.getElementById("input-target-btn");
+    const editTargetBtn = document.getElementById("edit-target-btn");
+    const periodText = document.getElementById("period-text");
+    const chartContainer = document.getElementById("target-chart-container");
 
     if (!ctx) return;
 
     function updateTargetRevenueChart(dataFromServer) {
         if (!dataFromServer) {
-            console.error('No data received from server');
+            console.error("No data received from server");
             return;
         }
 
@@ -31,96 +31,125 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Register custom legend margin plugin
         const LegendMargin = {
-            id: 'legendMargin',
+            id: "legendMargin",
             beforeInit(chart, _args, opts) {
                 const fit = chart.legend && chart.legend.fit;
                 if (!fit) return;
                 chart.legend.fit = function fitWithMargin() {
                     fit.bind(this)();
-                    this.height += (opts && opts.margin) ? opts.margin : 0;
+                    this.height += opts && opts.margin ? opts.margin : 0;
                 };
-            }
+            },
         };
 
         Chart.register(LegendMargin, ChartDataLabels);
         targetRevenueChart = new Chart(ctx, {
-            type: 'bar',
+            type: "bar",
             data: {
                 labels: chartLabels,
-                datasets: dataFromServer.datasets
+                datasets: dataFromServer.datasets,
             },
             options: {
-                indexAxis: 'y', // Horizontal bar chart
+                indexAxis: "y", // Horizontal bar chart
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
                     title: {
-                        display: false
+                        display: false,
                     },
                     legend: {
                         display: true,
-                        position: 'top',
+                        position: "top",
                         labels: {
-                            padding: 12
-                        }
+                            padding: 12,
+                        },
                     },
                     legendMargin: {
-                        margin: 10
+                        margin: 10,
                     },
                     datalabels: {
                         display: function (context) {
                             return context.dataset.data[context.dataIndex] > 0;
                         },
-                        anchor: 'end',
+                        anchor: "end",
                         align: function (context) {
-                            return context.dataset.label === 'Realization' ? 'right' : 'left';
+                            return context.dataset.label === "Realization"
+                                ? "right"
+                                : "left";
                         },
                         offset: function (context) {
-                            return context.dataset.label === 'Realization' ? 4 : -4;
+                            return context.dataset.label === "Realization"
+                                ? 4
+                                : -4;
                         },
                         color: function (context) {
-                            return context.dataset.label === 'Realization' ? '#000' : '#666';
+                            return context.dataset.label === "Realization"
+                                ? "#000"
+                                : "#666";
                         },
                         font: {
                             size: 10,
-                            weight: 'bold'
+                            weight: "bold",
                         },
                         formatter: function (value, context) {
-                            if (context.dataset.label === 'Realization' && percentages[context.dataIndex] !== undefined) {
+                            if (
+                                context.dataset.label === "Realization" &&
+                                percentages[context.dataIndex] !== undefined
+                            ) {
                                 // Show both billion format and percentage for realization bars
-                                const billionValue = ChartHelper.formatCurrencyDisplay(value, 2, false);
-                                return billionValue + ' (' + percentages[context.dataIndex] + '%)';
+                                const billionValue =
+                                    ChartHelper.formatCurrencyDisplay(
+                                        value,
+                                        2,
+                                        false
+                                    );
+                                return (
+                                    billionValue +
+                                    " (" +
+                                    percentages[context.dataIndex] +
+                                    "%)"
+                                );
                             }
-                            return ChartHelper.formatNumberForDisplay(value, yAxisDivisor);
-                        }
+                            return ChartHelper.formatNumberForDisplay(
+                                value,
+                                yAxisDivisor
+                            );
+                        },
                     },
                     tooltip: {
-                        mode: 'index',
+                        mode: "index",
                         intersect: false,
                         callbacks: {
                             label: function (context) {
-                                let label = context.dataset.label || '';
+                                let label = context.dataset.label || "";
                                 if (label) {
-                                    label += ': ';
+                                    label += ": ";
                                 }
                                 if (context.parsed.x !== null) {
-                                    label += new Intl.NumberFormat('id-ID', {
-                                        minimumFractionDigits: 0
+                                    label += new Intl.NumberFormat("id-ID", {
+                                        minimumFractionDigits: 0,
                                     }).format(context.parsed.x);
 
-                                    if (context.dataset.label === 'Realization' && percentages[context.dataIndex] !== undefined) {
-                                        label += ` (${percentages[context.dataIndex]}%)`;
+                                    if (
+                                        context.dataset.label ===
+                                            "Realization" &&
+                                        percentages[context.dataIndex] !==
+                                            undefined
+                                    ) {
+                                        label += ` (${
+                                            percentages[context.dataIndex]
+                                        }%)`;
                                     }
                                 }
                                 return label;
-                            }
-                        }
-                    }
+                            },
+                        },
+                    },
                 },
                 interaction: {
-                    mode: 'nearest',
-                    axis: 'y',
-                    intersect: false
+                    mode: "nearest",
+                    axis: "y",
+                    intersect: false,
                 },
                 scales: {
                     x: {
@@ -133,79 +162,99 @@ document.addEventListener('DOMContentLoaded', function () {
                                 top: 20,
                                 left: 0,
                                 right: 0,
-                                bottom: 0
-                            }
+                                bottom: 0,
+                            },
                         },
                         ticks: {
                             callback: function (value) {
                                 const scaledValue = value / yAxisDivisor;
-                                if (dataFromServer.yAxisUnit === 'B') {
-                                    if (scaledValue % 1 === 0) return scaledValue.toFixed(0);
+                                if (dataFromServer.yAxisUnit === "B") {
+                                    if (scaledValue % 1 === 0)
+                                        return scaledValue.toFixed(0);
                                     return scaledValue.toFixed(1);
                                 } else {
                                     return Math.round(scaledValue);
                                 }
-                            }
-                        }
+                            },
+                        },
                     },
                     y: {
                         title: {
-                            display: false
-                        }
-                    }
+                            display: false,
+                        },
+                    },
                 },
                 elements: {
                     bar: {
-                        borderWidth: 1
-                    }
-                }
-            }
+                        borderWidth: 1,
+                    },
+                },
+            },
         });
     }
 
     function showNoTargetsMessage(data) {
         // Hide chart
-        ctx.style.display = 'none';
+        ctx.style.display = "none";
 
         // Show no targets message
-        noTargetsMessage.classList.remove('hidden');
+        noTargetsMessage.classList.remove("hidden");
 
         // Hide edit button
-        editTargetBtn.classList.add('hidden');
+        editTargetBtn.classList.add("hidden");
 
         // Update period text
         const months = [
-            '', 'January', 'February', 'March', 'April', 'May', 'June',
-            'July', 'August', 'September', 'October', 'November', 'December'
+            "",
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
         ];
-        const monthName = months[data.month] || 'Unknown';
+        const monthName = months[data.month] || "Unknown";
 
-        const formattedCategory = data.category.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+        const formattedCategory = data.category
+            .toLowerCase()
+            .replace(/\b\w/g, (l) => l.toUpperCase());
         periodText.textContent = `${monthName} ${data.year} - ${formattedCategory}`;
     }
 
     function hideNoTargetsMessage() {
         // Show chart
-        ctx.style.display = 'block';
+        ctx.style.display = "block";
 
         // Hide no targets message
-        noTargetsMessage.classList.add('hidden');
+        noTargetsMessage.classList.add("hidden");
 
         // Show edit button
-        editTargetBtn.classList.remove('hidden');
+        editTargetBtn.classList.remove("hidden");
     }
 
     function clearMessages() {
-        const errorMessage = chartContainer.querySelector('.error-message');
-        const noDataMessage = chartContainer.querySelector('.no-data-message');
+        const errorMessage = chartContainer.querySelector(".error-message");
+        const noDataMessage = chartContainer.querySelector(".no-data-message");
 
         if (errorMessage) errorMessage.remove();
         if (noDataMessage) noDataMessage.remove();
     }
 
     function fetchAndUpdateTargetChart(month, year, category) {
-        const url = `/target-revenue/data?month=${month}&year=${year}&category=${encodeURIComponent(category)}`;
-        const filterSelectors = ['target-month-select', 'target-year-select', 'target-category-select'];
+        const url = `/target-revenue/data?month=${month}&year=${year}&category=${encodeURIComponent(
+            category
+        )}`;
+        const filterSelectors = [
+            "target-month-select",
+            "target-year-select",
+            "target-category-select",
+        ];
 
         // Disable filters and edit button, show loading on chart area only
         ChartHelper.disableFilters(filterSelectors);
@@ -213,13 +262,13 @@ document.addEventListener('DOMContentLoaded', function () {
         ChartHelper.showChartLoadingIndicator(chartContainer);
 
         fetch(url)
-            .then(response => {
+            .then((response) => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 return response.json();
             })
-            .then(data => {
+            .then((data) => {
                 ChartHelper.hideChartLoadingIndicator(chartContainer);
                 ChartHelper.enableFilters(filterSelectors);
                 if (editTargetBtn) editTargetBtn.disabled = false;
@@ -232,15 +281,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // Check if the response contains an error
                 if (data.error) {
-                    console.error('Server error:', data.error);
-                    ChartHelper.showErrorMessage(targetRevenueChart, ctx, data.error);
+                    console.error("Server error:", data.error);
+                    ChartHelper.showErrorMessage(
+                        targetRevenueChart,
+                        ctx,
+                        data.error
+                    );
                     return;
                 }
 
                 // Check if there's a message indicating no data
                 if (data.message) {
-                    console.log('Server message:', data.message);
-                    ChartHelper.showNoDataMessage(targetRevenueChart, ctx, data.message);
+                    console.log("Server message:", data.message);
+                    ChartHelper.showNoDataMessage(
+                        targetRevenueChart,
+                        ctx,
+                        data.message
+                    );
                     return;
                 }
 
@@ -248,12 +305,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 hideNoTargetsMessage();
                 updateTargetRevenueChart(data);
             })
-            .catch(error => {
-                console.error('Error fetching Target Revenue data:', error);
+            .catch((error) => {
+                console.error("Error fetching Target Revenue data:", error);
                 ChartHelper.hideChartLoadingIndicator(chartContainer);
                 ChartHelper.enableFilters(filterSelectors);
                 if (editTargetBtn) editTargetBtn.disabled = false;
-                ChartHelper.showErrorMessage(targetRevenueChart, ctx, 'Failed to load chart data. Please try again.');
+                ChartHelper.showErrorMessage(
+                    targetRevenueChart,
+                    ctx,
+                    "Failed to load chart data. Please try again."
+                );
             });
     }
 
@@ -268,35 +329,39 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // Event listeners
-    monthSelect.addEventListener('change', triggerUpdate);
-    yearSelect.addEventListener('change', triggerUpdate);
-    categorySelect.addEventListener('change', triggerUpdate);
+    monthSelect.addEventListener("change", triggerUpdate);
+    yearSelect.addEventListener("change", triggerUpdate);
+    categorySelect.addEventListener("change", triggerUpdate);
 
     // Input Target button click handler
-    inputTargetBtn.addEventListener('click', function () {
+    inputTargetBtn.addEventListener("click", function () {
         const month = monthSelect.value;
         const year = yearSelect.value;
         const category = categorySelect.value;
 
-        const url = `/branch-target/input?month=${month}&year=${year}&category=${encodeURIComponent(category)}`;
+        const url = `/branch-target/input?month=${month}&year=${year}&category=${encodeURIComponent(
+            category
+        )}`;
         window.location.href = url;
     });
 
     // Edit Target button click handler
-    editTargetBtn.addEventListener('click', function () {
+    editTargetBtn.addEventListener("click", function () {
         const month = monthSelect.value;
         const year = yearSelect.value;
         const category = categorySelect.value;
 
-        const url = `/branch-target/input?month=${month}&year=${year}&category=${encodeURIComponent(category)}&edit=1`;
+        const url = `/branch-target/input?month=${month}&year=${year}&category=${encodeURIComponent(
+            category
+        )}&edit=1`;
         window.location.href = url;
     });
 
     // Read URL parameters and set default values
     const urlParams = new URLSearchParams(window.location.search);
-    const urlMonth = urlParams.get('month');
-    const urlYear = urlParams.get('year');
-    const urlCategory = urlParams.get('category');
+    const urlMonth = urlParams.get("month");
+    const urlYear = urlParams.get("year");
+    const urlCategory = urlParams.get("category");
 
     // Set default values from URL parameters, otherwise use current month
     if (urlMonth) {
@@ -315,44 +380,52 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Scroll to target-revenue section if URL has hash
-    if (window.location.hash === '#target-revenue-section') {
+    if (window.location.hash === "#target-revenue-section") {
         setTimeout(() => {
-            const targetSection = document.getElementById('target-revenue-section');
+            const targetSection = document.getElementById(
+                "target-revenue-section"
+            );
             if (targetSection) {
-                targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                targetSection.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                });
             }
         }, 100);
     }
 
     // Three-dots menu toggle
-    const targetMenuButton = document.getElementById('targetMenuButton');
-    const targetDropdownMenu = document.getElementById('targetDropdownMenu');
+    const targetMenuButton = document.getElementById("targetMenuButton");
+    const targetDropdownMenu = document.getElementById("targetDropdownMenu");
 
     if (targetMenuButton && targetDropdownMenu) {
         // Toggle dropdown on button click
-        targetMenuButton.addEventListener('click', function (e) {
+        targetMenuButton.addEventListener("click", function (e) {
             e.stopPropagation();
-            targetDropdownMenu.classList.toggle('hidden');
+            targetDropdownMenu.classList.toggle("hidden");
         });
 
         // Close dropdown when clicking outside
-        document.addEventListener('click', function (e) {
-            if (!targetMenuButton.contains(e.target) && !targetDropdownMenu.contains(e.target)) {
-                targetDropdownMenu.classList.add('hidden');
+        document.addEventListener("click", function (e) {
+            if (
+                !targetMenuButton.contains(e.target) &&
+                !targetDropdownMenu.contains(e.target)
+            ) {
+                targetDropdownMenu.classList.add("hidden");
             }
         });
     }
 
     // Refresh Data functionality
-    const targetRefreshBtn = document.getElementById('targetRefreshDataBtn');
+    const targetRefreshBtn = document.getElementById("targetRefreshDataBtn");
     if (targetRefreshBtn) {
-        targetRefreshBtn.addEventListener('click', function (e) {
+        targetRefreshBtn.addEventListener("click", function (e) {
             e.preventDefault();
             e.stopPropagation();
 
             // Close dropdown
             if (targetDropdownMenu) {
-                targetDropdownMenu.classList.add('hidden');
+                targetDropdownMenu.classList.add("hidden");
             }
 
             // Get current filter values and refresh the chart
@@ -367,9 +440,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Export to Excel functionality
-    const targetExportBtn = document.getElementById('targetExportExcelBtn');
+    const targetExportBtn = document.getElementById("targetExportExcelBtn");
     if (targetExportBtn) {
-        targetExportBtn.addEventListener('click', function (e) {
+        targetExportBtn.addEventListener("click", function (e) {
             e.preventDefault();
             e.stopPropagation();
 
@@ -378,22 +451,24 @@ document.addEventListener('DOMContentLoaded', function () {
             const category = categorySelect.value;
 
             if (!month || !year || !category) {
-                alert('Please select month, year, and category');
+                alert("Please select month, year, and category");
                 return;
             }
 
             // Close dropdown
             if (targetDropdownMenu) {
-                targetDropdownMenu.classList.add('hidden');
+                targetDropdownMenu.classList.add("hidden");
             }
 
             // Show loading state
             const originalContent = targetExportBtn.innerHTML;
             targetExportBtn.disabled = true;
-            targetExportBtn.innerHTML = 'Exporting...';
+            targetExportBtn.innerHTML = "Exporting...";
 
             // Create download URL with parameters
-            const exportUrl = `/target-revenue/export-excel?month=${month}&year=${year}&category=${encodeURIComponent(category)}`;
+            const exportUrl = `/target-revenue/export-excel?month=${month}&year=${year}&category=${encodeURIComponent(
+                category
+            )}`;
 
             // Use window.location for direct download
             window.location.href = exportUrl;
@@ -407,9 +482,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Export to PDF functionality
-    const targetExportPdfBtn = document.getElementById('targetExportPdfBtn');
+    const targetExportPdfBtn = document.getElementById("targetExportPdfBtn");
     if (targetExportPdfBtn) {
-        targetExportPdfBtn.addEventListener('click', function (e) {
+        targetExportPdfBtn.addEventListener("click", function (e) {
             e.preventDefault();
             e.stopPropagation();
 
@@ -418,22 +493,24 @@ document.addEventListener('DOMContentLoaded', function () {
             const category = categorySelect.value;
 
             if (!month || !year || !category) {
-                alert('Please select month, year, and category');
+                alert("Please select month, year, and category");
                 return;
             }
 
             // Close dropdown
             if (targetDropdownMenu) {
-                targetDropdownMenu.classList.add('hidden');
+                targetDropdownMenu.classList.add("hidden");
             }
 
             // Show loading state
             const originalContent = targetExportPdfBtn.innerHTML;
             targetExportPdfBtn.disabled = true;
-            targetExportPdfBtn.innerHTML = 'Exporting...';
+            targetExportPdfBtn.innerHTML = "Exporting...";
 
             // Create download URL with parameters
-            const exportPdfUrl = `/target-revenue/export-pdf?month=${month}&year=${year}&category=${encodeURIComponent(category)}`;
+            const exportPdfUrl = `/target-revenue/export-pdf?month=${month}&year=${year}&category=${encodeURIComponent(
+                category
+            )}`;
 
             // Use window.location for direct download
             window.location.href = exportPdfUrl;

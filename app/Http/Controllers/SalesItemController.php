@@ -18,23 +18,56 @@ class SalesItemController extends Controller
     public function getData(Request $request)
     {
         try {
-            $month = $request->get('month', date('n'));
-            $year = $request->get('year', date('Y'));
+            // Use yesterday (H-1) since dashboard is updated daily
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+            $endDate = $request->input('end_date', $yesterday);
             $type = $request->get('type', 'rp'); // 'rp' or 'pcs'
-
-            // Validate parameters using TableHelper
-            $validationErrors = TableHelper::validatePeriodParameters($month, $year);
-            if (!empty($validationErrors)) {
-                return response()->json(['error' => $validationErrors[0]], 400);
-            }
 
             // Validate type parameter
             if (!in_array($type, ['rp', 'pcs'])) {
                 return response()->json(['error' => 'Invalid type parameter'], 400);
             }
 
+            // Validate date range
+            $start = \Carbon\Carbon::parse($startDate);
+            $end = \Carbon\Carbon::parse($endDate);
+
+            // Check if start date is after end date
+            if ($start->gt($end)) {
+                return response()->json([
+                    'error' => 'Invalid date range',
+                    'message' => 'Start date must be before or equal to end date'
+                ], 400);
+            }
+
+            // Check if date range is too large (max 1 year)
+            $daysDiff = $start->diffInDays($end);
+            if ($daysDiff > 365) {
+                return response()->json([
+                    'error' => 'Date range too large',
+                    'message' => 'Maximum date range is 1 year (365 days). Please select a smaller date range.'
+                ], 400);
+            }
+
+            // Check if dates are too far in the past (before 2020)
+            if ($start->year < 2020) {
+                return response()->json([
+                    'error' => 'Invalid date range',
+                    'message' => 'Start date cannot be before year 2020'
+                ], 400);
+            }
+
+            // Check if dates are in the future
+            if ($end->isFuture()) {
+                return response()->json([
+                    'error' => 'Invalid date range',
+                    'message' => 'End date cannot be in the future'
+                ], 400);
+            }
+
             // Get all data at once for client-side pagination
-            $branchData = $this->getAllSalesItemData($month, $year, $type);
+            $branchData = $this->getAllSalesItemData($startDate, $endDate, $type);
 
             // Transform data using TableHelper
             $valueField = $type === 'pcs' ? 'total_qty' : 'total_net';
@@ -45,7 +78,14 @@ class SalesItemController extends Controller
                 ['product_status']
             );
 
-            $period = TableHelper::formatPeriodInfo($month, $year);
+            // Format period info for date range
+            $formattedStartDate = \Carbon\Carbon::parse($startDate)->format('d F Y');
+            $formattedEndDate = \Carbon\Carbon::parse($endDate)->format('d F Y');
+            $period = [
+                'start_date' => $formattedStartDate,
+                'end_date' => $formattedEndDate,
+                'display' => $formattedStartDate . ' - ' . $formattedEndDate
+            ];
 
             return response()->json([
                 'data' => $transformedData,
@@ -55,8 +95,8 @@ class SalesItemController extends Controller
             ]);
         } catch (\Exception $e) {
             TableHelper::logError('SalesItemController', 'getData', $e, [
-                'month' => $request->get('month'),
-                'year' => $request->get('year'),
+                'start_date' => $request->get('start_date'),
+                'end_date' => $request->get('end_date'),
                 'type' => $request->get('type')
             ]);
 
@@ -64,7 +104,7 @@ class SalesItemController extends Controller
         }
     }
 
-    private function getAllSalesItemData($month, $year, $type)
+    private function getAllSalesItemData($startDate, $endDate, $type)
     {
         // Choose field based on type
         $valueField = $type === 'pcs' ? 'qtyinvoiced' : 'linenetamt';
@@ -79,6 +119,7 @@ class SalesItemController extends Controller
                 " . TableHelper::getValueCalculation($valueField) . " AS {$totalField}
             FROM c_invoiceline d
             INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+            INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
             INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
             INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
             WHERE h.ad_client_id = 1000001
@@ -87,27 +128,23 @@ class SalesItemController extends Controller
                 AND h.issotrx = 'Y'
                 AND d.qtyinvoiced > 0
                 AND d.linenetamt > 0
-                AND EXTRACT(month FROM h.dateinvoiced) = ?
-                AND EXTRACT(year FROM h.dateinvoiced) = ?
+                AND DATE(h.dateinvoiced) BETWEEN ? AND ?
+                AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
             GROUP BY org.name, prd.name, prd.status
             ORDER BY prd.name
         ";
 
-        return DB::select($salesQuery, [$month, $year]);
+        return DB::select($salesQuery, [$startDate, $endDate]);
     }
 
     public function exportExcel(Request $request)
     {
         try {
-            $month = $request->get('month', date('n'));
-            $year = $request->get('year', date('Y'));
+            // Use yesterday (H-1) since dashboard is updated daily
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+            $endDate = $request->input('end_date', $yesterday);
             $type = $request->get('type', 'rp');
-
-            // Validate parameters using TableHelper
-            $validationErrors = TableHelper::validatePeriodParameters($month, $year);
-            if (!empty($validationErrors)) {
-                return response()->json(['error' => $validationErrors[0]], 400);
-            }
 
             // Validate type parameter
             if (!in_array($type, ['rp', 'pcs'])) {
@@ -115,7 +152,7 @@ class SalesItemController extends Controller
             }
 
             // Get all data for export
-            $branchData = $this->getAllSalesItemData($month, $year, $type);
+            $branchData = $this->getAllSalesItemData($startDate, $endDate, $type);
 
             // Transform data using TableHelper
             $valueField = $type === 'pcs' ? 'total_qty' : 'total_net';
@@ -126,10 +163,14 @@ class SalesItemController extends Controller
                 ['product_status']
             );
 
-            $period = TableHelper::formatPeriodInfo($month, $year);
+            // Format dates for filename and display
+            $formattedStartDate = \Carbon\Carbon::parse($startDate)->format('d F Y');
+            $formattedEndDate = \Carbon\Carbon::parse($endDate)->format('d F Y');
+            $fileStartDate = \Carbon\Carbon::parse($startDate)->format('d-m-Y');
+            $fileEndDate = \Carbon\Carbon::parse($endDate)->format('d-m-Y');
             $typeLabel = $type === 'pcs' ? 'Pieces' : 'Rupiah';
 
-            $filename = 'Penjualan_Per_Item_' . str_replace(' ', '_', $period['month_name'] . '_' . $year) . '_' . $typeLabel . '.xls';
+            $filename = 'Penjualan_Per_Item_' . $typeLabel . '_' . $fileStartDate . '_sampai_' . $fileEndDate . '.xls';
 
             // Create XLS content using HTML table format
             $headers = [
@@ -193,7 +234,8 @@ class SalesItemController extends Controller
             </head>
             <body>
                 <div class="title">PENJUALAN PER ITEM</div>
-                <div class="period">Periode ' . htmlspecialchars($period['month_name'] . ' ' . $year) . ' | Tipe ' . htmlspecialchars($typeLabel) . '</div>
+                <div class="period">Periode ' . $formattedStartDate . ' sampai ' . $formattedEndDate . '</div>
+                <div class="period">Tipe ' . htmlspecialchars($typeLabel) . '</div>
                 <br>
                 <table>
                     <thead>
@@ -267,8 +309,8 @@ class SalesItemController extends Controller
             return response($html, 200, $headers);
         } catch (\Exception $e) {
             TableHelper::logError('SalesItemController', 'exportExcel', $e, [
-                'month' => $request->get('month'),
-                'year' => $request->get('year'),
+                'start_date' => $request->get('start_date'),
+                'end_date' => $request->get('end_date'),
                 'type' => $request->get('type')
             ]);
 
@@ -279,15 +321,11 @@ class SalesItemController extends Controller
     public function exportPdf(Request $request)
     {
         try {
-            $month = $request->get('month', date('n'));
-            $year = $request->get('year', date('Y'));
+            // Use yesterday (H-1) since dashboard is updated daily
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+            $endDate = $request->input('end_date', $yesterday);
             $type = $request->get('type', 'rp');
-
-            // Validate parameters using TableHelper
-            $validationErrors = TableHelper::validatePeriodParameters($month, $year);
-            if (!empty($validationErrors)) {
-                return response()->json(['error' => $validationErrors[0]], 400);
-            }
 
             // Validate type parameter
             if (!in_array($type, ['rp', 'pcs'])) {
@@ -295,7 +333,7 @@ class SalesItemController extends Controller
             }
 
             // Get all data for export
-            $branchData = $this->getAllSalesItemData($month, $year, $type);
+            $branchData = $this->getAllSalesItemData($startDate, $endDate, $type);
 
             // Transform data using TableHelper
             $valueField = $type === 'pcs' ? 'total_qty' : 'total_net';
@@ -306,7 +344,11 @@ class SalesItemController extends Controller
                 ['product_status']
             );
 
-            $period = TableHelper::formatPeriodInfo($month, $year);
+            // Format dates for filename and display
+            $formattedStartDate = \Carbon\Carbon::parse($startDate)->format('d F Y');
+            $formattedEndDate = \Carbon\Carbon::parse($endDate)->format('d F Y');
+            $fileStartDate = \Carbon\Carbon::parse($startDate)->format('d-m-Y');
+            $fileEndDate = \Carbon\Carbon::parse($endDate)->format('d-m-Y');
             $typeLabel = $type === 'pcs' ? 'Pieces' : 'Rupiah';
 
             // Create HTML for PDF
@@ -368,7 +410,8 @@ class SalesItemController extends Controller
             <body>
                 <div class="header">
                     <div class="title">PENJUALAN PER ITEM</div>
-                    <div class="period">Periode ' . htmlspecialchars($period['month_name'] . ' ' . $year) . ' | Tipe ' . htmlspecialchars($typeLabel) . '</div>
+                    <div class="period">Periode ' . $formattedStartDate . ' sampai ' . $formattedEndDate . '</div>
+                    <div class="period">Tipe ' . htmlspecialchars($typeLabel) . '</div>
                 </div>
                 <table>
                     <thead>
@@ -443,13 +486,13 @@ class SalesItemController extends Controller
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
             $pdf->setPaper('A4', 'landscape');
 
-            $filename = 'Penjualan_Per_Item_' . str_replace(' ', '_', $period['month_name'] . '_' . $year) . '_' . $typeLabel . '.pdf';
+            $filename = 'Penjualan_Per_Item_' . $typeLabel . '_' . $fileStartDate . '_sampai_' . $fileEndDate . '.pdf';
 
             return $pdf->download($filename);
         } catch (\Exception $e) {
             TableHelper::logError('SalesItemController', 'exportPdf', $e, [
-                'month' => $request->get('month'),
-                'year' => $request->get('year'),
+                'start_date' => $request->get('start_date'),
+                'end_date' => $request->get('end_date'),
                 'type' => $request->get('type')
             ]);
 

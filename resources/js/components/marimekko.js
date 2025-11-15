@@ -1,28 +1,28 @@
-import { BarController, BarElement } from 'chart.js';
+import { BarController, BarElement } from "chart.js";
 
 export class MarimekkoController extends BarController {
-    static id = 'marimekko';
+    static id = "marimekko";
 
     static defaults = {
         ...BarController.defaults,
         scales: {
             x: {
-                type: 'linear',
+                type: "linear",
                 min: 0,
                 max: 1,
-                display: false
+                display: false,
             },
             y: {
-                type: 'linear',
+                type: "linear",
                 min: 0,
                 max: 1,
                 ticks: {
                     callback: function (value) {
-                        return (value * 100) + '%';
-                    }
-                }
-            }
-        }
+                        return value * 100 + "%";
+                    },
+                },
+            },
+        },
     };
 
     update(mode) {
@@ -35,7 +35,7 @@ export class MarimekkoController extends BarController {
 
         data.labels.forEach((branch, branchIndex) => {
             let branchTotal = 0;
-            data.datasets.forEach(dataset => {
+            data.datasets.forEach((dataset) => {
                 if (dataset.data[branchIndex] && dataset.data[branchIndex].v) {
                     branchTotal += dataset.data[branchIndex].v;
                 }
@@ -57,7 +57,8 @@ export class MarimekkoController extends BarController {
             data.datasets.forEach((dataset, datasetIndex) => {
                 const dataPoint = dataset.data[branchIndex];
                 if (dataPoint) {
-                    const segmentHeight = branchTotal > 0 ? (dataPoint.v || 0) / branchTotal : 0;
+                    const segmentHeight =
+                        branchTotal > 0 ? (dataPoint.v || 0) / branchTotal : 0;
 
                     if (!meta.data[elementIndex]) {
                         meta.data[elementIndex] = new MarimekkoElement();
@@ -77,9 +78,9 @@ export class MarimekkoController extends BarController {
                         element: element,
                         index: elementIndex,
                         mode: mode,
-                        type: 'data',
+                        type: "data",
                         raw: dataPoint,
-                        parsed: dataPoint
+                        parsed: dataPoint,
                     };
 
                     currentY += segmentHeight;
@@ -109,7 +110,7 @@ export class MarimekkoController extends BarController {
 
         data.labels.forEach((branch, branchIndex) => {
             let branchTotal = 0;
-            data.datasets.forEach(dataset => {
+            data.datasets.forEach((dataset) => {
                 if (dataset.data[branchIndex] && dataset.data[branchIndex].v) {
                     branchTotal += dataset.data[branchIndex].v;
                 }
@@ -121,10 +122,18 @@ export class MarimekkoController extends BarController {
         // Draw chart segments
         meta.data.forEach((element, index) => {
             if (element && element.width > 0 && element.height > 0) {
-                const x = xScale.getPixelForValue(element.x - element.width / 2);
-                const y = yScale.getPixelForValue(element.y + element.height / 2);
-                const width = xScale.getPixelForValue(element.width) - xScale.getPixelForValue(0);
-                const height = yScale.getPixelForValue(element.base) - yScale.getPixelForValue(element.base + element.height);
+                const x = xScale.getPixelForValue(
+                    element.x - element.width / 2
+                );
+                const y = yScale.getPixelForValue(
+                    element.y + element.height / 2
+                );
+                const width =
+                    xScale.getPixelForValue(element.width) -
+                    xScale.getPixelForValue(0);
+                const height =
+                    yScale.getPixelForValue(element.base) -
+                    yScale.getPixelForValue(element.base + element.height);
 
                 const datasetIndex = Math.floor(index / data.labels.length);
                 const dataset = data.datasets[datasetIndex];
@@ -133,7 +142,7 @@ export class MarimekkoController extends BarController {
                 ctx.fillRect(x, y, width, height);
 
                 // Draw border
-                ctx.strokeStyle = '#fff';
+                ctx.strokeStyle = "#fff";
                 ctx.lineWidth = 1;
                 ctx.strokeRect(x, y, width, height);
             }
@@ -141,9 +150,9 @@ export class MarimekkoController extends BarController {
 
         // Draw branch labels at the bottom
         let currentX = 0;
-        ctx.fillStyle = '#374151';
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'center';
+        ctx.fillStyle = "#374151";
+        ctx.font = "12px Arial";
+        ctx.textAlign = "center";
 
         data.labels.forEach((branch, branchIndex) => {
             const branchTotal = branchTotals[branch];
@@ -160,5 +169,5 @@ export class MarimekkoController extends BarController {
 }
 
 export class MarimekkoElement extends BarElement {
-    static id = 'marimekkoElement';
+    static id = "marimekkoElement";
 }

@@ -11,6 +11,13 @@ class ReportController extends Controller
      */
     public function index()
     {
-        return view('report');
+        // Use yesterday (H-1) since dashboard is updated daily at night
+        $yesterday = now()->subDay();
+        $startDate = $yesterday->copy()->startOfMonth()->toDateString();
+        $endDate = $yesterday->toDateString();
+
+        $currentDateFormatted = $yesterday->format('d F Y');
+
+        return view('report', compact('startDate', 'endDate', 'currentDateFormatted'));
     }
 }
