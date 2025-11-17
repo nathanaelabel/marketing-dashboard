@@ -408,13 +408,13 @@ class ChartHelper
         }
 
         $datasets[] = [
-            'label' => 'Connection Failed',
+            'label' => 'CONNECTION FAILED',
             'data' => $connectionFailedData,
             'backgroundColor' => 'rgba(156, 163, 175, 0.3)', // Gray with transparency
             'borderColor' => 'rgba(107, 114, 128, 0.8)', // Darker gray border
             'borderWidth' => 2,
             'borderRadius' => 5,
-            'borderDash' => [5, 5], // Dashed border pattern
+            'borderDash' => [5, 5],
             'datalabels' => [
                 'display' => true,
                 'color' => 'rgba(75, 85, 99, 0.9)',

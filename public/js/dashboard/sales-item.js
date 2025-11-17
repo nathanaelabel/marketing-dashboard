@@ -181,7 +181,6 @@ document.addEventListener("DOMContentLoaded", function () {
         altInput: true,
         altFormat: "d-m-Y",
         dateFormat: "Y-m-d",
-        defaultDate: startDateInput.value,
         minDate: minDate,
         maxDate: endDateInput.value || yesterday,
         onChange: function (selectedDates, dateStr, instance) {
@@ -196,7 +195,6 @@ document.addEventListener("DOMContentLoaded", function () {
         altInput: true,
         altFormat: "d-m-Y",
         dateFormat: "Y-m-d",
-        defaultDate: endDateInput.value,
         minDate: startDateInput.value || minDate,
         maxDate: yesterday,
         onChange: function (selectedDates, dateStr, instance) {
