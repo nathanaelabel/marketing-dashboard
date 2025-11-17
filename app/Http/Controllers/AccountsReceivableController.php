@@ -63,7 +63,7 @@ class AccountsReceivableController extends Controller
                         WHEN SUBSTR(inv.documentno, 1, 3) IN ('INC', 'NDC') THEN 1
                         ELSE -1
                     END as pengali,
-                    (CURRENT_DATE - inv.dateinvoiced::date) as age
+                    (? ::date - inv.dateinvoiced::date) as age
                 FROM c_invoice inv
                 INNER JOIN c_bpartner bp ON inv.c_bpartner_id = bp.c_bpartner_id
                 INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
@@ -111,7 +111,7 @@ class AccountsReceivableController extends Controller
                         WHEN SUBSTR(inv.documentno, 1, 3) IN ('INC', 'NDC') THEN 1
                         ELSE -1
                     END as pengali,
-                    (CURRENT_DATE - inv.dateinvoiced::date) as age
+                    (? ::date - inv.dateinvoiced::date) as age
                 FROM c_invoice inv
                 INNER JOIN c_bpartner bp ON inv.c_bpartner_id = bp.c_bpartner_id
                 INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
@@ -155,7 +155,7 @@ class AccountsReceivableController extends Controller
                 // Set shorter timeout per connection (45 seconds)
                 DB::connection($connection)->statement("SET statement_timeout = 45000");
 
-                $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate]);
+                $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate, $currentDate]);
                 $allResults = $allResults->merge($branchResults);
 
                 DB::connection($connection)->statement("SET statement_timeout = 0");

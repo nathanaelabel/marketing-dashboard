@@ -194,7 +194,7 @@ class SalesMetricsController extends Controller
                         WHEN SUBSTR(inv.documentno, 1, 3) IN ('INC', 'NDC') THEN 1
                         ELSE -1
                     END as pengali,
-                    (CURRENT_DATE - inv.dateinvoiced::date) as age
+                    (? ::date - inv.dateinvoiced::date) as age
                 FROM c_invoice inv
                 INNER JOIN c_bpartner bp ON inv.c_bpartner_id = bp.c_bpartner_id
                 INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
@@ -237,7 +237,7 @@ class SalesMetricsController extends Controller
                     // Set shorter timeout per connection (30 seconds)
                     DB::connection($connection)->statement("SET statement_timeout = 30000"); // 30 seconds
 
-                    $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate]);
+                    $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate, $currentDate]);
                     $allResults = $allResults->merge($branchResults);
 
                     // Reset timeout
