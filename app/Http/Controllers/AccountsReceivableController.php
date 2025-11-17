@@ -312,9 +312,16 @@ class AccountsReceivableController extends Controller
         $failedBranches = [];
 
         foreach ($branchConnections as $connection) {
+            // Lakukan pengecekan konektivitas ringan terlebih dahulu untuk menghindari hang lama
+            if (!$this->canConnectToBranch($connection)) {
+                Log::warning("Export Excel - Skipping {$connection} due to connectivity check failure");
+                $failedBranches[] = $connection;
+                continue;
+            }
+
             try {
-                // Set timeout per connection (60 seconds for export)
-                DB::connection($connection)->statement("SET statement_timeout = 60000"); // 60 seconds
+                // Set timeout per connection (30 seconds untuk export)
+                DB::connection($connection)->statement("SET statement_timeout = 30000"); // 30 seconds
 
                 $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate, $currentDate]);
                 $allResults = $allResults->merge($branchResults);
@@ -494,6 +501,26 @@ class AccountsReceivableController extends Controller
             </tr>';
         }
 
+        // Append rows for branches that failed to connect (connection failed)
+        if (!empty($failedBranches)) {
+            foreach ($branchOrder as $branchName) {
+                $connection = ChartHelper::getBranchConnection($branchName);
+                if (!$connection || !in_array($connection, $failedBranches, true)) {
+                    continue;
+                }
+
+                $html .= '<tr>
+                    <td>' . $no++ . '</td>
+                    <td>' . htmlspecialchars($branchName) . '</td>
+                    <td>' . htmlspecialchars(ChartHelper::getBranchAbbreviation($branchName)) . '</td>
+                    <td class="number">-</td>
+                    <td class="number">-</td>
+                    <td class="number">-</td>
+                    <td class="number">Connection Failed</td>
+                </tr>';
+            }
+        }
+
         $html .= '
                     <tr class="total-row">
                         <td colspan="3" style="text-align: right;"><strong>TOTAL</strong></td>
@@ -589,9 +616,16 @@ class AccountsReceivableController extends Controller
         $failedBranches = [];
 
         foreach ($branchConnections as $connection) {
+            // Lakukan pengecekan konektivitas ringan terlebih dahulu untuk menghindari hang lama
+            if (!$this->canConnectToBranch($connection)) {
+                Log::warning("Export PDF - Skipping {$connection} due to connectivity check failure");
+                $failedBranches[] = $connection;
+                continue;
+            }
+
             try {
-                // Set timeout per connection (60 seconds for export)
-                DB::connection($connection)->statement("SET statement_timeout = 60000"); // 60 seconds
+                // Set timeout per connection (30 seconds untuk export)
+                DB::connection($connection)->statement("SET statement_timeout = 30000"); // 30 seconds
 
                 $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate, $currentDate]);
                 $allResults = $allResults->merge($branchResults);
