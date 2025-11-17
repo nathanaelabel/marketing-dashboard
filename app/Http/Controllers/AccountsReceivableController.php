@@ -13,8 +13,8 @@ class AccountsReceivableController extends Controller
     public function data(Request $request)
     {
         // Increase execution time limit for querying multiple databases
-        set_time_limit(180); // 3 minutes
-        ini_set('max_execution_time', 180);
+        set_time_limit(300); // 5 minutes
+        ini_set('max_execution_time', 300);
 
         // Get current date from request or default to today
         $currentDate = $request->input('current_date', now()->toDateString());
@@ -33,7 +33,6 @@ class AccountsReceivableController extends Controller
         // Define branches that are known to have anomalies
         $anomalyBranches = ['pgsql_mks', 'pgsql_sby'];
 
-        // Build SQL query based on filter type
         if ($filter === 'all') {
             // All: Show 0-104 Days, 105-120 Days, >120 Days
             $sql = "
@@ -153,8 +152,8 @@ class AccountsReceivableController extends Controller
             }
 
             try {
-                // Set shorter timeout per connection (30 seconds)
-                DB::connection($connection)->statement("SET statement_timeout = 30000");
+                // Set shorter timeout per connection (45 seconds)
+                DB::connection($connection)->statement("SET statement_timeout = 45000");
 
                 $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate]);
                 $allResults = $allResults->merge($branchResults);
