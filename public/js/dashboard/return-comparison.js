@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", function () {
         renderTable: function (data) {
             if (!data.data || data.data.length === 0) {
                 this.elements.tableBody.innerHTML =
-                    '<tr><td colspan="13" class="px-3 py-4 text-center text-gray-500">No data available</td></tr>';
+                    '<tr><td colspan="12" class="px-3 py-4 text-center text-gray-500">No data available</td></tr>';
                 return;
             }
 
@@ -52,9 +52,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200">${
                             item.branch_code
                         }</td>
-                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatNumber(
-                            item.sales_bruto_pc
-                        )}</td>
                         <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
                             item.sales_bruto_rp
                         )}</td>
