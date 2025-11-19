@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\MStorage;
+use App\Models\MInoutline;
 
 class MLocator extends Model
 {
@@ -32,5 +33,10 @@ class MLocator extends Model
     public function storages()
     {
         return $this->hasMany(MStorage::class, 'm_locator_id', 'm_locator_id');
+    }
+
+    public function mInoutlines()
+    {
+        return $this->hasMany(MInoutline::class, 'm_locator_id', 'm_locator_id');
     }
 }

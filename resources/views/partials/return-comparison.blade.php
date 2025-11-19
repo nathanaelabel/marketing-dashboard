@@ -154,7 +154,7 @@
                             <th rowspan="2"
                                 class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
                                 Cabang</th>
-                            <th colspan="2"
+                            <th colspan="1"
                                 class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
                                 Sales Bruto</th>
                             <th colspan="3"
@@ -168,9 +168,6 @@
                                 Cabang Ke Pabrik</th>
                         </tr>
                         <tr>
-                            <th
-                                class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                PC</th>
                             <th
                                 class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
                                 RP</th>

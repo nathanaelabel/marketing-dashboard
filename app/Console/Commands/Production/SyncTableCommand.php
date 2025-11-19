@@ -289,6 +289,7 @@ class SyncTableCommand extends Command
                 ['parent_table' => 'm_inout', 'foreign_key' => 'm_inout_id'],
                 ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
                 ['parent_table' => 'c_orderline', 'foreign_key' => 'c_orderline_id', 'optional' => true],
+                ['parent_table' => 'm_locator', 'foreign_key' => 'm_locator_id', 'optional' => true],
             ],
             'm_matchinv' => [
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],

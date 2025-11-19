@@ -25,6 +25,7 @@ class MInoutline extends Model
         'm_inout_id',
         'c_orderline_id',
         'm_product_id',
+        'm_locator_id',
         'movementqty',
         'line',
     ];
@@ -52,6 +53,11 @@ class MInoutline extends Model
     public function product()
     {
         return $this->belongsTo(MProduct::class, 'm_product_id', 'm_product_id');
+    }
+
+    public function locator()
+    {
+        return $this->belongsTo(MLocator::class, 'm_locator_id', 'm_locator_id');
     }
 
     public function matchInvoices()
