@@ -115,14 +115,13 @@ class ReturnComparisonController extends Controller
         $query = "
             SELECT
                 org.name as branch_name,
-                COALESCE(SUM(invl.qtyinvoiced), 0) as total_qty,
                 COALESCE(SUM(invl.linenetamt), 0) as total_rp
             FROM c_invoice inv
             INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
             INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
             INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
-            INNER JOIN m_product prd ON invl.m_product_id = prd.m_product_id
-            INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+            INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
+            INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
             WHERE inv.ad_client_id = 1000001
                 AND inv.issotrx = 'Y'
                 AND invl.qtyinvoiced > 0
@@ -131,8 +130,9 @@ class ReturnComparisonController extends Controller
                 AND inv.isactive = 'Y'
                 AND EXTRACT(year FROM inv.dateinvoiced) = ?
                 AND EXTRACT(month FROM inv.dateinvoiced) = ?
+                AND inv.documentno LIKE 'INC%'
+                AND pc.name = 'MIKA'
                 AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
-                AND cat.name = 'MIKA'
             GROUP BY org.name
         ";
 
@@ -141,40 +141,12 @@ class ReturnComparisonController extends Controller
         $data = [];
         foreach ($results as $result) {
             $data[$result->branch_name] = [
-                "pc" => (float) $result->total_qty,
+                "pc" => 0,
                 "rp" => (float) $result->total_rp,
             ];
         }
 
         return $data;
-    }
-
-    private function getSalesBruto($branchName, $month, $year)
-    {
-        $query = "
-            SELECT
-                COALESCE(SUM(invl.qtyinvoiced), 0) as total_qty,
-                COALESCE(SUM(invl.linenetamt), 0) as total_rp
-            FROM c_invoice inv
-            INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
-            INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
-            WHERE inv.ad_client_id = 1000001
-                AND inv.issotrx = 'Y'
-                AND invl.qtyinvoiced > 0
-                AND invl.linenetamt > 0
-                AND inv.docstatus IN ('CO', 'CL')
-                AND inv.isactive = 'Y'
-                AND org.name = ?
-                AND EXTRACT(year FROM inv.dateinvoiced) = ?
-                AND EXTRACT(month FROM inv.dateinvoiced) = ?
-        ";
-
-        $result = DB::selectOne($query, [$branchName, $year, $month]);
-
-        return [
-            "pc" => $result ? (float) $result->total_qty : 0,
-            "rp" => $result ? (float) $result->total_rp : 0,
-        ];
     }
 
     private function getAllCNCData($month, $year)
@@ -187,7 +159,6 @@ class ReturnComparisonController extends Controller
             FROM c_invoiceline d
             INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
             INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
-            INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
             INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
             INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
             WHERE h.documentno LIKE 'CNC%'
@@ -195,8 +166,17 @@ class ReturnComparisonController extends Controller
                 AND h.issotrx = 'Y'
                 AND EXTRACT(year FROM h.dateinvoiced) = ?
                 AND EXTRACT(month FROM h.dateinvoiced) = ?
-                AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 AND cat.name = 'MIKA'
+                AND EXISTS (
+                    SELECT 1
+                    FROM m_inoutline miol
+                    INNER JOIN m_locator loc ON miol.m_locator_id = loc.m_locator_id
+                    WHERE miol.m_inoutline_id = d.m_inoutline_id
+                        AND (
+                            loc.value LIKE 'Gudang Rusak%' 
+                            OR loc.value LIKE 'Gudang Barang Rusak%'
+                        )
+                )
             GROUP BY org.name
         ";
 
@@ -211,31 +191,6 @@ class ReturnComparisonController extends Controller
         }
 
         return $data;
-    }
-
-    private function getCNCData($branchName, $month, $year)
-    {
-        $query = "
-            SELECT
-                COALESCE(SUM(d.qtyinvoiced), 0) as total_qty,
-                COALESCE(SUM(d.linenetamt), 0) as total_rp
-            FROM c_invoiceline d
-            INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
-            INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
-            WHERE h.documentno LIKE 'CNC%'
-                AND h.docstatus IN ('CO', 'CL')
-                AND h.issotrx = 'Y'
-                AND EXTRACT(year FROM h.dateinvoiced) = ?
-                AND EXTRACT(month FROM h.dateinvoiced) = ?
-                AND org.name = ?
-        ";
-
-        $result = DB::selectOne($query, [$year, $month, $branchName]);
-
-        return [
-            "pc" => $result ? (float) $result->total_qty : 0,
-            "rp" => $result ? (float) $result->total_rp : 0,
-        ];
     }
 
     private function getAllBarangData($month, $year)
@@ -249,11 +204,14 @@ class ReturnComparisonController extends Controller
             INNER JOIN m_inout mio ON miol.m_inout_id = mio.m_inout_id
             INNER JOIN c_orderline col ON miol.c_orderline_id = col.c_orderline_id
             INNER JOIN c_order co ON col.c_order_id = co.c_order_id
+            INNER JOIN m_product prd ON col.m_product_id = prd.m_product_id
+            INNER JOIN m_product_category pc ON prd.m_product_category_id = pc.m_product_category_id
             INNER JOIN ad_org org ON miol.ad_org_id = org.ad_org_id
             WHERE co.documentno LIKE 'SOC%'
                 AND co.docstatus = 'CL'
                 AND mio.documentno LIKE 'SJC%'
                 AND mio.docstatus IN ('CO', 'CL')
+                AND pc.name = 'MIKA'
                 AND EXTRACT(year FROM mio.movementdate) = ?
                 AND EXTRACT(month FROM mio.movementdate) = ?
                 AND NOT EXISTS (
@@ -275,39 +233,6 @@ class ReturnComparisonController extends Controller
         }
 
         return $data;
-    }
-
-    private function getBarangData($branchName, $month, $year)
-    {
-        $query = "
-            SELECT
-                COALESCE(SUM(miol.movementqty), 0) as total_qty,
-                COALESCE(SUM(col.priceactual * miol.movementqty), 0) as total_nominal
-            FROM m_inoutline miol
-            INNER JOIN m_inout mio ON miol.m_inout_id = mio.m_inout_id
-            INNER JOIN c_orderline col ON miol.c_orderline_id = col.c_orderline_id
-            INNER JOIN c_order co ON col.c_order_id = co.c_order_id
-            INNER JOIN ad_org org ON miol.ad_org_id = org.ad_org_id
-            WHERE org.name = ?
-                AND co.documentno LIKE 'SOC%'
-                AND co.docstatus = 'CL'
-                AND mio.documentno LIKE 'SJC%'
-                AND mio.docstatus IN ('CO', 'CL')
-                AND EXTRACT(year FROM mio.movementdate) = ?
-                AND EXTRACT(month FROM mio.movementdate) = ?
-                AND NOT EXISTS (
-                    SELECT 1
-                    FROM c_invoiceline cil
-                    WHERE cil.m_inoutline_id = miol.m_inoutline_id
-                )
-        ";
-
-        $result = DB::selectOne($query, [$branchName, $year, $month]);
-
-        return [
-            "pc" => $result ? (float) $result->total_qty : 0,
-            "rp" => $result ? (float) $result->total_nominal : 0,
-        ];
     }
 
     private function getAllCabangPabrikData($month, $year)
@@ -321,12 +246,15 @@ class ReturnComparisonController extends Controller
             INNER JOIN m_inoutline shpln ON invl.m_inoutline_id = shpln.m_inoutline_id
             INNER JOIN m_inout shp ON shpln.m_inout_id = shp.m_inout_id
             INNER JOIN c_invoice inv ON invl.c_invoice_id = inv.c_invoice_id
+            INNER JOIN m_product prd ON invl.m_product_id = prd.m_product_id
+            INNER JOIN m_product_category pc ON prd.m_product_category_id = pc.m_product_category_id
             INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
             WHERE inv.issotrx = 'N'
                 AND inv.docstatus IN ('CO','CL')
                 AND inv.isactive = 'Y'
                 AND shp.docstatus IN ('CO', 'CL')
                 AND (inv.documentno LIKE 'DNS-%' OR inv.documentno LIKE 'NCS-%')
+                AND pc.name = 'MIKA'
                 AND EXTRACT(year FROM inv.dateinvoiced) = ?
                 AND EXTRACT(month FROM inv.dateinvoiced) = ?
             GROUP BY org.name
@@ -343,35 +271,6 @@ class ReturnComparisonController extends Controller
         }
 
         return $data;
-    }
-
-    private function getCabangPabrikData($branchName, $month, $year)
-    {
-        $query = "
-            SELECT
-                COALESCE(SUM(invl.qtyinvoiced), 0) as total_qty,
-                COALESCE(SUM(invl.linenetamt), 0) as total_nominal
-            FROM c_invoiceline invl
-            INNER JOIN m_inoutline shpln ON invl.m_inoutline_id = shpln.m_inoutline_id
-            INNER JOIN m_inout shp ON shpln.m_inout_id = shp.m_inout_id
-            INNER JOIN c_invoice inv ON invl.c_invoice_id = inv.c_invoice_id
-            INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
-            WHERE inv.issotrx = 'N'
-                AND inv.docstatus IN ('CO','CL')
-                AND inv.isactive = 'Y'
-                AND shp.docstatus IN ('CO', 'CL')
-                AND (inv.documentno LIKE 'DNS-%' OR inv.documentno LIKE 'NCS-%')
-                AND org.name = ?
-                AND EXTRACT(year FROM inv.dateinvoiced) = ?
-                AND EXTRACT(month FROM inv.dateinvoiced) = ?
-        ";
-
-        $result = DB::selectOne($query, [$branchName, $year, $month]);
-
-        return [
-            "pc" => $result ? (float) $result->total_qty : 0,
-            "rp" => $result ? (float) $result->total_nominal : 0,
-        ];
     }
 
     public function exportExcel(Request $request)
@@ -482,13 +381,12 @@ class ReturnComparisonController extends Controller
                         <tr>
                             <th rowspan="2" style="width: 60px; text-align: center;">NO</th>
                             <th rowspan="2" style="width: 150px; text-align: center;">CABANG</th>
-                            <th colspan="2" style="width: 200px; text-align: center;">SALES BRUTO</th>
+                            <th colspan="1" style="width: 200px; text-align: center;">SALES BRUTO</th>
                             <th colspan="3" style="width: 300px; text-align: center;">CUST. KE CABANG (CNC) (FX009)</th>
                             <th colspan="3" style="width: 300px; text-align: center;">CUST. KE CABANG (BARANG) (FX016)</th>
                             <th colspan="3" style="width: 300px; text-align: center;">CABANG KE PABRIK</th>
                         </tr>
                         <tr>
-                            <th style="width: 150px; text-align: center;">PC</th>
                             <th style="width: 300px; text-align: center;">RP</th>
                             <th style="width: 150px; text-align: center;">PC</th>
                             <th style="width: 300px; text-align: center;">RP</th>
@@ -511,11 +409,6 @@ class ReturnComparisonController extends Controller
                     '</td>
                     <td>' .
                     htmlspecialchars($item["branch_code"]) .
-                    '</td>
-                    <td class="number">' .
-                    ($item["sales_bruto_pc"] == 0
-                        ? "-"
-                        : number_format($item["sales_bruto_pc"], 0, ".", ",")) .
                     '</td>
                     <td class="number">' .
                     ($item["sales_bruto_rp"] == 0
@@ -723,13 +616,12 @@ class ReturnComparisonController extends Controller
                         <tr>
                             <th rowspan="2" style="width: 30px;">NO</th>
                             <th rowspan="2" style="width: 80px;">CABANG</th>
-                            <th colspan="2" style="width: 100px;">SALES BRUTO</th>
+                            <th colspan="1" style="width: 100px;">SALES BRUTO</th>
                             <th colspan="3" style="width: 150px;">CUST. KE CABANG (CNC) (FX009)</th>
                             <th colspan="3" style="width: 150px;">CUST. KE CABANG (BARANG) (FX016)</th>
                             <th colspan="3" style="width: 150px;">CABANG KE PABRIK</th>
                         </tr>
                         <tr>
-                            <th style="width: 50px;">PC</th>
                             <th style="width: 70px;">RP</th>
                             <th style="width: 50px;">PC</th>
                             <th style="width: 70px;">RP</th>
@@ -752,11 +644,6 @@ class ReturnComparisonController extends Controller
                     '</td>
                     <td>' .
                     htmlspecialchars($item["branch_code"]) .
-                    '</td>
-                    <td class="number">' .
-                    ($item["sales_bruto_pc"] == 0
-                        ? "-"
-                        : number_format($item["sales_bruto_pc"], 0, ".", ",")) .
                     '</td>
                     <td class="number">' .
                     ($item["sales_bruto_rp"] == 0
