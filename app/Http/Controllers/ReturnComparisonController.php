@@ -122,6 +122,7 @@ class ReturnComparisonController extends Controller
             INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
             INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
             INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
+            LEFT JOIN m_productsubcat psc ON p.m_productsubcat_id = psc.m_productsubcat_id
             WHERE inv.ad_client_id = 1000001
                 AND inv.issotrx = 'Y'
                 AND invl.qtyinvoiced > 0
@@ -131,7 +132,10 @@ class ReturnComparisonController extends Controller
                 AND EXTRACT(year FROM inv.dateinvoiced) = ?
                 AND EXTRACT(month FROM inv.dateinvoiced) = ?
                 AND inv.documentno LIKE 'INC%'
-                AND pc.name = 'MIKA'
+                AND (
+                    pc.value = 'MIKA'
+                    OR (pc.value = 'PRODUCT IMPORT' AND (psc.value IS NULL OR psc.value != 'BOHLAM'))
+                )
                 AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
             GROUP BY org.name
         ";
@@ -161,12 +165,16 @@ class ReturnComparisonController extends Controller
             INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
             INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
             INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+            LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
             WHERE h.documentno LIKE 'CNC%'
                 AND h.docstatus IN ('CO', 'CL')
                 AND h.issotrx = 'Y'
                 AND EXTRACT(year FROM h.dateinvoiced) = ?
                 AND EXTRACT(month FROM h.dateinvoiced) = ?
-                AND cat.name = 'MIKA'
+                AND (
+                    cat.value = 'MIKA'
+                    OR (cat.value = 'PRODUCT IMPORT' AND (psc.value IS NULL OR psc.value != 'BOHLAM'))
+                )
                 AND EXISTS (
                     SELECT 1
                     FROM m_inoutline miol
@@ -175,6 +183,7 @@ class ReturnComparisonController extends Controller
                         AND (
                             loc.value LIKE 'Gudang Rusak%' 
                             OR loc.value LIKE 'Gudang Barang Rusak%'
+                            OR (org.name = 'PWM Denpasar' AND loc.value LIKE 'Gudang Barang QQ PWM DPS%')
                         )
                 )
             GROUP BY org.name
@@ -206,12 +215,16 @@ class ReturnComparisonController extends Controller
             INNER JOIN c_order co ON col.c_order_id = co.c_order_id
             INNER JOIN m_product prd ON col.m_product_id = prd.m_product_id
             INNER JOIN m_product_category pc ON prd.m_product_category_id = pc.m_product_category_id
+            LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
             INNER JOIN ad_org org ON miol.ad_org_id = org.ad_org_id
             WHERE co.documentno LIKE 'SOC%'
                 AND co.docstatus = 'CL'
                 AND mio.documentno LIKE 'SJC%'
                 AND mio.docstatus IN ('CO', 'CL')
-                AND pc.name = 'MIKA'
+                AND (
+                    pc.value = 'MIKA'
+                    OR (pc.value = 'PRODUCT IMPORT' AND (psc.value IS NULL OR psc.value != 'BOHLAM'))
+                )
                 AND EXTRACT(year FROM mio.movementdate) = ?
                 AND EXTRACT(month FROM mio.movementdate) = ?
                 AND NOT EXISTS (
@@ -243,18 +256,19 @@ class ReturnComparisonController extends Controller
                 COALESCE(SUM(invl.qtyinvoiced), 0) as total_qty,
                 COALESCE(SUM(invl.linenetamt), 0) as total_nominal
             FROM c_invoiceline invl
-            INNER JOIN m_inoutline shpln ON invl.m_inoutline_id = shpln.m_inoutline_id
-            INNER JOIN m_inout shp ON shpln.m_inout_id = shp.m_inout_id
             INNER JOIN c_invoice inv ON invl.c_invoice_id = inv.c_invoice_id
             INNER JOIN m_product prd ON invl.m_product_id = prd.m_product_id
             INNER JOIN m_product_category pc ON prd.m_product_category_id = pc.m_product_category_id
+            LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
             INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
             WHERE inv.issotrx = 'N'
                 AND inv.docstatus IN ('CO','CL')
                 AND inv.isactive = 'Y'
-                AND shp.docstatus IN ('CO', 'CL')
                 AND (inv.documentno LIKE 'DNS-%' OR inv.documentno LIKE 'NCS-%')
-                AND pc.name = 'MIKA'
+                AND (
+                    pc.value = 'MIKA'
+                    OR (pc.value = 'PRODUCT IMPORT' AND (psc.value IS NULL OR psc.value != 'BOHLAM'))
+                )
                 AND EXTRACT(year FROM inv.dateinvoiced) = ?
                 AND EXTRACT(month FROM inv.dateinvoiced) = ?
             GROUP BY org.name
