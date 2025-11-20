@@ -175,6 +175,7 @@ class ReturnComparisonController extends Controller
                         AND (
                             loc.value LIKE 'Gudang Rusak%' 
                             OR loc.value LIKE 'Gudang Barang Rusak%'
+                            OR (org.name = 'PWM Denpasar' AND loc.value LIKE 'Gudang Barang QQ PWM DPS%')
                         )
                 )
             GROUP BY org.name
@@ -243,8 +244,6 @@ class ReturnComparisonController extends Controller
                 COALESCE(SUM(invl.qtyinvoiced), 0) as total_qty,
                 COALESCE(SUM(invl.linenetamt), 0) as total_nominal
             FROM c_invoiceline invl
-            INNER JOIN m_inoutline shpln ON invl.m_inoutline_id = shpln.m_inoutline_id
-            INNER JOIN m_inout shp ON shpln.m_inout_id = shp.m_inout_id
             INNER JOIN c_invoice inv ON invl.c_invoice_id = inv.c_invoice_id
             INNER JOIN m_product prd ON invl.m_product_id = prd.m_product_id
             INNER JOIN m_product_category pc ON prd.m_product_category_id = pc.m_product_category_id
@@ -252,7 +251,6 @@ class ReturnComparisonController extends Controller
             WHERE inv.issotrx = 'N'
                 AND inv.docstatus IN ('CO','CL')
                 AND inv.isactive = 'Y'
-                AND shp.docstatus IN ('CO', 'CL')
                 AND (inv.documentno LIKE 'DNS-%' OR inv.documentno LIKE 'NCS-%')
                 AND pc.name = 'MIKA'
                 AND EXTRACT(year FROM inv.dateinvoiced) = ?
