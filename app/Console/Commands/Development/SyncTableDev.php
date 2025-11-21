@@ -9,11 +9,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\QueryException;
 use PDOException;
+use App\Models\SyncProgress;
 
-class FastSyncAdempiereTableCommand extends Command
+class SyncTableDev extends Command
 {
-    protected $signature = 'app:fast-sync-adempiere-table {model} {--connection= : The database connection to use}';
-    protected $description = 'Performs a fast, insert-only sync for a large table from a single Adempiere source, limited to the latest records.';
+    protected $signature = 'app:sync-table-dev {model} {--connection= : The database connection to use} {--batch-id= : The batch ID for progress tracking}';
+    protected $description = 'Development: Sync table with insert/update mechanism from 17 branches (2025-10-01 to 2025-11-21)';
 
     public function handle()
     {
@@ -31,23 +32,46 @@ class FastSyncAdempiereTableCommand extends Command
             return Command::FAILURE;
         }
 
+        // Validate that connection is provided
+        if (!$connectionName) {
+            $this->error("Connection name is required. Use --connection option.");
+            return Command::FAILURE;
+        }
+
         $model = new $modelClass();
         $tableName = $model->getTable();
 
-        $this->info("Starting fast sync for table: {$tableName} from connection: {$connectionName}");
+        $this->info("Starting sync for table: {$tableName} from connection: {$connectionName} (DEVELOPMENT)");
+        $this->info("Date Range: 2025-10-01 to 2025-11-21");
         $this->line('');
-        Log::info("FastSync: Starting for {$tableName} from {$connectionName}");
+        Log::info("SyncTableDev: Starting for {$tableName} from {$connectionName}");
 
         try {
-            $this->runFastSync($model, $connectionName, $tableName, $modelName);
+            $recordsProcessed = $this->runProductionSync($model, $connectionName, $tableName, $modelName);
 
-            $this->info("Fast sync for table {$tableName} from {$connectionName} completed successfully.");
-            Log::info("FastSync: Completed for {$tableName} from {$connectionName}.");
+            // Update progress if batch_id is provided
+            $batchId = $this->option('batch-id');
+            if ($batchId) {
+                $progress = SyncProgress::where('batch_id', $batchId)
+                    ->where('connection_name', $connectionName)
+                    ->where('model_name', $modelName)
+                    ->first();
+
+                if ($progress) {
+                    $progress->update([
+                        'records_processed' => $recordsProcessed['processed'],
+                        'records_skipped' => $recordsProcessed['skipped'],
+                    ]);
+                }
+            }
+
+            $this->info("Sync for table {$tableName} from {$connectionName} completed successfully.");
+            Log::info("SyncTableDev: Completed for {$tableName} from {$connectionName}");
             return Command::SUCCESS;
         } catch (\Exception $e) {
             // Check if it's a connection timeout
             if ($this->isConnectionTimeout($e)) {
-                Log::error("FastSync: Connection timeout for {$tableName} from {$connectionName}", [
+                Log::error("SyncTableDev: Connection timeout for {$tableName} from {$connectionName}", [
                     'model' => $modelName,
                     'connection' => $connectionName,
                     'table' => $tableName,
@@ -57,13 +81,13 @@ class FastSyncAdempiereTableCommand extends Command
                 return Command::FAILURE;
             }
 
-            Log::error("Error during fast sync for table {$tableName}: " . $e->getMessage(), ['exception' => $e]);
+            Log::error("Error during sync for table {$tableName}: " . $e->getMessage(), ['exception' => $e]);
             $this->error('An error occurred: ' . $e->getMessage());
             return Command::FAILURE;
         }
     }
 
-    private function runFastSync(Model $model, string $connectionName, string $tableName, string $modelName)
+    private function runProductionSync(Model $model, string $connectionName, string $tableName, string $modelName): array
     {
         // Get the table name in lowercase, as it's returned by getTable()
         $lowerTableName = strtolower($tableName);
@@ -82,10 +106,11 @@ class FastSyncAdempiereTableCommand extends Command
             'c_bpartner_location',
             'c_invoiceline',
             'c_orderline',
-            'c_allocationline'
+            'c_allocationline',
+            'm_inoutline'
         ];
 
-        // Define tables with date filtering
+        // Define tables with date filtering (DEVELOPMENT: 2025-10-01 to 2025-11-21)
         $dateFilterTables = [
             'c_invoice' => 'dateinvoiced',
             'c_order' => 'dateordered',
@@ -105,11 +130,11 @@ class FastSyncAdempiereTableCommand extends Command
 
         $query = DB::connection($connectionName)->table($tableName);
 
-        // Apply date filtering for specific tables
+        // Apply date filtering for specific tables (DEVELOPMENT: 2025-10-01 to 2025-11-21)
         if (isset($dateFilterTables[$lowerTableName])) {
             $dateColumn = $dateFilterTables[$lowerTableName];
-            $startDate = '2024-01-01 00:00:00';
-            $endDate = now()->format('Y-m-d') . ' 23:59:59'; // Today's date
+            $startDate = '2025-10-01 00:00:00';
+            $endDate = '2025-11-21 23:59:59';
 
             $this->comment("Fetching records from {$tableName} with {$dateColumn} between {$startDate} and {$endDate}...");
             $query->whereBetween($dateColumn, [$startDate, $endDate]);
@@ -130,7 +155,7 @@ class FastSyncAdempiereTableCommand extends Command
                     // Check if we have IDs to filter by
                     if (empty($existingIds)) {
                         $this->warn("No parent records found in {$parentTable} for {$foreignKey}. Skipping {$tableName}.");
-                        return; // Skip this table if no parent records exist
+                        return ['processed' => 0, 'skipped' => 0]; // Skip this table if no parent records exist
                     }
 
                     // Chunk the IDs to avoid PostgreSQL parameter limit (65535)
@@ -159,13 +184,13 @@ class FastSyncAdempiereTableCommand extends Command
 
                     if ($sourceData->isEmpty()) {
                         $this->info("No records found in {$tableName} from {$connectionName} with valid {$foreignKey}. Skipping.");
-                        return;
+                        return ['processed' => 0, 'skipped' => 0];
                     }
 
-                    $this->comment("Found {" . $sourceData->count() . "} records from chunked queries. Preparing for insertion...");
+                    $this->comment("Found {" . $sourceData->count() . "} records from chunked queries. Preparing for upsert...");
                     $this->line('');
 
-                    // Skip to insertion since we already have our data
+                    // Skip to upsert since we already have our data
                     $skipNormalQuery = true;
                 }
             }
@@ -198,10 +223,10 @@ class FastSyncAdempiereTableCommand extends Command
         if (!isset($skipNormalQuery)) {
             if ($sourceData->isEmpty()) {
                 $this->info("No records found in {$tableName} from {$connectionName}. Skipping.");
-                return;
+                return ['processed' => 0, 'skipped' => 0];
             }
 
-            $this->comment("Found {" . $sourceData->count() . "} records. Preparing for insertion...");
+            $this->comment("Found {" . $sourceData->count() . "} records. Preparing for upsert...");
             $this->line('');
         }
 
@@ -210,7 +235,7 @@ class FastSyncAdempiereTableCommand extends Command
         $dependencies = [
             'm_product' => [
                 ['parent_table' => 'm_product_category', 'foreign_key' => 'm_product_category_id', 'optional' => true],
-                ['parent_table' => 'm_productsubcat', 'foreign_key' => 'm_product_subcat_id', 'optional' => true],
+                ['parent_table' => 'm_productsubcat', 'foreign_key' => 'm_productsubcat_id', 'optional' => true],
             ],
             'm_locator' => [
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
@@ -265,6 +290,7 @@ class FastSyncAdempiereTableCommand extends Command
                 ['parent_table' => 'm_inout', 'foreign_key' => 'm_inout_id'],
                 ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
                 ['parent_table' => 'c_orderline', 'foreign_key' => 'c_orderline_id', 'optional' => true],
+                ['parent_table' => 'm_locator', 'foreign_key' => 'm_locator_id', 'optional' => true],
             ],
             'm_matchinv' => [
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
@@ -324,7 +350,7 @@ class FastSyncAdempiereTableCommand extends Command
             }
         }
 
-        // Get all columns that should be inserted
+        // Get all columns that should be upserted
         $fillable = $model->getFillable();
         $primaryKey = $model->getKeyName();
         $keyColumns = is_array($primaryKey) ? $primaryKey : [$primaryKey];
@@ -337,31 +363,75 @@ class FastSyncAdempiereTableCommand extends Command
         }
 
         // Convert all column names to lowercase for case-insensitive matching.
-        $insertColumns = array_map('strtolower', array_unique(array_merge($keyColumns, $fillable, $timestampColumns, $foreignKeyColumns)));
+        $upsertColumns = array_map('strtolower', array_unique(array_merge($keyColumns, $fillable, $timestampColumns, $foreignKeyColumns)));
 
-        $dataToInsert = $sourceData->map(function ($row) use ($insertColumns) {
+        $dataToUpsert = $sourceData->map(function ($row) use ($upsertColumns) {
             // Standardize source keys to lowercase to ensure case-insensitive matching.
             $lowerCaseRow = collect((array)$row)->mapWithKeys(function ($value, $key) {
                 return [strtolower($key) => $value];
             });
-            return $lowerCaseRow->only($insertColumns)->all();
+            return $lowerCaseRow->only($upsertColumns)->all();
         })->filter()->all(); // Use filter() to remove any empty arrays that might result from the mapping.
 
         // Log the first processed record for debugging purposes.
-        if (!empty($dataToInsert)) {
-            Log::channel('sync')->info('Sample processed data for ' . $modelName . ':', [reset($dataToInsert)]);
+        if (!empty($dataToUpsert)) {
+            Log::channel('sync')->info('Sample processed data for ' . $modelName . ':', [reset($dataToUpsert)]);
         }
 
-        // Use upsert instead of insertOrIgnore to update existing records with new columns
-        // This ensures that when new columns like m_inoutline_id are added, existing records get updated
-        $this->executeWithRetry(function () use ($dataToInsert, $model, $keyColumns) {
-            collect($dataToInsert)->chunk(500)->each(function ($chunk) use ($model, $keyColumns) {
-                $model->upsert($chunk->toArray(), $keyColumns);
-            });
-        }, $connectionName, "Inserting data for {$tableName}");
+        // Check if this is the first sync (table is empty)
+        // First sync: INSERT new data only (table is empty, so all records are new)
+        // Subsequent syncs: UPSERT (INSERT new + UPDATE existing changed records)
+        $isFirstSync = $this->isFirstSync($tableName);
 
-        $this->line(''); // Add spacing
-        $this->info("Insertion attempt complete for {$tableName} from {$connectionName}.");
+        if ($isFirstSync) {
+            // First sync: Use insertOrIgnore for better performance when table is empty
+            // This will INSERT new records and ignore any duplicates (from other connections in same batch)
+            $this->comment("First sync detected for {$tableName}. Using bulk INSERT (new data only)...");
+            $this->executeWithRetry(function () use ($dataToUpsert, $model, $keyColumns) {
+                collect($dataToUpsert)->chunk(500)->each(function ($chunk) use ($model, $keyColumns) {
+                    // Use insertOrIgnore for first sync to handle potential duplicates from multiple connections
+                    // This is faster than upsert when table is empty
+                    try {
+                        DB::table($model->getTable())->insertOrIgnore($chunk->toArray());
+                    } catch (\Exception $e) {
+                        // Fallback to upsert if insertOrIgnore fails (e.g., missing unique constraint)
+                        $model->upsert($chunk->toArray(), $keyColumns);
+                    }
+                });
+            }, $connectionName, "Inserting data for {$tableName}");
+
+            $this->line(''); // Add spacing
+            $this->info("Bulk INSERT complete for {$tableName} from {$connectionName}. Total records inserted: " . count($dataToUpsert));
+        } else {
+            // Subsequent syncs: Use upsert to automatically detect and update only changed records
+            // Upsert will INSERT new records and UPDATE existing ones based on primary key
+            // This ensures data parity and only processes changed records efficiently
+            $this->comment("Subsequent sync detected for {$tableName}. Using UPSERT (INSERT new + UPDATE changed records)...");
+            $this->executeWithRetry(function () use ($dataToUpsert, $model, $keyColumns, $tableName) {
+                collect($dataToUpsert)->chunk(500)->each(function ($chunk) use ($model, $keyColumns, $tableName) {
+                    try {
+                        $model->upsert($chunk->toArray(), $keyColumns);
+                    } catch (\Exception $e) {
+                        // If upsert fails (e.g., nullable columns in composite key), use insertOrIgnore as fallback
+                        if (str_contains($e->getMessage(), 'no unique or exclusion constraint')) {
+                            $this->warn("Upsert not supported for {$tableName}, using insertOrIgnore instead...");
+                            DB::table($model->getTable())->insertOrIgnore($chunk->toArray());
+                        } else {
+                            throw $e;
+                        }
+                    }
+                });
+            }, $connectionName, "Upserting data for {$tableName}");
+
+            $this->line(''); // Add spacing
+            $this->info("UPSERT complete for {$tableName} from {$connectionName}. Total records processed: " . count($dataToUpsert));
+        }
+
+        // Return counts for progress tracking
+        return [
+            'processed' => count($dataToUpsert),
+            'skipped' => isset($skippedCount) ? $skippedCount : 0,
+        ];
     }
 
     /**
@@ -409,7 +479,7 @@ class FastSyncAdempiereTableCommand extends Command
                     if ($attempts < $maxRetries) {
                         $connInfo = $connectionName ? "[{$connectionName}]" : "";
                         $this->warn("Connection timeout during {$operationDescription} {$connInfo}. Retrying in 10 seconds... ({$attempts}/{$maxRetries})");
-                        Log::warning("FastSync: Connection timeout retry", [
+                        Log::warning("SyncTableDev: Connection timeout retry", [
                             'operation' => $operationDescription,
                             'connection' => $connectionName,
                             'attempt' => $attempts,
@@ -421,7 +491,7 @@ class FastSyncAdempiereTableCommand extends Command
                         // Final attempt failed
                         $connInfo = $connectionName ? "[{$connectionName}]" : "";
                         $this->error("Connection timeout during {$operationDescription} {$connInfo} after {$maxRetries} attempts.");
-                        Log::error("FastSync: Connection timeout after all retries", [
+                        Log::error("SyncTableDev: Connection timeout after all retries", [
                             'operation' => $operationDescription,
                             'connection' => $connectionName,
                             'attempts' => $attempts,
@@ -437,6 +507,23 @@ class FastSyncAdempiereTableCommand extends Command
         }
 
         throw $lastException;
+    }
+
+    /**
+     * Check if this is the first sync for the table (table is empty)
+     */
+    private function isFirstSync(string $tableName): bool
+    {
+        try {
+            $recordCount = DB::table($tableName)->count();
+            return $recordCount === 0;
+        } catch (\Exception $e) {
+            // If we can't check, assume it's not first sync to be safe
+            Log::warning("SyncTableDev: Could not check if first sync for {$tableName}", [
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
     }
 
     /**
