@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Helpers\TableHelper;
 
 class ReturnComparisonController extends Controller
@@ -35,11 +36,29 @@ class ReturnComparisonController extends Controller
             // Get all branch codes from TableHelper
             $branchMapping = TableHelper::getBranchMapping();
 
-            // Get all data in single queries (optimized)
+            // Get all data in single queries (optimized) with timing
+            $startTime = microtime(true);
             $salesBrutoData = $this->getAllSalesBruto($month, $year);
+            $salesBrutoTime = round((microtime(true) - $startTime) * 1000, 2);
+            Log::info("ReturnComparison: getAllSalesBruto took {$salesBrutoTime}ms");
+
+            $startTime = microtime(true);
             $cncData = $this->getAllCNCData($month, $year);
+            $cncTime = round((microtime(true) - $startTime) * 1000, 2);
+            Log::info("ReturnComparison: getAllCNCData took {$cncTime}ms");
+
+            $startTime = microtime(true);
             $barangData = $this->getAllBarangData($month, $year);
+            $barangTime = round((microtime(true) - $startTime) * 1000, 2);
+            Log::info("ReturnComparison: getAllBarangData took {$barangTime}ms");
+
+            $startTime = microtime(true);
             $cabangPabrikData = $this->getAllCabangPabrikData($month, $year);
+            $cabangPabrikTime = round((microtime(true) - $startTime) * 1000, 2);
+            Log::info("ReturnComparison: getAllCabangPabrikData took {$cabangPabrikTime}ms");
+
+            $totalTime = $salesBrutoTime + $cncTime + $barangTime + $cabangPabrikTime;
+            Log::info("ReturnComparison: Total query time {$totalTime}ms for month={$month}, year={$year}");
 
             $data = [];
             $no = 1;
