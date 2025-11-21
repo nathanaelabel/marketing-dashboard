@@ -185,7 +185,11 @@ class ReturnComparisonController extends Controller
                 AND inv.documentno LIKE 'INC%'
                 AND (
                     pc.value = 'MIKA'
-                    OR (pc.value = 'PRODUCT IMPORT' AND (psc.value IS NULL OR psc.value != 'BOHLAM'))
+                    OR (
+                        pc.value = 'PRODUCT IMPORT' 
+                        AND p.name NOT LIKE 'BOHLAM%'
+                        AND psc.value = 'MIKA'
+                    )
                 )
                 AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
             GROUP BY org.name
@@ -224,7 +228,11 @@ class ReturnComparisonController extends Controller
                 AND EXTRACT(month FROM h.dateinvoiced) = ?
                 AND (
                     cat.value = 'MIKA'
-                    OR (cat.value = 'PRODUCT IMPORT' AND (psc.value IS NULL OR psc.value != 'BOHLAM'))
+                    OR (
+                        cat.value = 'PRODUCT IMPORT' 
+                        AND prd.name NOT LIKE 'BOHLAM%'
+                        AND psc.value = 'MIKA'
+                    )
                 )
                 AND EXISTS (
                     SELECT 1
@@ -274,7 +282,11 @@ class ReturnComparisonController extends Controller
                 AND mio.docstatus IN ('CO', 'CL')
                 AND (
                     pc.value = 'MIKA'
-                    OR (pc.value = 'PRODUCT IMPORT' AND (psc.value IS NULL OR psc.value != 'BOHLAM'))
+                    OR (
+                        pc.value = 'PRODUCT IMPORT' 
+                        AND prd.name NOT LIKE 'BOHLAM%'
+                        AND psc.value = 'MIKA'
+                    )
                 )
                 AND EXTRACT(year FROM mio.movementdate) = ?
                 AND EXTRACT(month FROM mio.movementdate) = ?
@@ -315,10 +327,14 @@ class ReturnComparisonController extends Controller
             WHERE inv.issotrx = 'N'
                 AND inv.docstatus IN ('CO','CL')
                 AND inv.isactive = 'Y'
-                AND (inv.documentno LIKE 'DNS-%' OR inv.documentno LIKE 'NCS-%')
+                AND inv.documentno LIKE 'DNS-%'
                 AND (
                     pc.value = 'MIKA'
-                    OR (pc.value = 'PRODUCT IMPORT' AND (psc.value IS NULL OR psc.value != 'BOHLAM'))
+                    OR (
+                        pc.value = 'PRODUCT IMPORT' 
+                        AND prd.name NOT LIKE 'BOHLAM%'
+                        AND psc.value = 'MIKA'
+                    )
                 )
                 AND EXTRACT(year FROM inv.dateinvoiced) = ?
                 AND EXTRACT(month FROM inv.dateinvoiced) = ?
