@@ -14,18 +14,9 @@ class Kernel extends ConsoleKernel
     {
         // Data Sync Scheduler
         // --------------------------------------------------------------------
-        // Runs incremental sync every 30 minutes to catch recent changes from 17 branches
-        // This will insert new records and update existing ones based on timestamp
-        $schedule->command('app:incremental-sync-all')
-            ->everyThirtyMinutes()
-            ->withoutOverlapping()
-            ->timezone('Asia/Jakarta')
-            ->sendOutputTo(storage_path('logs/sync-incremental.log'))
-            ->appendOutputTo(storage_path('logs/sync-incremental.log'));
-
         // Runs full sync daily at 08:30 WIB (Asia/Jakarta timezone)
         // This ensures 1:1 data parity with all 17 branch databases
-        // Performs insert for new records and update for existing records
+        // Uses optimized 3-month date filter for daily updates (data before this is already complete)
         $schedule->command('app:sync-all')
             ->dailyAt('08:30')
             ->withoutOverlapping()
