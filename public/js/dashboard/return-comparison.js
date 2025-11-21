@@ -27,23 +27,23 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
+            const formatNumber = (value) => {
+                if (!value || value === 0) return "-";
+                return TableHelper.formatNumber(value);
+            };
+
+            const formatCurrency = (value) => {
+                if (!value || value === 0) return "-";
+                return TableHelper.formatCurrency(value);
+            };
+
+            const formatPercent = (value) => {
+                if (!value || value === 0) return "-";
+                return value.toFixed(2) + "%";
+            };
+
             const rows = data.data
                 .map((item) => {
-                    const formatNumber = (value) => {
-                        if (!value || value === 0) return "-";
-                        return TableHelper.formatNumber(value);
-                    };
-
-                    const formatCurrency = (value) => {
-                        if (!value || value === 0) return "-";
-                        return TableHelper.formatCurrency(value);
-                    };
-
-                    const formatPercent = (value) => {
-                        if (!value || value === 0) return "-";
-                        return value.toFixed(2) + "%";
-                    };
-
                     return `
                     <tr class="hover:bg-gray-50">
                         <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-center">${
@@ -87,7 +87,47 @@ document.addEventListener("DOMContentLoaded", function () {
                 })
                 .join("");
 
-            this.elements.tableBody.innerHTML = rows;
+            // Add TOTAL row if totals data exists
+            let totalRow = "";
+            if (data.totals) {
+                totalRow = `
+                    <tr class="bg-gray-100 font-bold border-t-2 border-gray-400">
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-center" colspan="2">TOTAL</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.sales_bruto_rp
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatNumber(
+                            data.totals.cnc_pc
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.cnc_rp
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatPercent(
+                            data.totals.cnc_percent
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatNumber(
+                            data.totals.barang_pc
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.barang_rp
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatPercent(
+                            data.totals.barang_percent
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatNumber(
+                            data.totals.cabang_pabrik_pc
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.cabang_pabrik_rp
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 text-right">${formatPercent(
+                            data.totals.cabang_pabrik_percent
+                        )}</td>
+                    </tr>
+                `;
+            }
+
+            this.elements.tableBody.innerHTML = rows + totalRow;
         },
     });
 

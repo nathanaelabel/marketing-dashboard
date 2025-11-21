@@ -63,6 +63,17 @@ class ReturnComparisonController extends Controller
             $data = [];
             $no = 1;
 
+            // Initialize totals
+            $totals = [
+                "sales_bruto_rp" => 0,
+                "cnc_pc" => 0,
+                "cnc_rp" => 0,
+                "barang_pc" => 0,
+                "barang_rp" => 0,
+                "cabang_pabrik_pc" => 0,
+                "cabang_pabrik_rp" => 0,
+            ];
+
             // Iterate through each branch and combine data
             foreach ($branchMapping as $branchName => $branchCode) {
                 $salesBruto = $salesBrutoData[$branchName] ?? [
@@ -106,12 +117,33 @@ class ReturnComparisonController extends Controller
                     "cabang_pabrik_rp" => $cabangPabrik["rp"],
                     "cabang_pabrik_percent" => $cabangPabrikPercent,
                 ];
+
+                // Accumulate totals
+                $totals["sales_bruto_rp"] += $salesBruto["rp"];
+                $totals["cnc_pc"] += $cnc["pc"];
+                $totals["cnc_rp"] += $cnc["rp"];
+                $totals["barang_pc"] += $barang["pc"];
+                $totals["barang_rp"] += $barang["rp"];
+                $totals["cabang_pabrik_pc"] += $cabangPabrik["pc"];
+                $totals["cabang_pabrik_rp"] += $cabangPabrik["rp"];
             }
+
+            // Calculate total percentages
+            $totals["cnc_percent"] = $totals["sales_bruto_rp"] > 0
+                ? ($totals["cnc_rp"] / $totals["sales_bruto_rp"]) * 100
+                : 0;
+            $totals["barang_percent"] = $totals["sales_bruto_rp"] > 0
+                ? ($totals["barang_rp"] / $totals["sales_bruto_rp"]) * 100
+                : 0;
+            $totals["cabang_pabrik_percent"] = $totals["sales_bruto_rp"] > 0
+                ? ($totals["cabang_pabrik_rp"] / $totals["sales_bruto_rp"]) * 100
+                : 0;
 
             $period = TableHelper::formatPeriodInfo($month, $year);
 
             return response()->json([
                 "data" => $data,
+                "totals" => $totals,
                 "period" => $period,
                 "total_count" => count($data),
             ]);
@@ -334,6 +366,7 @@ class ReturnComparisonController extends Controller
             }
 
             $data = $responseData["data"];
+            $totals = $responseData["totals"] ?? null;
             $period = $responseData["period"];
 
             $filename =
@@ -406,7 +439,7 @@ class ReturnComparisonController extends Controller
             <body>
                 <div class="title">PERBANDINGAN RETUR RUSAK</div>
                 <div class="period">Periode ' .
-                htmlspecialchars($period["month_name"] . " " . $year) .
+                htmlspecialchars($period["date_range"] ?? ($period["month_name"] . " " . $year)) .
                 '</div>
                 <br>
                 <table>
@@ -521,6 +554,89 @@ class ReturnComparisonController extends Controller
                 </tr>';
             }
 
+            // Add TOTAL row for Excel export
+            if ($totals) {
+                $html .=
+                    '<tr style="background-color: #F0F0F0; font-weight: bold; border-top: 2px solid #000;">
+                    <td colspan="2" style="text-align: center;">TOTAL</td>
+                    <td class="number">' .
+                    ($totals["sales_bruto_rp"] == 0
+                        ? "-"
+                        : "Rp " .
+                        number_format(
+                            $totals["sales_bruto_rp"],
+                            0,
+                            ".",
+                            ",",
+                        )) .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["cnc_pc"] == 0
+                        ? "-"
+                        : number_format($totals["cnc_pc"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["cnc_rp"] == 0
+                        ? "-"
+                        : "Rp " . number_format($totals["cnc_rp"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["cnc_percent"] == 0
+                        ? "-"
+                        : number_format($totals["cnc_percent"], 2, ".", ",") .
+                        "%") .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["barang_pc"] == 0
+                        ? "-"
+                        : number_format($totals["barang_pc"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["barang_rp"] == 0
+                        ? "-"
+                        : "Rp " .
+                        number_format($totals["barang_rp"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["barang_percent"] == 0
+                        ? "-"
+                        : number_format($totals["barang_percent"], 2, ".", ",") .
+                        "%") .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["cabang_pabrik_pc"] == 0
+                        ? "-"
+                        : number_format(
+                            $totals["cabang_pabrik_pc"],
+                            0,
+                            ".",
+                            ",",
+                        )) .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["cabang_pabrik_rp"] == 0
+                        ? "-"
+                        : "Rp " .
+                        number_format(
+                            $totals["cabang_pabrik_rp"],
+                            0,
+                            ".",
+                            ",",
+                        )) .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["cabang_pabrik_percent"] == 0
+                        ? "-"
+                        : number_format(
+                            $totals["cabang_pabrik_percent"],
+                            2,
+                            ".",
+                            ",",
+                        ) . "%") .
+                    '</td>
+                </tr>';
+            }
+
             $html .=
                 '
                     </tbody>
@@ -582,6 +698,7 @@ class ReturnComparisonController extends Controller
             }
 
             $data = $responseData["data"];
+            $totals = $responseData["totals"] ?? null;
             $period = $responseData["period"];
 
             // Create HTML for PDF
@@ -641,7 +758,7 @@ class ReturnComparisonController extends Controller
                 <div class="header">
                     <div class="title">PERBANDINGAN RETUR RUSAK</div>
                     <div class="period">Periode ' .
-                htmlspecialchars($period["month_name"] . " " . $year) .
+                htmlspecialchars($period["date_range"] ?? ($period["month_name"] . " " . $year)) .
                 '</div>
                 </div>
                 <table>
@@ -748,6 +865,89 @@ class ReturnComparisonController extends Controller
                         ? "-"
                         : number_format(
                             $item["cabang_pabrik_percent"],
+                            2,
+                            ".",
+                            ",",
+                        ) . "%") .
+                    '</td>
+                </tr>';
+            }
+
+            // Add TOTAL row for PDF export
+            if ($totals) {
+                $html .=
+                    '<tr style="background-color: #F0F0F0; font-weight: bold; border-top: 2px solid #000;">
+                    <td colspan="2" style="text-align: center;">TOTAL</td>
+                    <td class="number">' .
+                    ($totals["sales_bruto_rp"] == 0
+                        ? "-"
+                        : "Rp " .
+                        number_format(
+                            $totals["sales_bruto_rp"],
+                            0,
+                            ".",
+                            ",",
+                        )) .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["cnc_pc"] == 0
+                        ? "-"
+                        : number_format($totals["cnc_pc"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["cnc_rp"] == 0
+                        ? "-"
+                        : "Rp " . number_format($totals["cnc_rp"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["cnc_percent"] == 0
+                        ? "-"
+                        : number_format($totals["cnc_percent"], 2, ".", ",") .
+                        "%") .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["barang_pc"] == 0
+                        ? "-"
+                        : number_format($totals["barang_pc"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["barang_rp"] == 0
+                        ? "-"
+                        : "Rp " .
+                        number_format($totals["barang_rp"], 0, ".", ",")) .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["barang_percent"] == 0
+                        ? "-"
+                        : number_format($totals["barang_percent"], 2, ".", ",") .
+                        "%") .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["cabang_pabrik_pc"] == 0
+                        ? "-"
+                        : number_format(
+                            $totals["cabang_pabrik_pc"],
+                            0,
+                            ".",
+                            ",",
+                        )) .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["cabang_pabrik_rp"] == 0
+                        ? "-"
+                        : "Rp " .
+                        number_format(
+                            $totals["cabang_pabrik_rp"],
+                            0,
+                            ".",
+                            ",",
+                        )) .
+                    '</td>
+                    <td class="number">' .
+                    ($totals["cabang_pabrik_percent"] == 0
+                        ? "-"
+                        : number_format(
+                            $totals["cabang_pabrik_percent"],
                             2,
                             ".",
                             ",",
