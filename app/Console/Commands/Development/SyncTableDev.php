@@ -407,9 +407,19 @@ class SyncTableDev extends Command
             // Upsert will INSERT new records and UPDATE existing ones based on primary key
             // This ensures data parity and only processes changed records efficiently
             $this->comment("Subsequent sync detected for {$tableName}. Using UPSERT (INSERT new + UPDATE changed records)...");
-            $this->executeWithRetry(function () use ($dataToUpsert, $model, $keyColumns) {
-                collect($dataToUpsert)->chunk(500)->each(function ($chunk) use ($model, $keyColumns) {
-                    $model->upsert($chunk->toArray(), $keyColumns);
+            $this->executeWithRetry(function () use ($dataToUpsert, $model, $keyColumns, $tableName) {
+                collect($dataToUpsert)->chunk(500)->each(function ($chunk) use ($model, $keyColumns, $tableName) {
+                    try {
+                        $model->upsert($chunk->toArray(), $keyColumns);
+                    } catch (\Exception $e) {
+                        // If upsert fails (e.g., nullable columns in composite key), use insertOrIgnore as fallback
+                        if (str_contains($e->getMessage(), 'no unique or exclusion constraint')) {
+                            $this->warn("Upsert not supported for {$tableName}, using insertOrIgnore instead...");
+                            DB::table($model->getTable())->insertOrIgnore($chunk->toArray());
+                        } else {
+                            throw $e;
+                        }
+                    }
                 });
             }, $connectionName, "Upserting data for {$tableName}");
 

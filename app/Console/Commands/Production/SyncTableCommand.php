@@ -132,10 +132,11 @@ class SyncTableCommand extends Command
         // Apply date filtering for specific tables
         if (isset($dateFilterTables[$lowerTableName])) {
             $dateColumn = $dateFilterTables[$lowerTableName];
-            $startDate = '2021-01-01 00:00:00';
+            // Production: Only sync last 3 months for daily updates (data before this is already complete)
+            $startDate = now()->subMonths(3)->startOfDay()->format('Y-m-d H:i:s');
             $endDate = now()->format('Y-m-d') . ' 23:59:59'; // Today's date
 
-            $this->comment("Fetching records from {$tableName} with {$dateColumn} between {$startDate} and {$endDate}...");
+            $this->comment("Fetching records from {$tableName} with {$dateColumn} between {$startDate} and {$endDate} (last 3 months)...");
             $query->whereBetween($dateColumn, [$startDate, $endDate]);
         }
         // Apply relationship filtering for specific tables
@@ -406,9 +407,19 @@ class SyncTableCommand extends Command
             // Upsert will INSERT new records and UPDATE existing ones based on primary key
             // This ensures data parity and only processes changed records efficiently
             $this->comment("Subsequent sync detected for {$tableName}. Using UPSERT (INSERT new + UPDATE changed records)...");
-            $this->executeWithRetry(function () use ($dataToUpsert, $model, $keyColumns) {
-                collect($dataToUpsert)->chunk(500)->each(function ($chunk) use ($model, $keyColumns) {
-                    $model->upsert($chunk->toArray(), $keyColumns);
+            $this->executeWithRetry(function () use ($dataToUpsert, $model, $keyColumns, $tableName) {
+                collect($dataToUpsert)->chunk(500)->each(function ($chunk) use ($model, $keyColumns, $tableName) {
+                    try {
+                        $model->upsert($chunk->toArray(), $keyColumns);
+                    } catch (\Exception $e) {
+                        // If upsert fails (e.g., nullable columns in composite key), use insertOrIgnore as fallback
+                        if (str_contains($e->getMessage(), 'no unique or exclusion constraint')) {
+                            $this->warn("Upsert not supported for {$tableName}, using insertOrIgnore instead...");
+                            DB::table($model->getTable())->insertOrIgnore($chunk->toArray());
+                        } else {
+                            throw $e;
+                        }
+                    }
                 });
             }, $connectionName, "Upserting data for {$tableName}");
 

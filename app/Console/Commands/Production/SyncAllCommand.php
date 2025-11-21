@@ -86,15 +86,15 @@ class SyncAllCommand extends Command
         // Tables using production sync with various filtering strategies
         $productionSyncTables = [
             'MProductprice',    // Full records with m_product_id relationship
-            'CInvoice',         // Date filtered (2021-01-01 to today)
-            'COrder',           // Date filtered (2021-01-01 to today)
+            'CInvoice',         // Date filtered (last 3 months to today) - for daily updates
+            'COrder',           // Date filtered (last 3 months to today) - for daily updates
             'COrderline',       // Full records with c_order_id relationship
-            'CAllocationhdr',   // Date filtered (2021-01-01 to today)
+            'CAllocationhdr',   // Date filtered (last 3 months to today) - for daily updates
             'CAllocationline',  // Full records with c_allocationhdr_id relationship
-            'MInout',           // Date filtered (2021-01-01 to today) - movementdate
+            'MInout',           // Date filtered (last 3 months to today) - movementdate - for daily updates
             'MInoutline',       // Full records with m_inout_id relationship
             'CInvoiceline',     // Full records with c_invoice_id relationship
-            'MMatchinv'         // Date filtered (2021-01-01 to today) - datetrx
+            'MMatchinv'         // Date filtered (last 3 months to today) - datetrx - for daily updates
         ];
 
         if (!$targetConnection && !$skipStep1) {
