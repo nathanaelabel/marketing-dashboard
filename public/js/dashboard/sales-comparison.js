@@ -36,8 +36,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const salesComparisonTable = new TableHelper({
         apiEndpoint: "/sales-comparison/data",
 
-        // Set longer timeout for complex queries (90 seconds)
-        requestTimeout: 90000,
+        // Set longer timeout for complex queries (5 minutes)
+        requestTimeout: 300000, // 300 seconds (5 minutes)
 
         // Disable pagination for this table
         disablePagination: true,

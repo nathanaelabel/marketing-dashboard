@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", function () {
         disablePagination: true,
 
         // Increase timeout for complex queries (17 branches * 4 queries each)
-        requestTimeout: 120000, // 120 seconds
+        requestTimeout: 300000, // 300 seconds (5 minutes)
 
         renderTable: function (data) {
             if (!data.data || data.data.length === 0) {
