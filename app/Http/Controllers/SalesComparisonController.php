@@ -69,6 +69,25 @@ class SalesComparisonController extends Controller
             $data = [];
             $no = 1;
 
+            // Initialize totals
+            $totals = [
+                'sales_mika' => 0,
+                'sales_sparepart' => 0,
+                'total_sales' => 0,
+                'stok_mika' => 0,
+                'stok_sparepart' => 0,
+                'total_stok' => 0,
+                'bdp_mika' => 0,
+                'bdp_sparepart' => 0,
+                'total_bdp' => 0,
+                'stok_bdp_mika' => 0,
+                'stok_bdp_sparepart' => 0,
+                'total_stok_bdp' => 0,
+                'total_mika' => 0,
+                'total_sparepart' => 0,
+                'grand_total' => 0,
+            ];
+
             // Process results for each branch
             foreach ($branchMapping as $branchName => $branchCode) {
                 if (!isset($branchConfig[$branchName])) {
@@ -116,10 +135,28 @@ class SalesComparisonController extends Controller
                     'total_sparepart' => $totalSparepart,
                     'grand_total' => $grandTotal,
                 ];
+
+                // Accumulate totals
+                $totals['sales_mika'] += $branchData['sales_mika'];
+                $totals['sales_sparepart'] += $branchData['sales_sparepart'];
+                $totals['total_sales'] += $totalSales;
+                $totals['stok_mika'] += $branchData['stok_mika'];
+                $totals['stok_sparepart'] += $branchData['stok_sparepart'];
+                $totals['total_stok'] += $totalStok;
+                $totals['bdp_mika'] += $branchData['bdp_mika'];
+                $totals['bdp_sparepart'] += $branchData['bdp_sparepart'];
+                $totals['total_bdp'] += $totalBdp;
+                $totals['stok_bdp_mika'] += $stokBdpMika;
+                $totals['stok_bdp_sparepart'] += $stokBdpSparepart;
+                $totals['total_stok_bdp'] += $totalStokBdp;
+                $totals['total_mika'] += $totalMika;
+                $totals['total_sparepart'] += $totalSparepart;
+                $totals['grand_total'] += $grandTotal;
             }
 
             return response()->json([
                 'data' => $data,
+                'totals' => $totals,
                 'date' => $date,
                 'formatted_date' => date('d F Y', strtotime($date)),
                 'total_count' => count($data)
@@ -563,6 +600,7 @@ class SalesComparisonController extends Controller
             }
 
             $data = $responseData['data'];
+            $totals = $responseData['totals'] ?? null;
             $formattedDate = $responseData['formatted_date'];
 
             $filename = 'Rekap_Sales_Stok_dan_BDP_' . str_replace(' ', '_', $formattedDate) . '.xls';
@@ -681,6 +719,28 @@ class SalesComparisonController extends Controller
                     <td class="number">' . ($item['total_mika'] == 0 ? '-' : 'Rp ' . number_format($item['total_mika'], 0, '.', ',')) . '</td>
                     <td class="number">' . ($item['total_sparepart'] == 0 ? '-' : 'Rp ' . number_format($item['total_sparepart'], 0, '.', ',')) . '</td>
                     <td class="number">' . ($item['grand_total'] == 0 ? '-' : 'Rp ' . number_format($item['grand_total'], 0, '.', ',')) . '</td>
+                </tr>';
+            }
+
+            // Add TOTAL row for Excel export
+            if ($totals) {
+                $html .= '<tr style="background-color: #F0F0F0; font-weight: bold; border-top: 2px solid #000;">
+                    <td colspan="2" style="text-align: center;">TOTAL</td>
+                    <td class="number">' . ($totals['sales_mika'] == 0 ? '-' : 'Rp ' . number_format($totals['sales_mika'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['sales_sparepart'] == 0 ? '-' : 'Rp ' . number_format($totals['sales_sparepart'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['total_sales'] == 0 ? '-' : 'Rp ' . number_format($totals['total_sales'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['stok_mika'] == 0 ? '-' : 'Rp ' . number_format($totals['stok_mika'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['stok_sparepart'] == 0 ? '-' : 'Rp ' . number_format($totals['stok_sparepart'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['total_stok'] == 0 ? '-' : 'Rp ' . number_format($totals['total_stok'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['bdp_mika'] == 0 ? '-' : 'Rp ' . number_format($totals['bdp_mika'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['bdp_sparepart'] == 0 ? '-' : 'Rp ' . number_format($totals['bdp_sparepart'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['total_bdp'] == 0 ? '-' : 'Rp ' . number_format($totals['total_bdp'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['stok_bdp_mika'] == 0 ? '-' : 'Rp ' . number_format($totals['stok_bdp_mika'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['stok_bdp_sparepart'] == 0 ? '-' : 'Rp ' . number_format($totals['stok_bdp_sparepart'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['total_stok_bdp'] == 0 ? '-' : 'Rp ' . number_format($totals['total_stok_bdp'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['total_mika'] == 0 ? '-' : 'Rp ' . number_format($totals['total_mika'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['total_sparepart'] == 0 ? '-' : 'Rp ' . number_format($totals['total_sparepart'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['grand_total'] == 0 ? '-' : 'Rp ' . number_format($totals['grand_total'], 0, '.', ',')) . '</td>
                 </tr>';
             }
 

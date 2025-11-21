@@ -80,13 +80,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 updateDateHeaders(data.date);
             }
 
+            const formatCurrency = (value) => {
+                if (!value || value === 0) return "-";
+                return TableHelper.formatCurrency(value);
+            };
+
             const rows = data.data
                 .map((item) => {
-                    const formatCurrency = (value) => {
-                        if (!value || value === 0) return "-";
-                        return TableHelper.formatCurrency(value);
-                    };
-
                     return `
                     <tr class="hover:bg-gray-50">
                         <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-center">${
@@ -145,7 +145,62 @@ document.addEventListener("DOMContentLoaded", function () {
                 })
                 .join("");
 
-            this.elements.tableBody.innerHTML = rows;
+            // Add TOTAL row if totals data exists
+            let totalRow = "";
+            if (data.totals) {
+                totalRow = `
+                    <tr class="bg-gray-100 font-bold border-t-2 border-gray-400">
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-center" colspan="2">TOTAL</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.sales_mika
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.sales_sparepart
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.total_sales
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.stok_mika
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.stok_sparepart
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.total_stok
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.bdp_mika
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.bdp_sparepart
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.total_bdp
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.stok_bdp_mika
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.stok_bdp_sparepart
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.total_stok_bdp
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.total_mika
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-right">${formatCurrency(
+                            data.totals.total_sparepart
+                        )}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 text-right">${formatCurrency(
+                            data.totals.grand_total
+                        )}</td>
+                    </tr>
+                `;
+            }
+
+            this.elements.tableBody.innerHTML = rows + totalRow;
         },
     });
 
