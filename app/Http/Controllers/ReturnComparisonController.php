@@ -187,7 +187,7 @@ class ReturnComparisonController extends Controller
                     pc.value = 'MIKA'
                     OR (
                         pc.value = 'PRODUCT IMPORT' 
-                        AND p.name NOT LIKE 'BOHLAM%'
+                        AND p.name NOT LIKE '%BOHLAM%'
                         AND psc.value = 'MIKA'
                     )
                 )
@@ -230,7 +230,7 @@ class ReturnComparisonController extends Controller
                     cat.value = 'MIKA'
                     OR (
                         cat.value = 'PRODUCT IMPORT' 
-                        AND prd.name NOT LIKE 'BOHLAM%'
+                        AND prd.name NOT LIKE '%BOHLAM%'
                         AND psc.value = 'MIKA'
                     )
                 )
@@ -284,7 +284,7 @@ class ReturnComparisonController extends Controller
                     pc.value = 'MIKA'
                     OR (
                         pc.value = 'PRODUCT IMPORT' 
-                        AND prd.name NOT LIKE 'BOHLAM%'
+                        AND prd.name NOT LIKE '%BOHLAM%'
                         AND psc.value = 'MIKA'
                     )
                 )
@@ -332,7 +332,7 @@ class ReturnComparisonController extends Controller
                     pc.value = 'MIKA'
                     OR (
                         pc.value = 'PRODUCT IMPORT' 
-                        AND prd.name NOT LIKE 'BOHLAM%'
+                        AND prd.name NOT LIKE '%BOHLAM%'
                         AND psc.value = 'MIKA'
                     )
                 )
