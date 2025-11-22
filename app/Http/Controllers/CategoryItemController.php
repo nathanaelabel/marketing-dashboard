@@ -87,6 +87,7 @@ class CategoryItemController extends Controller
             ->join('c_bpartner as cust', 'h.c_bpartner_id', '=', 'cust.c_bpartner_id')
             ->join('m_product as prd', 'd.m_product_id', '=', 'prd.m_product_id')
             ->join('m_product_category as cat', 'prd.m_product_category_id', '=', 'cat.m_product_category_id')
+            ->leftJoin('m_productsubcat as psc', 'prd.m_productsubcat_id', '=', 'psc.m_productsubcat_id')
             ->where('h.ad_client_id', 1000001)
             ->where('h.issotrx', 'Y')
             ->where('d.qtyinvoiced', '>', 0)
@@ -101,7 +102,11 @@ class CategoryItemController extends Controller
             // Netto: INC adds, CNC subtracts
             $dataQuery->select(
                 'org.name as branch',
-                'cat.name as category',
+                DB::raw("CASE 
+                    WHEN cat.value = 'MIKA' THEN 'MIKA'
+                    WHEN cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA' THEN 'MIKA'
+                    ELSE cat.name 
+                END as category"),
                 DB::raw('SUM(CASE
                     WHEN SUBSTR(h.documentno, 1, 3) IN (\'INC\') THEN d.linenetamt
                     WHEN SUBSTR(h.documentno, 1, 3) IN (\'CNC\') THEN -d.linenetamt
@@ -114,14 +119,22 @@ class CategoryItemController extends Controller
             // Bruto: simple sum (only INC documents)
             $dataQuery->select(
                 'org.name as branch',
-                'cat.name as category',
+                DB::raw("CASE 
+                    WHEN cat.value = 'MIKA' THEN 'MIKA'
+                    WHEN cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA' THEN 'MIKA'
+                    ELSE cat.name 
+                END as category"),
                 DB::raw('SUM(d.linenetamt) as total_revenue')
             )
                 ->where('d.linenetamt', '>', 0)
                 ->whereRaw('h.documentno LIKE ?', ['INC%']);
         }
 
-        $dataQuery->groupBy('org.name', 'cat.name');
+        $dataQuery->groupBy('org.name', DB::raw("CASE 
+            WHEN cat.value = 'MIKA' THEN 'MIKA'
+            WHEN cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA' THEN 'MIKA'
+            ELSE cat.name 
+        END"));
 
         $data = $dataQuery->get();
 
@@ -206,6 +219,7 @@ class CategoryItemController extends Controller
             ->join('c_bpartner as cust', 'h.c_bpartner_id', '=', 'cust.c_bpartner_id')
             ->join('m_product as prd', 'd.m_product_id', '=', 'prd.m_product_id')
             ->join('m_product_category as cat', 'prd.m_product_category_id', '=', 'cat.m_product_category_id')
+            ->leftJoin('m_productsubcat as psc', 'prd.m_productsubcat_id', '=', 'psc.m_productsubcat_id')
             ->where('h.ad_client_id', 1000001)
             ->where('h.issotrx', 'Y')
             ->where('d.qtyinvoiced', '>', 0)
@@ -219,7 +233,11 @@ class CategoryItemController extends Controller
             // Netto: INC adds, CNC subtracts
             $dataQuery->select(
                 'org.name as branch',
-                'cat.name as category',
+                DB::raw("CASE 
+                    WHEN cat.value = 'MIKA' THEN 'MIKA'
+                    WHEN cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA' THEN 'MIKA'
+                    ELSE cat.name 
+                END as category"),
                 DB::raw('SUM(CASE
                     WHEN SUBSTR(h.documentno, 1, 3) IN (\'INC\') THEN d.linenetamt
                     WHEN SUBSTR(h.documentno, 1, 3) IN (\'CNC\') THEN -d.linenetamt
@@ -232,14 +250,22 @@ class CategoryItemController extends Controller
             // Bruto: simple sum (only INC documents)
             $dataQuery->select(
                 'org.name as branch',
-                'cat.name as category',
+                DB::raw("CASE 
+                    WHEN cat.value = 'MIKA' THEN 'MIKA'
+                    WHEN cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA' THEN 'MIKA'
+                    ELSE cat.name 
+                END as category"),
                 DB::raw('SUM(d.linenetamt) as total_revenue')
             )
                 ->where('d.linenetamt', '>', 0)
                 ->whereRaw('h.documentno LIKE ?', ['INC%']);
         }
 
-        $dataQuery->groupBy('org.name', 'cat.name')
+        $dataQuery->groupBy('org.name', DB::raw("CASE 
+            WHEN cat.value = 'MIKA' THEN 'MIKA'
+            WHEN cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA' THEN 'MIKA'
+            ELSE cat.name 
+        END"))
             ->orderBy('org.name');
 
         $data = $dataQuery->get();
@@ -419,6 +445,7 @@ class CategoryItemController extends Controller
             ->join('c_bpartner as cust', 'h.c_bpartner_id', '=', 'cust.c_bpartner_id')
             ->join('m_product as prd', 'd.m_product_id', '=', 'prd.m_product_id')
             ->join('m_product_category as cat', 'prd.m_product_category_id', '=', 'cat.m_product_category_id')
+            ->leftJoin('m_productsubcat as psc', 'prd.m_productsubcat_id', '=', 'psc.m_productsubcat_id')
             ->where('h.ad_client_id', 1000001)
             ->where('h.issotrx', 'Y')
             ->where('d.qtyinvoiced', '>', 0)
@@ -432,7 +459,11 @@ class CategoryItemController extends Controller
             // Netto: INC adds, CNC subtracts
             $dataQuery->select(
                 'org.name as branch',
-                'cat.name as category',
+                DB::raw("CASE 
+                    WHEN cat.value = 'MIKA' THEN 'MIKA'
+                    WHEN cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA' THEN 'MIKA'
+                    ELSE cat.name 
+                END as category"),
                 DB::raw('SUM(CASE
                     WHEN SUBSTR(h.documentno, 1, 3) IN (\'INC\') THEN d.linenetamt
                     WHEN SUBSTR(h.documentno, 1, 3) IN (\'CNC\') THEN -d.linenetamt
@@ -445,14 +476,22 @@ class CategoryItemController extends Controller
             // Bruto: simple sum (only INC documents)
             $dataQuery->select(
                 'org.name as branch',
-                'cat.name as category',
+                DB::raw("CASE 
+                    WHEN cat.value = 'MIKA' THEN 'MIKA'
+                    WHEN cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA' THEN 'MIKA'
+                    ELSE cat.name 
+                END as category"),
                 DB::raw('SUM(d.linenetamt) as total_revenue')
             )
                 ->where('d.linenetamt', '>', 0)
                 ->whereRaw('h.documentno LIKE ?', ['INC%']);
         }
 
-        $dataQuery->groupBy('org.name', 'cat.name')
+        $dataQuery->groupBy('org.name', DB::raw("CASE 
+            WHEN cat.value = 'MIKA' THEN 'MIKA'
+            WHEN cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA' THEN 'MIKA'
+            ELSE cat.name 
+        END"))
             ->orderBy('org.name');
 
         $data = $dataQuery->get();
