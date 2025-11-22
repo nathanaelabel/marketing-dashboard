@@ -17,8 +17,12 @@ document.addEventListener("DOMContentLoaded", function () {
         // Disable pagination for this table
         disablePagination: true,
 
-        // Increase timeout for complex queries (17 branches * 4 queries each)
-        requestTimeout: 300000, // 300 seconds (5 minutes)
+        // Timeout for queries (reduced due to backend caching)
+        requestTimeout: 90000, // 90 seconds (backend has caching now)
+
+        // Enable retry on timeout
+        enableRetry: true,
+        maxRetries: 2,
 
         renderTable: function (data) {
             if (!data.data || data.data.length === 0) {

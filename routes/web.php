@@ -65,6 +65,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/return-comparison/data', [ReturnComparisonController::class, 'getData'])->name('return-comparison.data');
     Route::get('/return-comparison/export-excel', [ReturnComparisonController::class, 'exportExcel'])->name('return-comparison.export-excel');
     Route::get('/return-comparison/export-pdf', [ReturnComparisonController::class, 'exportPdf'])->name('return-comparison.export-pdf');
+    Route::post('/return-comparison/clear-cache', [ReturnComparisonController::class, 'clearCache'])->name('return-comparison.clear-cache');
     Route::get('/sales-comparison/data', [SalesComparisonController::class, 'getData'])->name('sales-comparison.data');
     Route::get('/sales-comparison/export-excel', [SalesComparisonController::class, 'exportExcel'])->name('sales-comparison.export-excel');
     Route::get('/sales-comparison/export-pdf', [SalesComparisonController::class, 'exportPdf'])->name('sales-comparison.export-pdf');
