@@ -50,8 +50,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const salesComparisonTable = new TableHelper({
         apiEndpoint: "/sales-comparison/data",
 
-        // Set longer timeout for realtime queries to branch databases (2 minutes)
-        requestTimeout: 120000, // 120 seconds (2 minutes)
+        // Set longer timeout for realtime queries to branch databases (3 minutes)
+        requestTimeout: 180000, // 180 seconds (3 minutes)
 
         // Disable pagination for this table
         disablePagination: true,

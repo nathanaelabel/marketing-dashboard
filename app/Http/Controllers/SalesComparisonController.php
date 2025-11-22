@@ -65,8 +65,8 @@ class SalesComparisonController extends Controller
             $salesDate = $yesterday;
             $stokBdpDate = $today;
 
-            // Increase max execution time to 2 minutes for realtime queries
-            set_time_limit(120);
+            // Increase max execution time to 3 minutes for realtime queries
+            set_time_limit(180);
             ini_set('memory_limit', '512M');
 
             $branchMapping = TableHelper::getBranchMapping();
@@ -249,7 +249,8 @@ class SalesComparisonController extends Controller
     }
 
     /**
-     * Query realtime STOK and BDP from branch database with 45 second timeout
+     * Query realtime STOK and BDP from branch database with 60 second timeout
+     * Uses optimized single query to fetch all data at once
      * @param string $branchName Branch name (e.g., 'PWM Pontianak', 'MPM Tangerang')
      * @param array $config Branch configuration (pricelist_version_id, locator_id)
      * @param string $stokBdpDate Date for stok and BDP data
@@ -271,16 +272,28 @@ class SalesComparisonController extends Controller
                 return ['connection_failed' => true];
             }
 
-            // Set timeout per connection (45 seconds)
-            DB::connection($connectionName)->statement("SET statement_timeout = 45000"); // 45 seconds
+            // Set timeout per connection (60 seconds)
+            DB::connection($connectionName)->statement("SET statement_timeout = 60000"); // 60 seconds
 
             $pricelistVersionId = $config['pricelist_version_id'];
             $locatorId = $config['locator_id'];
 
-            // Query STOK MIKA (realtime from branch database)
-            $stockMikaQuery = "
+            // Optimized: Single query to get all STOK and BDP data at once
+            $combinedQuery = "
                 SELECT
-                    COALESCE(SUM(stock_qty.qty_onhand * prc.pricelist * 0.615), 0) AS stock_value
+                    -- STOK MIKA
+                    COALESCE(SUM(CASE 
+                        WHEN (cat.value = 'MIKA' OR (cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA'))
+                        THEN stock_qty.qty_onhand * prc.pricelist * 0.615 
+                        ELSE 0 
+                    END), 0) AS stok_mika,
+                    
+                    -- STOK SPARE PART
+                    COALESCE(SUM(CASE 
+                        WHEN cat.name = 'SPARE PART'
+                        THEN stock_qty.qty_onhand * prc.pricelist * 0.615 
+                        ELSE 0 
+                    END), 0) AS stok_sparepart
                 FROM m_product prd
                 INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                 LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
@@ -306,37 +319,26 @@ class SalesComparisonController extends Controller
                     AND org.name = ?
             ";
 
-            $stockMikaData = DB::connection($connectionName)->selectOne($stockMikaQuery, [$locatorId, $pricelistVersionId, $branchName]);
-            $stokMika = $stockMikaData ? (float)$stockMikaData->stock_value : 0;
+            $stockData = DB::connection($connectionName)->selectOne($combinedQuery, [$locatorId, $pricelistVersionId, $branchName]);
+            $stokMika = $stockData ? (float)$stockData->stok_mika : 0;
+            $stokSparepart = $stockData ? (float)$stockData->stok_sparepart : 0;
 
-            // Query STOK SPARE PART (realtime from branch database)
-            $stockSparepartQuery = "
+            // BDP Query - Combined MIKA and SPARE PART
+            $bdpQuery = "
                 SELECT
-                    COALESCE(SUM(stock_qty.qty_onhand * prc.pricelist * 0.615), 0) AS stock_value
-                FROM m_product prd
-                INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
-                INNER JOIN m_productprice prc ON prd.m_product_id = prc.m_product_id
-                INNER JOIN m_pricelist_version plv ON plv.m_pricelist_version_id = prc.m_pricelist_version_id
-                INNER JOIN ad_org org ON plv.ad_org_id = org.ad_org_id
-                LEFT JOIN (
-                    SELECT st.m_product_id, SUM(st.qtyonhand) AS qty_onhand
-                    FROM m_storage st
-                    INNER JOIN m_locator loc ON st.m_locator_id = loc.m_locator_id
-                    WHERE loc.m_locator_id = ? AND st.qtyonhand > 0
-                    GROUP BY st.m_product_id
-                ) stock_qty ON prd.m_product_id = stock_qty.m_product_id
-                WHERE cat.name = 'SPARE PART'
-                    AND plv.m_pricelist_version_id = ?
-                    AND org.name = ?
-            ";
-
-            $stockSparepartData = DB::connection($connectionName)->selectOne($stockSparepartQuery, [$locatorId, $pricelistVersionId, $branchName]);
-            $stokSparepart = $stockSparepartData ? (float)$stockSparepartData->stock_value : 0;
-
-            // Query BDP MIKA (realtime from branch database)
-            $bdpMikaQuery = "
-                SELECT
-                    SUM((d.qtyinvoiced - COALESCE(match_qty.qtymr, 0)) * d.priceactual) AS bdp_value
+                    -- BDP MIKA
+                    COALESCE(SUM(CASE 
+                        WHEN (cat.value = 'MIKA' OR (cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA'))
+                        THEN (d.qtyinvoiced - COALESCE(match_qty.qtymr, 0)) * d.priceactual
+                        ELSE 0 
+                    END), 0) AS bdp_mika,
+                    
+                    -- BDP SPARE PART
+                    COALESCE(SUM(CASE 
+                        WHEN cat.name = 'SPARE PART'
+                        THEN (d.qtyinvoiced - COALESCE(match_qty.qtymr, 0)) * d.priceactual
+                        ELSE 0 
+                    END), 0) AS bdp_sparepart
                 FROM c_invoice h
                 INNER JOIN c_invoiceline d ON d.c_invoice_id = h.c_invoice_id
                 LEFT JOIN (
@@ -353,47 +355,13 @@ class SalesComparisonController extends Controller
                     AND h.docstatus = 'CO'
                     AND h.issotrx = 'N'
                     AND org.name = ?
-                    AND (
-                        cat.value = 'MIKA'
-                        OR (
-                            cat.value = 'PRODUCT IMPORT' 
-                            AND prd.name NOT LIKE '%BOHLAM%'
-                            AND psc.value = 'MIKA'
-                        )
-                    )
                     AND h.dateinvoiced::date <= ?::date
                     AND d.qtyinvoiced <> COALESCE(match_qty.qtymr, 0)
             ";
 
-            $bdpMikaData = DB::connection($connectionName)->selectOne($bdpMikaQuery, [$stokBdpDate, $branchName, $stokBdpDate]);
-            $bdpMika = $bdpMikaData && $bdpMikaData->bdp_value ? (float)$bdpMikaData->bdp_value : 0;
-
-            // Query BDP SPARE PART (realtime from branch database)
-            $bdpSparepartQuery = "
-                SELECT
-                    SUM((d.qtyinvoiced - COALESCE(match_qty.qtymr, 0)) * d.priceactual) AS bdp_value
-                FROM c_invoice h
-                INNER JOIN c_invoiceline d ON d.c_invoice_id = h.c_invoice_id
-                LEFT JOIN (
-                    SELECT c_invoiceline_id, SUM(qty) as qtymr
-                    FROM m_matchinv
-                    WHERE created::date <= ?::date
-                    GROUP BY c_invoiceline_id
-                ) match_qty ON d.c_invoiceline_id = match_qty.c_invoiceline_id
-                INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
-                INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
-                INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
-                WHERE h.documentno LIKE 'INS-%'
-                    AND h.docstatus = 'CO'
-                    AND h.issotrx = 'N'
-                    AND org.name = ?
-                    AND cat.name = 'SPARE PART'
-                    AND h.dateinvoiced::date <= ?::date
-                    AND d.qtyinvoiced <> COALESCE(match_qty.qtymr, 0)
-            ";
-
-            $bdpSparepartData = DB::connection($connectionName)->selectOne($bdpSparepartQuery, [$stokBdpDate, $branchName, $stokBdpDate]);
-            $bdpSparepart = $bdpSparepartData && $bdpSparepartData->bdp_value ? (float)$bdpSparepartData->bdp_value : 0;
+            $bdpData = DB::connection($connectionName)->selectOne($bdpQuery, [$stokBdpDate, $branchName, $stokBdpDate]);
+            $bdpMika = $bdpData ? (float)$bdpData->bdp_mika : 0;
+            $bdpSparepart = $bdpData ? (float)$bdpData->bdp_sparepart : 0;
 
             // Reset timeout
             DB::connection($connectionName)->statement("SET statement_timeout = 0");
