@@ -204,9 +204,9 @@ class MonthlyBranchController extends Controller
 
             if ($branch !== 'National') {
                 $branchCondition = 'AND org.name = ?';
-                $bindings = [$branch, $startDate, $endDate, $category];
+                $bindings = [$branch, $startDate, $endDate, $category, $category];
             } else {
-                $bindings = [$startDate, $endDate, $category];
+                $bindings = [$startDate, $endDate, $category, $category];
             }
 
             if ($type === 'NETTO') {
@@ -225,6 +225,7 @@ class MonthlyBranchController extends Controller
                     INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
                     INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
+                    LEFT JOIN m_productsubcat psc ON p.m_productsubcat_id = psc.m_productsubcat_id
                 WHERE
                     inv.ad_client_id = 1000001
                     AND inv.issotrx = 'Y'
@@ -235,7 +236,19 @@ class MonthlyBranchController extends Controller
                     {$branchCondition}
                     AND inv.dateinvoiced::date BETWEEN ? AND ?
                     AND SUBSTR(inv.documentno, 1, 3) IN ('INC', 'CNC')
-                    AND pc.name = ?
+                    AND (
+                        CASE 
+                            WHEN ? = 'MIKA' THEN (
+                                pc.value = 'MIKA' 
+                                OR (
+                                    pc.value = 'PRODUCT IMPORT' 
+                                    AND p.name NOT LIKE '%BOHLAM%'
+                                    AND psc.value = 'MIKA'
+                                )
+                            )
+                            ELSE pc.name = ?
+                        END
+                    )
                     AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     EXTRACT(month FROM inv.dateinvoiced)
@@ -255,6 +268,7 @@ class MonthlyBranchController extends Controller
                     INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
                     INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
+                    LEFT JOIN m_productsubcat psc ON p.m_productsubcat_id = psc.m_productsubcat_id
                 WHERE
                     inv.ad_client_id = 1000001
                     AND inv.issotrx = 'Y'
@@ -265,7 +279,19 @@ class MonthlyBranchController extends Controller
                     {$branchCondition}
                     AND inv.dateinvoiced::date BETWEEN ? AND ?
                     AND inv.documentno LIKE 'INC%'
-                    AND pc.name = ?
+                    AND (
+                        CASE 
+                            WHEN ? = 'MIKA' THEN (
+                                pc.value = 'MIKA' 
+                                OR (
+                                    pc.value = 'PRODUCT IMPORT' 
+                                    AND p.name NOT LIKE '%BOHLAM%'
+                                    AND psc.value = 'MIKA'
+                                )
+                            )
+                            ELSE pc.name = ?
+                        END
+                    )
                     AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     EXTRACT(month FROM inv.dateinvoiced)
@@ -445,6 +471,7 @@ class MonthlyBranchController extends Controller
                     INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
                     INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
+                    LEFT JOIN m_productsubcat psc ON p.m_productsubcat_id = psc.m_productsubcat_id
                 WHERE
                     inv.ad_client_id = 1000001
                     AND inv.issotrx = 'Y'
@@ -457,7 +484,19 @@ class MonthlyBranchController extends Controller
                         OR (inv.dateinvoiced::date BETWEEN ? AND ?)
                     )
                     AND SUBSTR(inv.documentno, 1, 3) IN ('INC', 'CNC')
-                    AND pc.name = ?
+                    AND (
+                        CASE 
+                            WHEN ? = 'MIKA' THEN (
+                                pc.value = 'MIKA' 
+                                OR (
+                                    pc.value = 'PRODUCT IMPORT' 
+                                    AND p.name NOT LIKE '%BOHLAM%'
+                                    AND psc.value = 'MIKA'
+                                )
+                            )
+                            ELSE pc.name = ?
+                        END
+                    )
                     AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     org.name, EXTRACT(month FROM inv.dateinvoiced), EXTRACT(year FROM inv.dateinvoiced)
@@ -479,6 +518,7 @@ class MonthlyBranchController extends Controller
                     INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
                     INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
+                    LEFT JOIN m_productsubcat psc ON p.m_productsubcat_id = psc.m_productsubcat_id
                 WHERE
                     inv.ad_client_id = 1000001
                     AND inv.issotrx = 'Y'
@@ -491,7 +531,19 @@ class MonthlyBranchController extends Controller
                         OR (inv.dateinvoiced::date BETWEEN ? AND ?)
                     )
                     AND inv.documentno LIKE 'INC%'
-                    AND pc.name = ?
+                    AND (
+                        CASE 
+                            WHEN ? = 'MIKA' THEN (
+                                pc.value = 'MIKA' 
+                                OR (
+                                    pc.value = 'PRODUCT IMPORT' 
+                                    AND p.name NOT LIKE '%BOHLAM%'
+                                    AND psc.value = 'MIKA'
+                                )
+                            )
+                            ELSE pc.name = ?
+                        END
+                    )
                     AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     org.name, EXTRACT(month FROM inv.dateinvoiced), EXTRACT(year FROM inv.dateinvoiced)
@@ -500,7 +552,7 @@ class MonthlyBranchController extends Controller
             ";
         }
 
-        $allData = DB::select($query, [$previousStartDate, $previousEndDate, $startDate, $endDate, $category]);
+        $allData = DB::select($query, [$previousStartDate, $previousEndDate, $startDate, $endDate, $category, $category]);
 
         // Reset database timeout
         try {

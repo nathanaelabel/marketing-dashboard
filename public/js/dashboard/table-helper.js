@@ -625,7 +625,10 @@ class TableHelper {
     updatePeriodInfo(period) {
         if (period && this.elements.periodInfo) {
             // Support both date range format and month/year format
-            if (period.display) {
+            if (period.date_range) {
+                // Date range format with full dates (e.g., "1-31 Oktober 2025")
+                this.elements.periodInfo.textContent = period.date_range;
+            } else if (period.display) {
                 // Date range format (start_date - end_date)
                 this.elements.periodInfo.textContent = period.display;
             } else if (period.month_name && period.year) {

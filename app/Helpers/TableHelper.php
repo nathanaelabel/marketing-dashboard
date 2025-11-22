@@ -76,14 +76,49 @@ class TableHelper
     }
 
     /**
-     * Format period information
+     * Format period information with date range
      */
     public static function formatPeriodInfo($month, $year)
     {
+        $monthName = date('F', mktime(0, 0, 0, $month, 1));
+        $monthNameId = [
+            'January' => 'Januari',
+            'February' => 'Februari',
+            'March' => 'Maret',
+            'April' => 'April',
+            'May' => 'Mei',
+            'June' => 'Juni',
+            'July' => 'Juli',
+            'August' => 'Agustus',
+            'September' => 'September',
+            'October' => 'Oktober',
+            'November' => 'November',
+            'December' => 'Desember'
+        ];
+
+        // Get the last day of the month
+        $lastDayOfMonth = date('t', mktime(0, 0, 0, $month, 1, $year));
+
+        // Check if it's the current month and year
+        $currentMonth = (int)date('n');
+        $currentYear = (int)date('Y');
+        $yesterday = (int)date('j') - 1; // H-1 (yesterday)
+
+        if ($month == $currentMonth && $year == $currentYear) {
+            // For current month, show 1 to yesterday
+            $endDay = $yesterday > 0 ? $yesterday : 1;
+            $dateRange = "01-{$endDay} {$monthNameId[$monthName]} {$year}";
+        } else {
+            // For past months, show full month range
+            $dateRange = "01-{$lastDayOfMonth} {$monthNameId[$monthName]} {$year}";
+        }
+
         return [
             'month' => (int)$month,
             'year' => (int)$year,
-            'month_name' => date('F', mktime(0, 0, 0, $month, 1))
+            'month_name' => $monthName,
+            'month_name_id' => $monthNameId[$monthName],
+            'date_range' => $dateRange
         ];
     }
 

@@ -5,32 +5,48 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Helpers\TableHelper;
+use App\Helpers\ChartHelper;
 
 class SalesComparisonController extends Controller
 {
-    // Branch-specific configuration for pricelist and locator
+
+    /**
+     * Get branch configuration dynamically from database
+     * Fetches pricelist_version_id and locator_id for each branch
+     */
     private function getBranchConfig()
     {
-        return [
-            'MPM Tangerang' => ['pricelist_version_id' => 120000000, 'locator_id' => 1000000],
-            'PWM Bekasi' => ['pricelist_version_id' => 120000002, 'locator_id' => 1000002],
-            'PWM Jakarta' => ['pricelist_version_id' => 120000011, 'locator_id' => 1000011],
-            'PWM Pontianak' => ['pricelist_version_id' => 120000004, 'locator_id' => 1000010],
-            'PWM Lampung' => ['pricelist_version_id' => 120000015, 'locator_id' => 1000015],
-            'PWM Banjarmasin' => ['pricelist_version_id' => 120000014, 'locator_id' => 1000014],
-            'PWM Cirebon' => ['pricelist_version_id' => 120000013, 'locator_id' => 1000013],
-            'PWM Bandung' => ['pricelist_version_id' => 120000003, 'locator_id' => 1000003],
-            'PWM Makassar' => ['pricelist_version_id' => 120000006, 'locator_id' => 1000006],
-            'PWM Surabaya' => ['pricelist_version_id' => 120000009, 'locator_id' => 1000009],
-            'PWM Semarang' => ['pricelist_version_id' => 120000012, 'locator_id' => 1000012],
-            'PWM Purwokerto' => ['pricelist_version_id' => 120000016, 'locator_id' => 1000016],
-            'PWM Denpasar' => ['pricelist_version_id' => 120000008, 'locator_id' => 1000008],
-            'PWM Palembang' => ['pricelist_version_id' => 120000007, 'locator_id' => 1000007],
-            'PWM Padang' => ['pricelist_version_id' => 120000017, 'locator_id' => 1000017],
-            'PWM Medan' => ['pricelist_version_id' => 120000001, 'locator_id' => 1000001],
-            'PWM Pekanbaru' => ['pricelist_version_id' => 120000005, 'locator_id' => 1000005],
-        ];
+        $query = "
+            SELECT 
+                org.name AS branch_name,
+                plv.m_pricelist_version_id,
+                loc.m_locator_id
+            FROM m_locator loc
+            INNER JOIN ad_org org ON loc.ad_org_id = org.ad_org_id
+            LEFT JOIN m_pricelist_version plv ON plv.ad_org_id = org.ad_org_id 
+                AND plv.isactive = 'Y'
+                AND UPPER(plv.name) LIKE '%PURCHASE%'
+            WHERE loc.ad_client_id = 1000001
+                AND loc.isactive = 'Y'
+                AND org.isactive = 'Y'
+                AND org.name NOT LIKE '%HEAD OFFICE%'
+                AND plv.m_pricelist_version_id IS NOT NULL
+            ORDER BY org.name
+        ";
+
+        $results = DB::select($query);
+
+        $config = [];
+        foreach ($results as $row) {
+            $config[$row->branch_name] = [
+                'pricelist_version_id' => $row->m_pricelist_version_id,
+                'locator_id' => $row->m_locator_id,
+            ];
+        }
+
+        return $config;
     }
 
     public function index()
@@ -41,41 +57,48 @@ class SalesComparisonController extends Controller
     public function getData(Request $request)
     {
         try {
-            // Use yesterday (H-1) since dashboard is updated daily at night
+            // Sales: yesterday (H-1)
+            // Stok & BDP: today
+            $today = date('Y-m-d');
             $yesterday = date('Y-m-d', strtotime('-1 day'));
-            $date = $request->get('date', $yesterday);
 
-            // Validate date
-            if (!strtotime($date)) {
-                return response()->json(['error' => 'Invalid date parameter'], 400);
-            }
+            $salesDate = $yesterday;
+            $stokBdpDate = $today;
 
-            // Prevent future dates
-            if (strtotime($date) > strtotime('today')) {
-                return response()->json(['error' => 'Future dates are not allowed'], 400);
-            }
-
-            // Increase max execution time and memory for this complex query
-            set_time_limit(180); // 3 minutes
+            // Increase max execution time to 3 minutes for realtime queries
+            set_time_limit(180);
             ini_set('memory_limit', '512M');
 
-            // Get all branch codes from TableHelper
             $branchMapping = TableHelper::getBranchMapping();
             $branchConfig = $this->getBranchConfig();
-
-            // Get all data in ONE optimized query instead of 17 separate queries
-            $allBranchData = $this->getAllBranchesData($date, $branchConfig);
+            $allBranchData = $this->getAllBranchesData($salesDate, $stokBdpDate, $branchConfig);
 
             $data = [];
             $no = 1;
 
-            // Process results for each branch
+            $totals = [
+                'sales_mika' => 0,
+                'sales_sparepart' => 0,
+                'total_sales' => 0,
+                'stok_mika' => 0,
+                'stok_sparepart' => 0,
+                'total_stok' => 0,
+                'bdp_mika' => 0,
+                'bdp_sparepart' => 0,
+                'total_bdp' => 0,
+                'stok_bdp_mika' => 0,
+                'stok_bdp_sparepart' => 0,
+                'total_stok_bdp' => 0,
+                'total_mika' => 0,
+                'total_sparepart' => 0,
+                'grand_total' => 0,
+            ];
+
             foreach ($branchMapping as $branchName => $branchCode) {
                 if (!isset($branchConfig[$branchName])) {
-                    continue; // Skip if no config for this branch
+                    continue;
                 }
 
-                // Get data for this branch from the combined result
                 $branchData = $allBranchData[$branchName] ?? [
                     'sales_mika' => 0,
                     'sales_sparepart' => 0,
@@ -83,7 +106,35 @@ class SalesComparisonController extends Controller
                     'stok_sparepart' => 0,
                     'bdp_mika' => 0,
                     'bdp_sparepart' => 0,
+                    'connection_failed' => false,
                 ];
+
+                // Check if connection failed
+                if (isset($branchData['connection_failed']) && $branchData['connection_failed']) {
+                    $data[] = [
+                        'no' => $no++,
+                        'branch_code' => $branchCode,
+                        'branch_name' => $branchName,
+                        'connection_failed' => true,
+                        'error_message' => 'Connection failed. Please try again.',
+                        'sales_mika' => null,
+                        'sales_sparepart' => null,
+                        'total_sales' => null,
+                        'stok_mika' => null,
+                        'stok_sparepart' => null,
+                        'total_stok' => null,
+                        'bdp_mika' => null,
+                        'bdp_sparepart' => null,
+                        'total_bdp' => null,
+                        'stok_bdp_mika' => null,
+                        'stok_bdp_sparepart' => null,
+                        'total_stok_bdp' => null,
+                        'total_mika' => null,
+                        'total_sparepart' => null,
+                        'grand_total' => null,
+                    ];
+                    continue;
+                }
 
                 // Calculate totals
                 $totalSales = $branchData['sales_mika'] + $branchData['sales_sparepart'];
@@ -100,6 +151,7 @@ class SalesComparisonController extends Controller
                     'no' => $no++,
                     'branch_code' => $branchCode,
                     'branch_name' => $branchName,
+                    'connection_failed' => false,
                     'sales_mika' => $branchData['sales_mika'],
                     'sales_sparepart' => $branchData['sales_sparepart'],
                     'total_sales' => $totalSales,
@@ -116,17 +168,40 @@ class SalesComparisonController extends Controller
                     'total_sparepart' => $totalSparepart,
                     'grand_total' => $grandTotal,
                 ];
+
+                // Accumulate totals
+                $totals['sales_mika'] += $branchData['sales_mika'];
+                $totals['sales_sparepart'] += $branchData['sales_sparepart'];
+                $totals['total_sales'] += $totalSales;
+                $totals['stok_mika'] += $branchData['stok_mika'];
+                $totals['stok_sparepart'] += $branchData['stok_sparepart'];
+                $totals['total_stok'] += $totalStok;
+                $totals['bdp_mika'] += $branchData['bdp_mika'];
+                $totals['bdp_sparepart'] += $branchData['bdp_sparepart'];
+                $totals['total_bdp'] += $totalBdp;
+                $totals['stok_bdp_mika'] += $stokBdpMika;
+                $totals['stok_bdp_sparepart'] += $stokBdpSparepart;
+                $totals['total_stok_bdp'] += $totalStokBdp;
+                $totals['total_mika'] += $totalMika;
+                $totals['total_sparepart'] += $totalSparepart;
+                $totals['grand_total'] += $grandTotal;
             }
 
             return response()->json([
                 'data' => $data,
-                'date' => $date,
-                'formatted_date' => date('d F Y', strtotime($date)),
+                'totals' => $totals,
+                'sales_date' => $salesDate,
+                'stok_bdp_date' => $stokBdpDate,
+                'today' => $today,
+                'formatted_date' => date('d F Y', strtotime($today)),
+                'formatted_sales_date' => date('d F Y', strtotime($salesDate)),
+                'formatted_stok_bdp_date' => date('d F Y', strtotime($stokBdpDate)),
                 'total_count' => count($data)
             ]);
         } catch (\Exception $e) {
             TableHelper::logError('SalesComparisonController', 'getData', $e, [
-                'date' => $request->get('date'),
+                'sales_date' => $yesterday ?? null,
+                'stok_bdp_date' => $today ?? null,
                 'error_message' => $e->getMessage(),
                 'error_line' => $e->getLine(),
                 'error_file' => $e->getFile()
@@ -141,13 +216,191 @@ class SalesComparisonController extends Controller
     }
 
     /**
-     * Get data for all branches in ONE optimized query
-     * This is MUCH faster than calling getBranchData() 17 times
+     * Perform a quick socket connectivity check to avoid long Postgres connection timeouts
      */
-    private function getAllBranchesData($date, $branchConfig)
+    protected function canConnectToBranch(string $connection, int $timeoutSeconds = 3): bool
     {
-        $dateStart = $date . ' 00:00:00';
-        $dateEnd = $date . ' 23:59:59';
+        $config = config("database.connections.{$connection}");
+
+        if (!is_array($config)) {
+            return false;
+        }
+
+        $host = $config['host'] ?? null;
+        $port = (int)($config['port'] ?? 5432);
+
+        if (empty($host) || $port <= 0) {
+            return false;
+        }
+
+        $socket = @stream_socket_client(
+            "tcp://{$host}:{$port}",
+            $errorNumber,
+            $errorString,
+            $timeoutSeconds
+        );
+
+        if ($socket === false) {
+            return false;
+        }
+
+        fclose($socket);
+        return true;
+    }
+
+    /**
+     * Query realtime STOK and BDP from branch database with 60 second timeout
+     * Uses optimized single query to fetch all data at once
+     * @param string $branchName Branch name (e.g., 'PWM Pontianak', 'MPM Tangerang')
+     * @param array $config Branch configuration (pricelist_version_id, locator_id)
+     * @param string $stokBdpDate Date for stok and BDP data
+     * @return array Returns stok and bdp data or connection_failed flag
+     */
+    private function queryBranchRealtimeData($branchName, $config, $stokBdpDate)
+    {
+        try {
+            // Get connection name from ChartHelper (same as AR Controller)
+            $connectionName = ChartHelper::getBranchConnection($branchName);
+
+            if (!$connectionName) {
+                return ['connection_failed' => true];
+            }
+
+            // Perform lightweight socket check before attempting database query
+            if (!$this->canConnectToBranch($connectionName)) {
+                Log::warning("Skipping {$branchName} due to connectivity check failure");
+                return ['connection_failed' => true];
+            }
+
+            // Set timeout per connection (60 seconds)
+            DB::connection($connectionName)->statement("SET statement_timeout = 60000"); // 60 seconds
+
+            $pricelistVersionId = $config['pricelist_version_id'];
+            $locatorId = $config['locator_id'];
+
+            // Optimized: Single query to get all STOK and BDP data at once
+            $combinedQuery = "
+                SELECT
+                    -- STOK MIKA
+                    COALESCE(SUM(CASE 
+                        WHEN (cat.value = 'MIKA' OR (cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA'))
+                        THEN stock_qty.qty_onhand * prc.pricelist * 0.615 
+                        ELSE 0 
+                    END), 0) AS stok_mika,
+                    
+                    -- STOK SPARE PART
+                    COALESCE(SUM(CASE 
+                        WHEN cat.name = 'SPARE PART'
+                        THEN stock_qty.qty_onhand * prc.pricelist * 0.615 
+                        ELSE 0 
+                    END), 0) AS stok_sparepart
+                FROM m_product prd
+                INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
+                INNER JOIN m_productprice prc ON prd.m_product_id = prc.m_product_id
+                INNER JOIN m_pricelist_version plv ON plv.m_pricelist_version_id = prc.m_pricelist_version_id
+                INNER JOIN ad_org org ON plv.ad_org_id = org.ad_org_id
+                LEFT JOIN (
+                    SELECT st.m_product_id, SUM(st.qtyonhand) AS qty_onhand
+                    FROM m_storage st
+                    INNER JOIN m_locator loc ON st.m_locator_id = loc.m_locator_id
+                    WHERE loc.m_locator_id = ? AND st.qtyonhand > 0
+                    GROUP BY st.m_product_id
+                ) stock_qty ON prd.m_product_id = stock_qty.m_product_id
+                WHERE (
+                        cat.value = 'MIKA'
+                        OR (
+                            cat.value = 'PRODUCT IMPORT' 
+                            AND prd.name NOT LIKE '%BOHLAM%'
+                            AND psc.value = 'MIKA'
+                        )
+                    )
+                    AND plv.m_pricelist_version_id = ?
+                    AND org.name = ?
+            ";
+
+            $stockData = DB::connection($connectionName)->selectOne($combinedQuery, [$locatorId, $pricelistVersionId, $branchName]);
+            $stokMika = $stockData ? (float)$stockData->stok_mika : 0;
+            $stokSparepart = $stockData ? (float)$stockData->stok_sparepart : 0;
+
+            // BDP Query - Combined MIKA and SPARE PART
+            $bdpQuery = "
+                SELECT
+                    -- BDP MIKA
+                    COALESCE(SUM(CASE 
+                        WHEN (cat.value = 'MIKA' OR (cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA'))
+                        THEN (d.qtyinvoiced - COALESCE(match_qty.qtymr, 0)) * d.priceactual
+                        ELSE 0 
+                    END), 0) AS bdp_mika,
+                    
+                    -- BDP SPARE PART
+                    COALESCE(SUM(CASE 
+                        WHEN cat.name = 'SPARE PART'
+                        THEN (d.qtyinvoiced - COALESCE(match_qty.qtymr, 0)) * d.priceactual
+                        ELSE 0 
+                    END), 0) AS bdp_sparepart
+                FROM c_invoice h
+                INNER JOIN c_invoiceline d ON d.c_invoice_id = h.c_invoice_id
+                LEFT JOIN (
+                    SELECT c_invoiceline_id, SUM(qty) as qtymr
+                    FROM m_matchinv
+                    WHERE created::date <= ?::date
+                    GROUP BY c_invoiceline_id
+                ) match_qty ON d.c_invoiceline_id = match_qty.c_invoiceline_id
+                INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
+                INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
+                INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
+                WHERE h.documentno LIKE 'INS-%'
+                    AND h.docstatus = 'CO'
+                    AND h.issotrx = 'N'
+                    AND org.name = ?
+                    AND h.dateinvoiced::date <= ?::date
+                    AND d.qtyinvoiced <> COALESCE(match_qty.qtymr, 0)
+            ";
+
+            $bdpData = DB::connection($connectionName)->selectOne($bdpQuery, [$stokBdpDate, $branchName, $stokBdpDate]);
+            $bdpMika = $bdpData ? (float)$bdpData->bdp_mika : 0;
+            $bdpSparepart = $bdpData ? (float)$bdpData->bdp_sparepart : 0;
+
+            // Reset timeout
+            DB::connection($connectionName)->statement("SET statement_timeout = 0");
+
+            return [
+                'stok_mika' => $stokMika,
+                'stok_sparepart' => $stokSparepart,
+                'bdp_mika' => $bdpMika,
+                'bdp_sparepart' => $bdpSparepart,
+                'connection_failed' => false,
+            ];
+        } catch (\Exception $e) {
+            // Log error for debugging
+            Log::error("Branch realtime query failed for {$branchName}: " . $e->getMessage());
+
+            // Try to reset timeout even on error
+            try {
+                $connectionName = ChartHelper::getBranchConnection($branchName);
+                if ($connectionName) {
+                    DB::connection($connectionName)->statement("SET statement_timeout = 0");
+                }
+            } catch (\Exception $resetError) {
+                // Ignore reset errors
+            }
+
+            return ['connection_failed' => true];
+        }
+    }
+
+    /**
+     * 
+     * @param string $salesDate Date for sales data (yesterday)
+     * @param string $stokBdpDate Date for stok and BDP data (today)
+     * @param array $branchConfig Branch configuration
+     */
+    private function getAllBranchesData($salesDate, $stokBdpDate, $branchConfig)
+    {
+        $salesDateStart = $salesDate . ' 00:00:00';
+        $salesDateEnd = $salesDate . ' 23:59:59';
 
         // Initialize result array
         $results = [];
@@ -162,11 +415,55 @@ class SalesComparisonController extends Controller
             ];
         }
 
-        // 1. Get SALES data for all branches at once (MIKA and SPARE PART)
-        $salesQuery = "
+        // 1. Get SALES data for all branches at once
+        // Uses yesterday's date (H-1)
+        $salesMikaQuery = "
             SELECT
                 org.name as branch_name,
-                cat.name as category,
+                SUM(CASE
+                    WHEN SUBSTR(inv.documentno, 1, 3) = 'INC' THEN invl.linenetamt
+                    WHEN SUBSTR(inv.documentno, 1, 3) = 'CNC' THEN -invl.linenetamt
+                    ELSE 0
+                END) AS total_sales
+            FROM c_invoice inv
+            INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
+            INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+            INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
+            INNER JOIN m_product prd ON invl.m_product_id = prd.m_product_id
+            INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+            LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
+            WHERE inv.ad_client_id = 1000001
+                AND inv.issotrx = 'Y'
+                AND invl.qtyinvoiced > 0
+                AND invl.linenetamt > 0
+                AND inv.docstatus IN ('CO', 'CL')
+                AND inv.isactive = 'Y'
+                AND inv.dateinvoiced >= ?
+                AND inv.dateinvoiced <= ?
+                AND inv.documentno LIKE 'INC%'
+                AND (
+                    cat.value = 'MIKA'
+                    OR (
+                        cat.value = 'PRODUCT IMPORT' 
+                        AND prd.name NOT LIKE '%BOHLAM%'
+                        AND psc.value = 'MIKA'
+                    )
+                )
+                AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
+            GROUP BY org.name
+        ";
+
+        $salesMikaData = DB::select($salesMikaQuery, [$salesDateStart, $salesDateEnd]);
+
+        foreach ($salesMikaData as $row) {
+            if (isset($results[$row->branch_name])) {
+                $results[$row->branch_name]['sales_mika'] = (float)$row->total_sales;
+            }
+        }
+
+        $salesSparepartQuery = "
+            SELECT
+                org.name as branch_name,
                 SUM(CASE
                     WHEN SUBSTR(inv.documentno, 1, 3) = 'INC' THEN invl.linenetamt
                     WHEN SUBSTR(inv.documentno, 1, 3) = 'CNC' THEN -invl.linenetamt
@@ -181,104 +478,34 @@ class SalesComparisonController extends Controller
                 AND inv.issotrx = 'Y'
                 AND invl.qtyinvoiced > 0
                 AND invl.linenetamt > 0
-                AND cat.name IN ('MIKA', 'SPARE PART')
+                AND cat.name = 'SPARE PART'
                 AND inv.docstatus IN ('CO', 'CL')
                 AND inv.isactive = 'Y'
-                AND inv.dateinvoiced >= ?::timestamp
-                AND inv.dateinvoiced <= ?::timestamp
-            GROUP BY org.name, cat.name
+                AND inv.dateinvoiced >= ?
+                AND inv.dateinvoiced <= ?
+            GROUP BY org.name
         ";
 
-        $salesData = DB::select($salesQuery, [$dateStart, $dateEnd]);
+        $salesSparepartData = DB::select($salesSparepartQuery, [$salesDateStart, $salesDateEnd]);
 
-        foreach ($salesData as $row) {
+        foreach ($salesSparepartData as $row) {
             if (isset($results[$row->branch_name])) {
-                if ($row->category === 'MIKA') {
-                    $results[$row->branch_name]['sales_mika'] = (float)$row->total_sales;
-                } elseif ($row->category === 'SPARE PART') {
-                    $results[$row->branch_name]['sales_sparepart'] = (float)$row->total_sales;
-                }
+                $results[$row->branch_name]['sales_sparepart'] = (float)$row->total_sales;
             }
         }
 
-        // 2. Get STOCK data for all branches at once
-        // NOTE: Stock data from m_storage table is a CURRENT SNAPSHOT only
-        // The m_storage table does not have historical data with dates
-        // Stock values shown will always reflect the LATEST synced data regardless of selected date
-        // This matches the original ADempiere query behavior using productqty(locator_id, product_id, date('now'))
+        // 2. Get STOCK and BDP data REALTIME from branch databases
         foreach ($branchConfig as $branchName => $config) {
-            $pricelistVersionId = $config['pricelist_version_id'];
-            $locatorId = $config['locator_id'];
+            // Query realtime STOK and BDP from branch database
+            $realtimeData = $this->queryBranchRealtimeData($branchName, $config, $stokBdpDate);
 
-            $stockQuery = "
-                SELECT
-                    cat.name as category,
-                    COALESCE(SUM(stock_qty.qty_onhand * prc.pricelist * 0.615), 0) AS stock_value
-                FROM m_product prd
-                INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
-                INNER JOIN m_productprice prc ON prd.m_product_id = prc.m_product_id
-                INNER JOIN m_pricelist_version plv ON plv.m_pricelist_version_id = prc.m_pricelist_version_id
-                INNER JOIN ad_org org ON plv.ad_org_id = org.ad_org_id
-                LEFT JOIN (
-                    SELECT st.m_product_id, SUM(st.qtyonhand) AS qty_onhand
-                    FROM m_storage st
-                    INNER JOIN m_locator loc ON st.m_locator_id = loc.m_locator_id
-                    WHERE loc.m_locator_id = ? AND st.qtyonhand > 0
-                    GROUP BY st.m_product_id
-                ) stock_qty ON prd.m_product_id = stock_qty.m_product_id
-                WHERE cat.name IN ('MIKA', 'SPARE PART')
-                    AND plv.m_pricelist_version_id = ?
-                    AND org.name = ?
-                GROUP BY cat.name
-            ";
-
-            $stockData = DB::select($stockQuery, [$locatorId, $pricelistVersionId, $branchName]);
-
-            foreach ($stockData as $row) {
-                if ($row->category === 'MIKA') {
-                    $results[$branchName]['stok_mika'] = (float)$row->stock_value;
-                } elseif ($row->category === 'SPARE PART') {
-                    $results[$branchName]['stok_sparepart'] = (float)$row->stock_value;
-                }
-            }
-        }
-
-        // 3. Get BDP data for all branches at once (MIKA and SPARE PART)
-        // Filter BDP based on invoices created up to the selected date
-        $bdpQuery = "
-            SELECT
-                org.name as branch_name,
-                cat.name as category,
-                SUM((d.qtyinvoiced - COALESCE(match_qty.qtymr, 0)) * d.priceactual) AS bdp_value
-            FROM c_invoice h
-            INNER JOIN c_invoiceline d ON d.c_invoice_id = h.c_invoice_id
-            LEFT JOIN (
-                SELECT c_invoiceline_id, SUM(qty) as qtymr
-                FROM m_matchinv
-                WHERE created::date <= ?::date
-                GROUP BY c_invoiceline_id
-            ) match_qty ON d.c_invoiceline_id = match_qty.c_invoiceline_id
-            INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
-            INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
-            INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
-            WHERE h.documentno LIKE 'INS-%'
-                AND h.docstatus = 'CO'
-                AND h.issotrx = 'N'
-                AND cat.name IN ('MIKA', 'SPARE PART')
-                AND h.dateinvoiced::date <= ?::date
-                AND d.qtyinvoiced <> COALESCE(match_qty.qtymr, 0)
-            GROUP BY org.name, cat.name
-        ";
-
-        $bdpData = DB::select($bdpQuery, [$date, $date]);
-
-        foreach ($bdpData as $row) {
-            if (isset($results[$row->branch_name])) {
-                if ($row->category === 'MIKA') {
-                    $results[$row->branch_name]['bdp_mika'] = (float)$row->bdp_value;
-                } elseif ($row->category === 'SPARE PART') {
-                    $results[$row->branch_name]['bdp_sparepart'] = (float)$row->bdp_value;
-                }
+            if (isset($realtimeData['connection_failed']) && $realtimeData['connection_failed']) {
+                $results[$branchName]['connection_failed'] = true;
+            } else {
+                $results[$branchName]['stok_mika'] = $realtimeData['stok_mika'];
+                $results[$branchName]['stok_sparepart'] = $realtimeData['stok_sparepart'];
+                $results[$branchName]['bdp_mika'] = $realtimeData['bdp_mika'];
+                $results[$branchName]['bdp_sparepart'] = $realtimeData['bdp_sparepart'];
             }
         }
 
@@ -289,8 +516,6 @@ class SalesComparisonController extends Controller
     {
         $pricelistVersionId = $config['pricelist_version_id'];
         $locatorId = $config['locator_id'];
-
-        // Use date range instead of DATE() for better performance
         $dateStart = $date . ' 00:00:00';
         $dateEnd = $date . ' 23:59:59';
 
@@ -304,13 +529,9 @@ class SalesComparisonController extends Controller
                 COALESCE(SUM(ss3.bdp_sparepart), 0) as bdp_sparepart
             FROM
             (
-                --SALES MIKA NETTO
+                --SALES MIKA NETTO (with new rules)
                 SELECT
-                    SUM(CASE
-                        WHEN SUBSTR(inv.documentno, 1, 3) = 'INC' THEN invl.linenetamt
-                        WHEN SUBSTR(inv.documentno, 1, 3) = 'CNC' THEN -invl.linenetamt
-                        ELSE 0
-                    END) AS nominal_netto_mika,
+                    COALESCE(SUM(invl.linenetamt), 0) AS nominal_netto_mika,
                     0 AS nominal_netto_sparepart,
                     0 AS nilai_stok_mika,
                     0 AS nilai_stok_sparepart,
@@ -320,19 +541,30 @@ class SalesComparisonController extends Controller
                     c_invoice inv
                     INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
                     INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+                    INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product prd ON invl.m_product_id = prd.m_product_id
                     INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                    LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                 WHERE
                     inv.ad_client_id = 1000001
                     AND inv.issotrx = 'Y'
                     AND invl.qtyinvoiced > 0
                     AND invl.linenetamt > 0
-                    AND cat.value = 'MIKA'
                     AND inv.docstatus IN ('CO', 'CL')
                     AND inv.isactive = 'Y'
+                    AND inv.documentno LIKE 'INC%'
+                    AND (
+                        cat.value = 'MIKA'
+                        OR (
+                            cat.value = 'PRODUCT IMPORT' 
+                            AND prd.name NOT LIKE '%BOHLAM%'
+                            AND psc.value = 'MIKA'
+                        )
+                    )
+                    AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                     AND org.name = ?
-                    AND inv.dateinvoiced >= ?::timestamp
-                    AND inv.dateinvoiced <= ?::timestamp
+                    AND inv.dateinvoiced >= ?
+                    AND inv.dateinvoiced <= ?
 
                 UNION ALL
 
@@ -363,12 +595,12 @@ class SalesComparisonController extends Controller
                     AND inv.docstatus IN ('CO', 'CL')
                     AND inv.isactive = 'Y'
                     AND org.name = ?
-                    AND inv.dateinvoiced >= ?::timestamp
-                    AND inv.dateinvoiced <= ?::timestamp
+                    AND inv.dateinvoiced >= ?
+                    AND inv.dateinvoiced <= ?
 
                 UNION ALL
 
-                --STOK MIKA (RP)
+                --STOK MIKA (RP) (with new rules)
                 SELECT
                     0 AS nominal_netto_mika,
                     0 AS nominal_netto_sparepart,
@@ -379,6 +611,7 @@ class SalesComparisonController extends Controller
                 FROM
                     m_product prd
                     INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                    LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                     INNER JOIN m_productprice prc ON prd.m_product_id = prc.m_product_id
                     INNER JOIN m_pricelist_version plv ON plv.m_pricelist_version_id = prc.m_pricelist_version_id
                     INNER JOIN ad_org org ON plv.ad_org_id = org.ad_org_id
@@ -393,7 +626,14 @@ class SalesComparisonController extends Controller
                         GROUP BY st.m_product_id
                     ) stock_qty ON prd.m_product_id = stock_qty.m_product_id
                 WHERE
-                    cat.name LIKE 'MIKA'
+                    (
+                        cat.value = 'MIKA'
+                        OR (
+                            cat.value = 'PRODUCT IMPORT' 
+                            AND prd.name NOT LIKE '%BOHLAM%'
+                            AND psc.value = 'MIKA'
+                        )
+                    )
                     AND plv.m_pricelist_version_id = ?
                     AND org.name = ?
 
@@ -430,7 +670,7 @@ class SalesComparisonController extends Controller
 
                 UNION ALL
 
-                --BDP MIKA
+                --BDP MIKA (with new rules)
                 SELECT
                     0 AS nominal_netto_mika,
                     0 AS nominal_netto_sparepart,
@@ -453,15 +693,23 @@ class SalesComparisonController extends Controller
                             LEFT OUTER JOIN m_matchinv mi ON d.c_invoiceline_id = mi.c_invoiceline_id AND mi.created::date <= ?::date
                             INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                             INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                            LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                             INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
                         WHERE
                             h.documentno LIKE 'INS-%'
                             AND h.docstatus = 'CO'
                             AND h.issotrx = 'N'
                             AND org.name = ?
-                            AND cat.name = 'MIKA'
-                            AND h.dateinvoiced >= ?::timestamp
-                            AND h.dateinvoiced <= ?::timestamp
+                            AND (
+                                cat.value = 'MIKA'
+                                OR (
+                                    cat.value = 'PRODUCT IMPORT' 
+                                    AND prd.name NOT LIKE '%BOHLAM%'
+                                    AND psc.value = 'MIKA'
+                                )
+                            )
+                            AND h.dateinvoiced >= ?
+                            AND h.dateinvoiced <= ?
                         GROUP BY
                             cat.name, prd.name, d.c_invoiceline_id, d.c_invoice_id, h.documentno, d.qtyinvoiced, d.priceactual
                     ) AS ss1
@@ -500,8 +748,8 @@ class SalesComparisonController extends Controller
                             AND h.issotrx = 'N'
                             AND org.name = ?
                             AND cat.name = 'SPARE PART'
-                            AND h.dateinvoiced >= ?::timestamp
-                            AND h.dateinvoiced <= ?::timestamp
+                            AND h.dateinvoiced >= ?
+                            AND h.dateinvoiced <= ?
                         GROUP BY
                             cat.name, prd.name, d.c_invoiceline_id, d.c_invoice_id, h.documentno, d.qtyinvoiced, d.priceactual
                     ) AS ss1
@@ -512,25 +760,25 @@ class SalesComparisonController extends Controller
 
         $result = DB::selectOne($query, [
             $branchName,
-            $dateStart,  // Sales MIKA start
-            $dateEnd,    // Sales MIKA end
+            $dateStart,
+            $dateEnd,
             $branchName,
-            $dateStart,  // Sales SPARE PART start
-            $dateEnd,    // Sales SPARE PART end
+            $dateStart,
+            $dateEnd,
             $locatorId,
             $pricelistVersionId,
-            $branchName,  // Stok MIKA
+            $branchName,
             $locatorId,
             $pricelistVersionId,
-            $branchName,  // Stok SPARE PART
-            $date,        // BDP MIKA matchinv date filter
-            $branchName,  // BDP MIKA
-            $dateStart,   // BDP MIKA start
-            $dateEnd,     // BDP MIKA end
-            $date,        // BDP SPARE PART matchinv date filter
-            $branchName,  // BDP SPARE PART
-            $dateStart,   // BDP SPARE PART start
-            $dateEnd      // BDP SPARE PART end
+            $branchName,
+            $date,
+            $branchName,
+            $dateStart,
+            $dateEnd,
+            $date,
+            $branchName,
+            $dateStart,
+            $dateEnd
         ]);
 
         return [
@@ -546,15 +794,7 @@ class SalesComparisonController extends Controller
     public function exportExcel(Request $request)
     {
         try {
-            $date = $request->get('date', date('Y-m-d'));
-
-            // Validate date
-            if (!strtotime($date)) {
-                return response()->json(['error' => 'Invalid date parameter'], 400);
-            }
-
-            // Get all data
-            $dataRequest = new Request(['date' => $date]);
+            $dataRequest = new Request([]);
             $dataResponse = $this->getData($dataRequest);
             $responseData = json_decode($dataResponse->getContent(), true);
 
@@ -563,11 +803,11 @@ class SalesComparisonController extends Controller
             }
 
             $data = $responseData['data'];
+            $totals = $responseData['totals'] ?? null;
             $formattedDate = $responseData['formatted_date'];
 
             $filename = 'Rekap_Sales_Stok_dan_BDP_' . str_replace(' ', '_', $formattedDate) . '.xls';
 
-            // Create XLS content using HTML table format
             $headers = [
                 'Content-Type' => 'application/vnd.ms-excel',
                 'Content-Disposition' => 'attachment; filename="' . $filename . '"',
@@ -684,6 +924,27 @@ class SalesComparisonController extends Controller
                 </tr>';
             }
 
+            if ($totals) {
+                $html .= '<tr style="background-color: #F0F0F0; font-weight: bold; border-top: 2px solid #000;">
+                    <td colspan="2" style="text-align: center;">TOTAL</td>
+                    <td class="number">' . ($totals['sales_mika'] == 0 ? '-' : 'Rp ' . number_format($totals['sales_mika'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['sales_sparepart'] == 0 ? '-' : 'Rp ' . number_format($totals['sales_sparepart'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['total_sales'] == 0 ? '-' : 'Rp ' . number_format($totals['total_sales'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['stok_mika'] == 0 ? '-' : 'Rp ' . number_format($totals['stok_mika'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['stok_sparepart'] == 0 ? '-' : 'Rp ' . number_format($totals['stok_sparepart'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['total_stok'] == 0 ? '-' : 'Rp ' . number_format($totals['total_stok'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['bdp_mika'] == 0 ? '-' : 'Rp ' . number_format($totals['bdp_mika'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['bdp_sparepart'] == 0 ? '-' : 'Rp ' . number_format($totals['bdp_sparepart'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['total_bdp'] == 0 ? '-' : 'Rp ' . number_format($totals['total_bdp'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['stok_bdp_mika'] == 0 ? '-' : 'Rp ' . number_format($totals['stok_bdp_mika'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['stok_bdp_sparepart'] == 0 ? '-' : 'Rp ' . number_format($totals['stok_bdp_sparepart'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['total_stok_bdp'] == 0 ? '-' : 'Rp ' . number_format($totals['total_stok_bdp'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['total_mika'] == 0 ? '-' : 'Rp ' . number_format($totals['total_mika'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['total_sparepart'] == 0 ? '-' : 'Rp ' . number_format($totals['total_sparepart'], 0, '.', ',')) . '</td>
+                    <td class="number">' . ($totals['grand_total'] == 0 ? '-' : 'Rp ' . number_format($totals['grand_total'], 0, '.', ',')) . '</td>
+                </tr>';
+            }
+
             $html .= '
                     </tbody>
                 </table>
@@ -696,7 +957,7 @@ class SalesComparisonController extends Controller
             return response($html, 200, $headers);
         } catch (\Exception $e) {
             TableHelper::logError('SalesComparisonController', 'exportExcel', $e, [
-                'date' => $request->get('date')
+                'action' => 'export_excel'
             ]);
 
             return response()->json(['error' => 'Failed to export Excel file'], 500);
@@ -706,15 +967,7 @@ class SalesComparisonController extends Controller
     public function exportPdf(Request $request)
     {
         try {
-            $date = $request->get('date', date('Y-m-d'));
-
-            // Validate date
-            if (!strtotime($date)) {
-                return response()->json(['error' => 'Invalid date parameter'], 400);
-            }
-
-            // Get all data
-            $dataRequest = new Request(['date' => $date]);
+            $dataRequest = new Request([]);
             $dataResponse = $this->getData($dataRequest);
             $responseData = json_decode($dataResponse->getContent(), true);
 
@@ -725,7 +978,6 @@ class SalesComparisonController extends Controller
             $data = $responseData['data'];
             $formattedDate = $responseData['formatted_date'];
 
-            // Create HTML for PDF
             $html = '
             <!DOCTYPE html>
             <html>
@@ -853,7 +1105,7 @@ class SalesComparisonController extends Controller
             return $pdf->download($filename);
         } catch (\Exception $e) {
             TableHelper::logError('SalesComparisonController', 'exportPdf', $e, [
-                'date' => $request->get('date')
+                'action' => 'export_pdf'
             ]);
 
             return response()->json(['error' => 'Failed to export PDF file'], 500);

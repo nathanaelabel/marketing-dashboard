@@ -85,6 +85,7 @@ class TargetRevenueController extends Controller
                         INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                         INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                         INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                        LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                     WHERE
                         h.issotrx = 'Y'
                         AND h.ad_client_id = 1000001
@@ -92,7 +93,19 @@ class TargetRevenueController extends Controller
                         AND d.linenetamt > 0
                         AND h.docstatus in ('CO', 'CL')
                         AND h.documentno LIKE 'INC%'
-                        AND cat.name = ?
+                        AND (
+                            CASE 
+                                WHEN ? = 'MIKA' THEN (
+                                    cat.value = 'MIKA' 
+                                    OR (
+                                        cat.value = 'PRODUCT IMPORT' 
+                                        AND prd.name NOT LIKE '%BOHLAM%'
+                                        AND psc.value = 'MIKA'
+                                    )
+                                )
+                                ELSE cat.name = ?
+                            END
+                        )
                         AND EXTRACT(month FROM h.dateinvoiced) = ?
                         AND EXTRACT(year FROM h.dateinvoiced) = ?
                         AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
@@ -113,6 +126,7 @@ class TargetRevenueController extends Controller
                         INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                         INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                         INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                        LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                     WHERE
                         h.issotrx = 'Y'
                         AND h.ad_client_id = 1000001
@@ -120,7 +134,19 @@ class TargetRevenueController extends Controller
                         AND d.linenetamt > 0
                         AND h.docstatus in ('CO', 'CL')
                         AND h.documentno LIKE 'CNC%'
-                        AND cat.name = ?
+                        AND (
+                            CASE 
+                                WHEN ? = 'MIKA' THEN (
+                                    cat.value = 'MIKA' 
+                                    OR (
+                                        cat.value = 'PRODUCT IMPORT' 
+                                        AND prd.name NOT LIKE '%BOHLAM%'
+                                        AND psc.value = 'MIKA'
+                                    )
+                                )
+                                ELSE cat.name = ?
+                            END
+                        )
                         AND EXTRACT(month FROM h.dateinvoiced) = ?
                         AND EXTRACT(year FROM h.dateinvoiced) = ?
                         AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
@@ -133,7 +159,7 @@ class TargetRevenueController extends Controller
                     ss.cabang
             ";
 
-            $results = DB::select($query, [$category, $month, $year, $category, $month, $year]);
+            $results = DB::select($query, [$category, $category, $month, $year, $category, $category, $month, $year]);
 
             // Sort results by branch order
             $results = ChartHelper::sortByBranchOrder(collect($results), 'cabang')->all();

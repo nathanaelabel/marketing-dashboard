@@ -119,12 +119,25 @@ class BranchGrowthController extends Controller
                         INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                         INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                         INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                        LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                     WHERE
                         h.issotrx = 'Y'
                         AND h.ad_client_id = 1000001
                         AND h.docstatus IN ('CO', 'CL')
                         AND h.documentno LIKE 'INC%'
-                        AND cat.name = ?
+                        AND (
+                            CASE 
+                                WHEN ? = 'MIKA' THEN (
+                                    cat.value = 'MIKA' 
+                                    OR (
+                                        cat.value = 'PRODUCT IMPORT' 
+                                        AND prd.name NOT LIKE '%BOHLAM%'
+                                        AND psc.value = 'MIKA'
+                                    )
+                                )
+                                ELSE cat.name = ?
+                            END
+                        )
                         AND DATE(h.dateinvoiced) BETWEEN ? AND ?
                         AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                         {$branchCondition}
@@ -152,12 +165,25 @@ class BranchGrowthController extends Controller
                         INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                         INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                         INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                        LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                     WHERE
                         h.issotrx = 'Y'
                         AND h.ad_client_id = 1000001
                         AND h.docstatus IN ('CO', 'CL')
                         AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
-                        AND cat.name = ?
+                        AND (
+                            CASE 
+                                WHEN ? = 'MIKA' THEN (
+                                    cat.value = 'MIKA' 
+                                    OR (
+                                        cat.value = 'PRODUCT IMPORT' 
+                                        AND prd.name NOT LIKE '%BOHLAM%'
+                                        AND psc.value = 'MIKA'
+                                    )
+                                )
+                                ELSE cat.name = ?
+                            END
+                        )
                         AND DATE(h.dateinvoiced) BETWEEN ? AND ?
                         AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                         {$branchCondition}
@@ -169,7 +195,7 @@ class BranchGrowthController extends Controller
                 ";
             }
 
-            $bindings = array_merge([$category, $startDate, $endDate], $branchBinding);
+            $bindings = array_merge([$category, $category, $startDate, $endDate], $branchBinding);
 
             $result = DB::select($query, $bindings);
 
@@ -353,12 +379,25 @@ class BranchGrowthController extends Controller
                     INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
                     INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                     INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                    LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                 WHERE
                     h.issotrx = 'Y'
                     AND h.ad_client_id = 1000001
                     AND h.docstatus IN ('CO', 'CL')
                     AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
-                    AND cat.name = ?
+                    AND (
+                        CASE 
+                            WHEN ? = 'MIKA' THEN (
+                                cat.value = 'MIKA' 
+                                OR (
+                                    cat.value = 'PRODUCT IMPORT' 
+                                    AND prd.name NOT LIKE '%BOHLAM%'
+                                    AND psc.value = 'MIKA'
+                                )
+                            )
+                            ELSE cat.name = ?
+                        END
+                    )
                     AND h.dateinvoiced >= ? AND h.dateinvoiced < ?
                     {$branchCondition}
             ";
@@ -367,7 +406,7 @@ class BranchGrowthController extends Controller
             $startDate = $startYear . '-01-01';
             $endDate = ($endYear + 1) . '-01-01';
 
-            $bindings = array_merge([$category, $startDate, $endDate], $branchBinding);
+            $bindings = array_merge([$category, $category, $startDate, $endDate], $branchBinding);
 
             Log::info('BranchGrowthController query debug', [
                 'query' => $query,
@@ -488,12 +527,25 @@ class BranchGrowthController extends Controller
                     INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                     INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                    LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                 WHERE
                     h.issotrx = 'Y'
                     AND h.ad_client_id = 1000001
                     AND h.docstatus IN ('CO', 'CL')
                     AND h.documentno LIKE 'INC%'
-                    AND cat.name = ?
+                    AND (
+                        CASE 
+                            WHEN ? = 'MIKA' THEN (
+                                cat.value = 'MIKA' 
+                                OR (
+                                    cat.value = 'PRODUCT IMPORT' 
+                                    AND prd.name NOT LIKE '%BOHLAM%'
+                                    AND psc.value = 'MIKA'
+                                )
+                            )
+                            ELSE cat.name = ?
+                        END
+                    )
                     AND DATE(h.dateinvoiced) BETWEEN ? AND ?
                     AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
@@ -520,12 +572,25 @@ class BranchGrowthController extends Controller
                     INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                     INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                    LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                 WHERE
                     h.issotrx = 'Y'
                     AND h.ad_client_id = 1000001
                     AND h.docstatus IN ('CO', 'CL')
                     AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
-                    AND cat.name = ?
+                    AND (
+                        CASE 
+                            WHEN ? = 'MIKA' THEN (
+                                cat.value = 'MIKA' 
+                                OR (
+                                    cat.value = 'PRODUCT IMPORT' 
+                                    AND prd.name NOT LIKE '%BOHLAM%'
+                                    AND psc.value = 'MIKA'
+                                )
+                            )
+                            ELSE cat.name = ?
+                        END
+                    )
                     AND DATE(h.dateinvoiced) BETWEEN ? AND ?
                     AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
@@ -535,7 +600,7 @@ class BranchGrowthController extends Controller
             ";
         }
 
-        $allData = DB::select($query, [$category, $startDate, $endDate]);
+        $allData = DB::select($query, [$category, $category, $startDate, $endDate]);
 
         // Sort data by branch order
         $allData = ChartHelper::sortByBranchOrder(collect($allData), 'branch_name')->all();
@@ -804,12 +869,25 @@ class BranchGrowthController extends Controller
                     INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                     INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                    LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                 WHERE
                     h.issotrx = 'Y'
                     AND h.ad_client_id = 1000001
                     AND h.docstatus IN ('CO', 'CL')
                     AND h.documentno LIKE 'INC%'
-                    AND cat.name = ?
+                    AND (
+                        CASE 
+                            WHEN ? = 'MIKA' THEN (
+                                cat.value = 'MIKA' 
+                                OR (
+                                    cat.value = 'PRODUCT IMPORT' 
+                                    AND prd.name NOT LIKE '%BOHLAM%'
+                                    AND psc.value = 'MIKA'
+                                )
+                            )
+                            ELSE cat.name = ?
+                        END
+                    )
                     AND DATE(h.dateinvoiced) BETWEEN ? AND ?
                     AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
@@ -836,12 +914,25 @@ class BranchGrowthController extends Controller
                     INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                     INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+                    LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                 WHERE
                     h.issotrx = 'Y'
                     AND h.ad_client_id = 1000001
                     AND h.docstatus IN ('CO', 'CL')
                     AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
-                    AND cat.name = ?
+                    AND (
+                        CASE 
+                            WHEN ? = 'MIKA' THEN (
+                                cat.value = 'MIKA' 
+                                OR (
+                                    cat.value = 'PRODUCT IMPORT' 
+                                    AND prd.name NOT LIKE '%BOHLAM%'
+                                    AND psc.value = 'MIKA'
+                                )
+                            )
+                            ELSE cat.name = ?
+                        END
+                    )
                     AND DATE(h.dateinvoiced) BETWEEN ? AND ?
                     AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
@@ -851,7 +942,7 @@ class BranchGrowthController extends Controller
             ";
         }
 
-        $allData = DB::select($query, [$category, $startDate, $endDate]);
+        $allData = DB::select($query, [$category, $category, $startDate, $endDate]);
 
         // Sort data by branch order
         $allData = ChartHelper::sortByBranchOrder(collect($allData), 'branch_name')->all();

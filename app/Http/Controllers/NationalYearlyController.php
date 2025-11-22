@@ -202,6 +202,7 @@ class NationalYearlyController extends Controller
                         INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
                         INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
                         INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
+                        LEFT JOIN m_productsubcat psc ON p.m_productsubcat_id = psc.m_productsubcat_id
                     WHERE
                         inv.ad_client_id = 1000001
                         AND inv.issotrx = 'Y'
@@ -209,11 +210,23 @@ class NationalYearlyController extends Controller
                         AND invl.linenetamt > 0
                         AND inv.docstatus IN ('CO', 'CL')
                         AND inv.isactive = 'Y'
-                                            AND org.name NOT LIKE '%HEAD OFFICE%'
-                    AND inv.dateinvoiced::date >= ? AND inv.dateinvoiced::date <= ?
-                    AND SUBSTR(inv.documentno, 1, 3) IN ('INC', 'CNC')
-                    AND pc.name = ?
-                    AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
+                        AND org.name NOT LIKE '%HEAD OFFICE%'
+                        AND inv.dateinvoiced::date >= ? AND inv.dateinvoiced::date <= ?
+                        AND SUBSTR(inv.documentno, 1, 3) IN ('INC', 'CNC')
+                        AND (
+                            CASE 
+                                WHEN ? = 'MIKA' THEN (
+                                    pc.value = 'MIKA' 
+                                    OR (
+                                        pc.value = 'PRODUCT IMPORT' 
+                                        AND p.name NOT LIKE '%BOHLAM%'
+                                        AND psc.value = 'MIKA'
+                                    )
+                                )
+                                ELSE pc.name = ?
+                            END
+                        )
+                        AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                     GROUP BY
                         org.name
                     ORDER BY
@@ -232,6 +245,7 @@ class NationalYearlyController extends Controller
                         INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
                         INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
                         INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
+                        LEFT JOIN m_productsubcat psc ON p.m_productsubcat_id = psc.m_productsubcat_id
                     WHERE
                         inv.ad_client_id = 1000001
                         AND inv.issotrx = 'Y'
@@ -239,11 +253,23 @@ class NationalYearlyController extends Controller
                         AND invl.linenetamt > 0
                         AND inv.docstatus IN ('CO', 'CL')
                         AND inv.isactive = 'Y'
-                                            AND org.name NOT LIKE '%HEAD OFFICE%'
-                    AND inv.dateinvoiced::date >= ? AND inv.dateinvoiced::date <= ?
-                    AND inv.documentno LIKE 'INC%'
-                    AND pc.name = ?
-                    AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
+                        AND org.name NOT LIKE '%HEAD OFFICE%'
+                        AND inv.dateinvoiced::date >= ? AND inv.dateinvoiced::date <= ?
+                        AND inv.documentno LIKE 'INC%'
+                        AND (
+                            CASE 
+                                WHEN ? = 'MIKA' THEN (
+                                    pc.value = 'MIKA' 
+                                    OR (
+                                        pc.value = 'PRODUCT IMPORT' 
+                                        AND p.name NOT LIKE '%BOHLAM%'
+                                        AND psc.value = 'MIKA'
+                                    )
+                                )
+                                ELSE pc.name = ?
+                            END
+                        )
+                        AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                     GROUP BY
                         org.name
                     ORDER BY
@@ -251,7 +277,7 @@ class NationalYearlyController extends Controller
                 ";
             }
 
-            $result = DB::select($query, [$startDate, $endDate, $category]);
+            $result = DB::select($query, [$startDate, $endDate, $category, $category]);
 
             // Reset statement timeout (only for PostgreSQL)
             try {
