@@ -1,4 +1,4 @@
-// Helper function to format date for display
+// Helper function to format date for display (dd.mm.yy format)
 function formatDisplayDate(dateString) {
     const date = new Date(dateString);
     const day = String(date.getDate()).padStart(2, "0");
@@ -8,36 +8,50 @@ function formatDisplayDate(dateString) {
 }
 
 // Update all date headers in the table
-function updateDateHeaders(dateString) {
-    const formattedDate = formatDisplayDate(dateString);
-    const headers = [
-        "sales-date-header",
+function updateDateHeaders(salesDate, stokBdpDate) {
+    const formattedSalesDate = formatDisplayDate(salesDate);
+    const formattedStokBdpDate = formatDisplayDate(stokBdpDate);
+
+    // Sales header uses yesterday's date
+    const salesHeader = document.getElementById("sales-date-header");
+    if (salesHeader) {
+        salesHeader.textContent = formattedSalesDate;
+    }
+
+    // Stok, BDP, and combined headers use today's date
+    const todayHeaders = [
         "stok-date-header",
         "bdp-date-header",
         "stok-bdp-date-header",
         "total-date-header",
     ];
-    headers.forEach((headerId) => {
+    todayHeaders.forEach((headerId) => {
         const header = document.getElementById(headerId);
         if (header) {
-            header.textContent = formattedDate;
+            header.textContent = formattedStokBdpDate;
         }
     });
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-    // Initialize date headers
-    const dateInput = document.getElementById("sales-comp-date-select");
-    if (dateInput) {
-        updateDateHeaders(dateInput.value);
-    }
+    // Initialize date headers immediately on page load
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // Format dates as YYYY-MM-DD for updateDateHeaders function
+    const todayStr = today.toISOString().split("T")[0];
+    const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+    // Set initial date headers before data loads
+    updateDateHeaders(yesterdayStr, todayStr);
 
     // Initialize TableHelper for Sales Comparison (No pagination - show all 17 branches)
     const salesComparisonTable = new TableHelper({
         apiEndpoint: "/sales-comparison/data",
 
-        // Set longer timeout for complex queries (5 minutes)
-        requestTimeout: 300000, // 300 seconds (5 minutes)
+        // Set longer timeout for realtime queries to branch databases (2 minutes)
+        requestTimeout: 120000, // 120 seconds (2 minutes)
 
         // Disable pagination for this table
         disablePagination: true,
@@ -51,16 +65,9 @@ document.addEventListener("DOMContentLoaded", function () {
         tableContainerSelector: "#sales-comp-table-container",
         periodInfoSelector: "#sales-comp-period-info",
 
-        // Override getAdditionalFilters to include ONLY date (not month/year)
+        // No additional filters needed - backend auto-detects dates
         getAdditionalFilters: function () {
-            const dateSelect = document.getElementById(
-                "sales-comp-date-select"
-            );
-            return {
-                date: dateSelect
-                    ? dateSelect.value
-                    : new Date().toISOString().split("T")[0],
-            };
+            return {};
         },
 
         renderTable: function (data) {
@@ -70,14 +77,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            // Update period info with formatted date
-            if (this.elements.periodInfo && data.formatted_date) {
-                this.elements.periodInfo.textContent = data.formatted_date;
+            // Update period display with today's date
+            const periodDisplay = document.getElementById(
+                "sales-comp-period-display"
+            );
+            if (periodDisplay && data.formatted_date) {
+                periodDisplay.textContent = data.formatted_date;
             }
 
-            // Update date headers
-            if (data.date) {
-                updateDateHeaders(data.date);
+            // Update date headers with sales and stok/bdp dates
+            if (data.sales_date && data.stok_bdp_date) {
+                updateDateHeaders(data.sales_date, data.stok_bdp_date);
             }
 
             const formatCurrency = (value) => {
@@ -87,6 +97,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const rows = data.data
                 .map((item) => {
+                    // Check if connection failed for this branch
+                    if (item.connection_failed) {
+                        return `
+                        <tr class="hover:bg-gray-50 bg-red-50">
+                            <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-center">${item.no}</td>
+                            <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200">${item.branch_code}</td>
+                            <td colspan="15" class="px-3 py-2 text-sm text-red-600 text-center font-semibold">Connection failed. Please try again.</td>
+                        </tr>
+                        `;
+                    }
+
                     return `
                     <tr class="hover:bg-gray-50">
                         <td class="px-3 py-2 text-sm text-gray-900 border-r border-gray-200 text-center">${
@@ -204,16 +225,7 @@ document.addEventListener("DOMContentLoaded", function () {
         },
     });
 
-    // Add event listener for date change
-    if (dateInput) {
-        dateInput.addEventListener("change", () => {
-            updateDateHeaders(dateInput.value);
-            salesComparisonTable.currentPage = 1;
-            salesComparisonTable.loadData();
-        });
-    }
-
-    // Initialize the table
+    // Initialize the table (no date filter needed)
     salesComparisonTable.init();
 
     // Three-dots menu toggle
@@ -262,10 +274,6 @@ document.addEventListener("DOMContentLoaded", function () {
             e.preventDefault();
             e.stopPropagation();
 
-            const currentDate = document.getElementById(
-                "sales-comp-date-select"
-            ).value;
-
             // Close dropdown
             if (dropdownMenu) {
                 dropdownMenu.classList.add("hidden");
@@ -276,8 +284,8 @@ document.addEventListener("DOMContentLoaded", function () {
             exportBtn.disabled = true;
             exportBtn.innerHTML = "Exporting...";
 
-            // Create download URL with parameters
-            const exportUrl = `/sales-comparison/export-excel?date=${currentDate}`;
+            // Create download URL (no date parameter needed - auto-detect)
+            const exportUrl = `/sales-comparison/export-excel`;
 
             // Use window.location for direct download
             window.location.href = exportUrl;
@@ -297,10 +305,6 @@ document.addEventListener("DOMContentLoaded", function () {
             e.preventDefault();
             e.stopPropagation();
 
-            const currentDate = document.getElementById(
-                "sales-comp-date-select"
-            ).value;
-
             // Close dropdown
             if (dropdownMenu) {
                 dropdownMenu.classList.add("hidden");
@@ -311,8 +315,8 @@ document.addEventListener("DOMContentLoaded", function () {
             exportPdfBtn.disabled = true;
             exportPdfBtn.innerHTML = "Exporting...";
 
-            // Create download URL with parameters
-            const exportPdfUrl = `/sales-comparison/export-pdf?date=${currentDate}`;
+            // Create download URL (no date parameter needed - auto-detect)
+            const exportPdfUrl = `/sales-comparison/export-pdf`;
 
             // Use window.location for direct download
             window.location.href = exportPdfUrl;

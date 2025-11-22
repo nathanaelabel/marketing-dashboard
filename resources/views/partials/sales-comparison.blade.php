@@ -63,15 +63,12 @@
             </div>
         </div>
 
-        <!-- Filters -->
-        <div class="flex flex-wrap gap-4 mb-6">
-            <div class="flex-1 min-w-[200px]">
-                <label for="sales-comp-date-select" class="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
-                {{-- Use yesterday (H-1) since dashboard is updated daily at night --}}
-                <input type="date" id="sales-comp-date-select" value="{{ date('Y-m-d', strtotime('-1 day')) }}"
-                    max="{{ date('Y-m-d', strtotime('-1 day')) }}"
-                    class="block w-full pl-3 pr-3 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-            </div>
+        <!-- Period Info (No date filter needed - auto-detect) -->
+        <div class="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <p class="text-sm text-blue-800">
+                <span class="font-medium">Period:</span>
+                <span id="sales-comp-period-display">{{ date('d F Y') }}</span>
+            </p>
         </div>
 
         <!-- Loading Indicator -->
@@ -113,13 +110,6 @@
 
         <!-- Table Container -->
         <div id="sales-comp-table-container" class="hidden">
-            <!-- Period Info Only (No pagination for all 17 branches) -->
-            <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                <p class="text-sm text-blue-800">
-                    <span class="font-medium">Date:</span>
-                    <span id="sales-comp-period-info">-</span>
-                </p>
-            </div>
 
             <!-- Table -->
             <div class="overflow-x-auto">
@@ -137,7 +127,7 @@
                                 Sales Per <span id="sales-date-header">-</span></th>
                             <th colspan="3"
                                 class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                                Stok Per Sales Per <span id="stok-date-header">-</span></th>
+                                Stok Per <span id="stok-date-header">-</span></th>
                             <th colspan="3"
                                 class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
                                 BDP Per <span id="bdp-date-header">-</span></th>
