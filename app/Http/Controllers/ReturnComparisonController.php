@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use App\Helpers\TableHelper;
 
 class ReturnComparisonController extends Controller
@@ -33,32 +34,53 @@ class ReturnComparisonController extends Controller
                 return response()->json(["error" => $validationErrors[0]], 400);
             }
 
-            // Get all branch codes from TableHelper
-            $branchMapping = TableHelper::getBranchMapping();
+            // Generate cache key based on month and year
+            $cacheKey = "return_comparison_{$year}_{$month}";
 
-            // Get all data in single queries (optimized) with timing
-            $startTime = microtime(true);
-            $salesBrutoData = $this->getAllSalesBruto($month, $year);
-            $salesBrutoTime = round((microtime(true) - $startTime) * 1000, 2);
-            Log::info("ReturnComparison: getAllSalesBruto took {$salesBrutoTime}ms");
+            // Try to get cached data (cache for 1 hour)
+            $cachedData = Cache::remember($cacheKey, 3600, function () use ($month, $year) {
+                // Get all branch codes from TableHelper
+                $branchMapping = TableHelper::getBranchMapping();
 
-            $startTime = microtime(true);
-            $cncData = $this->getAllCNCData($month, $year);
-            $cncTime = round((microtime(true) - $startTime) * 1000, 2);
-            Log::info("ReturnComparison: getAllCNCData took {$cncTime}ms");
+                // Get all data in single queries (optimized) with timing
+                $startTime = microtime(true);
+                $salesBrutoData = $this->getAllSalesBruto($month, $year);
+                $salesBrutoTime = round((microtime(true) - $startTime) * 1000, 2);
+                Log::info("ReturnComparison: getAllSalesBruto took {$salesBrutoTime}ms");
 
-            $startTime = microtime(true);
-            $barangData = $this->getAllBarangData($month, $year);
-            $barangTime = round((microtime(true) - $startTime) * 1000, 2);
-            Log::info("ReturnComparison: getAllBarangData took {$barangTime}ms");
+                $startTime = microtime(true);
+                $cncData = $this->getAllCNCData($month, $year);
+                $cncTime = round((microtime(true) - $startTime) * 1000, 2);
+                Log::info("ReturnComparison: getAllCNCData took {$cncTime}ms");
 
-            $startTime = microtime(true);
-            $cabangPabrikData = $this->getAllCabangPabrikData($month, $year);
-            $cabangPabrikTime = round((microtime(true) - $startTime) * 1000, 2);
-            Log::info("ReturnComparison: getAllCabangPabrikData took {$cabangPabrikTime}ms");
+                $startTime = microtime(true);
+                $barangData = $this->getAllBarangData($month, $year);
+                $barangTime = round((microtime(true) - $startTime) * 1000, 2);
+                Log::info("ReturnComparison: getAllBarangData took {$barangTime}ms");
 
-            $totalTime = $salesBrutoTime + $cncTime + $barangTime + $cabangPabrikTime;
-            Log::info("ReturnComparison: Total query time {$totalTime}ms for month={$month}, year={$year}");
+                $startTime = microtime(true);
+                $cabangPabrikData = $this->getAllCabangPabrikData($month, $year);
+                $cabangPabrikTime = round((microtime(true) - $startTime) * 1000, 2);
+                Log::info("ReturnComparison: getAllCabangPabrikData took {$cabangPabrikTime}ms");
+
+                $totalTime = $salesBrutoTime + $cncTime + $barangTime + $cabangPabrikTime;
+                Log::info("ReturnComparison: Total query time {$totalTime}ms for month={$month}, year={$year}");
+
+                return [
+                    'salesBrutoData' => $salesBrutoData,
+                    'cncData' => $cncData,
+                    'barangData' => $barangData,
+                    'cabangPabrikData' => $cabangPabrikData,
+                    'branchMapping' => $branchMapping,
+                ];
+            });
+
+            // Extract cached data
+            $salesBrutoData = $cachedData['salesBrutoData'];
+            $cncData = $cachedData['cncData'];
+            $barangData = $cachedData['barangData'];
+            $cabangPabrikData = $cachedData['cabangPabrikData'];
+            $branchMapping = $cachedData['branchMapping'];
 
             $data = [];
             $no = 1;
@@ -1009,6 +1031,63 @@ class ReturnComparisonController extends Controller
 
             return response()->json(
                 ["error" => "Failed to export PDF file"],
+                500,
+            );
+        }
+    }
+
+    /**
+     * Clear cache for specific month/year or all return comparison cache
+     */
+    public function clearCache(Request $request)
+    {
+        try {
+            $month = $request->get("month");
+            $year = $request->get("year");
+
+            if ($month && $year) {
+                // Clear specific month/year cache
+                $cacheKey = "return_comparison_{$year}_{$month}";
+                Cache::forget($cacheKey);
+
+                return response()->json([
+                    "success" => true,
+                    "message" => "Cache cleared for {$month}/{$year}",
+                ]);
+            } else {
+                // Clear all return comparison cache
+                // Get all possible cache keys for the last 12 months
+                $clearedKeys = [];
+                $currentDate = now();
+
+                for ($i = 0; $i < 12; $i++) {
+                    $date = $currentDate->copy()->subMonths($i);
+                    $cacheKey = "return_comparison_{$date->year}_{$date->month}";
+                    if (Cache::has($cacheKey)) {
+                        Cache::forget($cacheKey);
+                        $clearedKeys[] = $cacheKey;
+                    }
+                }
+
+                return response()->json([
+                    "success" => true,
+                    "message" => "Cleared " . count($clearedKeys) . " cache entries",
+                    "keys" => $clearedKeys,
+                ]);
+            }
+        } catch (\Exception $e) {
+            TableHelper::logError(
+                "ReturnComparisonController",
+                "clearCache",
+                $e,
+                [
+                    "month" => $request->get("month"),
+                    "year" => $request->get("year"),
+                ],
+            );
+
+            return response()->json(
+                ["error" => "Failed to clear cache"],
                 500,
             );
         }
