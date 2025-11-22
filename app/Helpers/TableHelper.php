@@ -107,10 +107,10 @@ class TableHelper
         if ($month == $currentMonth && $year == $currentYear) {
             // For current month, show 1 to yesterday
             $endDay = $yesterday > 0 ? $yesterday : 1;
-            $dateRange = "1-{$endDay} {$monthNameId[$monthName]} {$year}";
+            $dateRange = "01-{$endDay} {$monthNameId[$monthName]} {$year}";
         } else {
             // For past months, show full month range
-            $dateRange = "1-{$lastDayOfMonth} {$monthNameId[$monthName]} {$year}";
+            $dateRange = "01-{$lastDayOfMonth} {$monthNameId[$monthName]} {$year}";
         }
 
         return [
