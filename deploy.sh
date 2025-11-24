@@ -9,12 +9,12 @@
 
 set -e  # Exit on any error
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Colors for output (optimized for dark terminal background)
+RED='\033[1;91m'      # Bright red
+GREEN='\033[1;92m'    # Bright green
+YELLOW='\033[1;93m'   # Bright yellow
+BLUE='\033[1;96m'     # Bright cyan (more visible than blue)
+NC='\033[0m'          # No Color
 
 # Configuration
 APP_DIR="/var/www/html/web/marketing-dashboard"
@@ -63,12 +63,6 @@ backup_current_state() {
 # Main deployment process
 main() {
     print_header "Starting Deployment - $(date)"
-    
-    # Check if running as correct user
-    if [ "$EUID" -eq 0 ]; then 
-        print_error "Do not run this script as root!"
-        exit 1
-    fi
     
     # Navigate to app directory
     if [ ! -d "$APP_DIR" ]; then
