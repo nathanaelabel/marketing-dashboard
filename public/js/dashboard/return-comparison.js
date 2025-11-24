@@ -17,8 +17,8 @@ document.addEventListener("DOMContentLoaded", function () {
         // Disable pagination for this table
         disablePagination: true,
 
-        // Timeout for queries (reduced due to backend caching)
-        requestTimeout: 90000, // 90 seconds (backend has caching now)
+        // Timeout for queries (first load needs more time before cache kicks in)
+        requestTimeout: 180000, // 180 seconds (3 minutes for first uncached load)
 
         // Enable retry on timeout
         enableRetry: true,

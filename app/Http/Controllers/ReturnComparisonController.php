@@ -20,7 +20,7 @@ class ReturnComparisonController extends Controller
     {
         try {
             // Increase execution time limit for complex queries
-            set_time_limit(120);
+            set_time_limit(180); // Increased to 180 seconds
 
             $month = $request->get("month", date("n"));
             $year = $request->get("year", date("Y"));
@@ -37,8 +37,9 @@ class ReturnComparisonController extends Controller
             // Generate cache key based on month and year
             $cacheKey = "return_comparison_{$year}_{$month}";
 
-            // Try to get cached data (cache for 1 hour)
-            $cachedData = Cache::remember($cacheKey, 3600, function () use ($month, $year) {
+            // Try to get cached data (cache for 6 hours = 21600 seconds)
+            // Longer cache duration to minimize slow query execution
+            $cachedData = Cache::remember($cacheKey, 21600, function () use ($month, $year) {
                 // Get all branch codes from TableHelper
                 $branchMapping = TableHelper::getBranchMapping();
 
@@ -243,6 +244,8 @@ class ReturnComparisonController extends Controller
             INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
             INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
             LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
+            INNER JOIN m_inoutline miol ON miol.m_inoutline_id = d.m_inoutline_id
+            INNER JOIN m_locator loc ON miol.m_locator_id = loc.m_locator_id
             WHERE h.documentno LIKE 'CNC%'
                 AND h.docstatus IN ('CO', 'CL')
                 AND h.issotrx = 'Y'
@@ -256,16 +259,10 @@ class ReturnComparisonController extends Controller
                         AND psc.value = 'MIKA'
                     )
                 )
-                AND EXISTS (
-                    SELECT 1
-                    FROM m_inoutline miol
-                    INNER JOIN m_locator loc ON miol.m_locator_id = loc.m_locator_id
-                    WHERE miol.m_inoutline_id = d.m_inoutline_id
-                        AND (
-                            loc.value LIKE 'Gudang Rusak%' 
-                            OR loc.value LIKE 'Gudang Barang Rusak%'
-                            OR (org.name = 'PWM Denpasar' AND loc.value LIKE 'Gudang Barang QQ PWM DPS%')
-                        )
+                AND (
+                    loc.value LIKE 'Gudang Rusak%' 
+                    OR loc.value LIKE 'Gudang Barang Rusak%'
+                    OR (org.name = 'PWM Denpasar' AND loc.value LIKE 'Gudang Barang QQ PWM DPS%')
                 )
             GROUP BY org.name
         ";
