@@ -317,8 +317,10 @@ Jika sering mati listrik, buat cron untuk auto-resume:
 ```bash
 # /etc/crontab
 # Setiap jam, cek apakah ada batch interrupted dan resume
-0 * * * * cd /path/to/project && php artisan app:sync-resume-interrupted
+0 * * * * cd /var/www/html/web/marketing-dashboard && php artisan app:sync-resume-interrupted >> /var/www/html/web/marketing-dashboard/storage/logs/auto-resume.log 2>&1
 ```
+
+**📖 Lihat dokumentasi lengkap:** `AUTO_RESUME_SETUP.md` untuk panduan setup auto-resume yang detail.
 
 ## Command Reference
 
@@ -360,6 +362,18 @@ Options:
   --connection=     Koneksi database yang digunakan
   --batch-id=       Batch ID untuk tracking (otomatis dari sync-all)
 ```
+
+### app:sync-resume-interrupted
+
+```bash
+php artisan app:sync-resume-interrupted [options]
+
+Options:
+  --force           Force resume even if batch is marked as completed
+  --max-age=        Maximum age in hours for interrupted batches (default: 24)
+```
+
+**Fungsi:** Otomatis mendeteksi dan resume batch yang terinterupsi (untuk auto-recovery setelah mati listrik).
 
 ## Database Queries
 
