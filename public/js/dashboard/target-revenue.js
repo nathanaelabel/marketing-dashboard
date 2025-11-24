@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
     let targetRevenueChart = null;
     const ctx = document.getElementById("target-revenue-chart");
+    const viewSelect = document.getElementById("target-view-select");
     const monthSelect = document.getElementById("target-month-select");
     const yearSelect = document.getElementById("target-year-select");
     const categorySelect = document.getElementById("target-category-select");
@@ -8,6 +9,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const inputTargetBtn = document.getElementById("input-target-btn");
     const editTargetBtn = document.getElementById("edit-target-btn");
     const periodText = document.getElementById("period-text");
+    const periodInfo = document.getElementById("target-period-info");
     const chartContainer = document.getElementById("target-chart-container");
 
     if (!ctx) return;
@@ -23,6 +25,31 @@ document.addEventListener("DOMContentLoaded", function () {
         const yAxisDivisor = dataFromServer.yAxisDivisor;
         const suggestedMax = dataFromServer.suggestedMax;
         const percentages = dataFromServer.percentages;
+
+        // Update period info for 4-month view
+        if (dataFromServer.view === "4-month" && dataFromServer.period_info) {
+            // Seluruh teks "Period: ..." biru, hanya kata Period yang bold
+            let periodHtml =
+                '<span style="color: #2563EB;"><span style="font-weight: 600;">Period:</span> ' +
+                dataFromServer.period_info +
+                "</span>";
+
+            // Tambahkan info bulan yang belum ada target (semua merah, label bold)
+            if (
+                dataFromServer.months_without_target &&
+                dataFromServer.months_without_target.length > 0
+            ) {
+                periodHtml +=
+                    '<br><span style="color: #DC2626; font-size: 0.875rem;"><span style="font-weight: 600;">Belum ada target:</span> ' +
+                    dataFromServer.months_without_target.join(", ") +
+                    "</span>";
+            }
+
+            periodInfo.innerHTML = periodHtml;
+            periodInfo.classList.remove("hidden");
+        } else {
+            periodInfo.classList.add("hidden");
+        }
 
         if (targetRevenueChart) {
             targetRevenueChart.destroy();
@@ -219,12 +246,36 @@ document.addEventListener("DOMContentLoaded", function () {
             "November",
             "December",
         ];
-        const monthName = months[data.month] || "Unknown";
 
-        const formattedCategory = data.category
-            .toLowerCase()
-            .replace(/\b\w/g, (l) => l.toUpperCase());
-        periodText.textContent = `${monthName} ${data.year} - ${formattedCategory}`;
+        if (data.view === "4-month" && data.months_without_target) {
+            // For 4-month view, show which months don't have targets
+            const formattedCategory = data.category
+                ? data.category
+                      .toLowerCase()
+                      .replace(/\b\w/g, (l) => l.toUpperCase())
+                : "";
+            periodText.innerHTML = `Belum ada target untuk ${data.months_without_target.join(
+                ", "
+            )}${
+                formattedCategory ? " - " + formattedCategory : ""
+            }.<br><span style="font-size: 0.875rem; color: #6B7280;">Silakan ganti ke 1-month view untuk input targetnya.</span>`;
+
+            // Hide Input Target button for 4-month view
+            if (inputTargetBtn) {
+                inputTargetBtn.style.display = "none";
+            }
+        } else {
+            const monthName = months[data.month] || "Unknown";
+            const formattedCategory = data.category
+                .toLowerCase()
+                .replace(/\b\w/g, (l) => l.toUpperCase());
+            periodText.textContent = `${monthName} ${data.year} - ${formattedCategory}`;
+
+            // Show Input Target button for 1-month view
+            if (inputTargetBtn) {
+                inputTargetBtn.style.display = "";
+            }
+        }
     }
 
     function hideNoTargetsMessage() {
@@ -236,6 +287,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Show edit button
         editTargetBtn.classList.remove("hidden");
+
+        // Reset Input Target button visibility
+        if (inputTargetBtn) {
+            inputTargetBtn.style.display = "";
+        }
+
+        // Clear period info when showing chart (switching from no-target to has-target)
+        if (periodInfo) {
+            periodInfo.classList.add("hidden");
+            periodInfo.innerHTML = "";
+        }
     }
 
     function clearMessages() {
@@ -246,11 +308,12 @@ document.addEventListener("DOMContentLoaded", function () {
         if (noDataMessage) noDataMessage.remove();
     }
 
-    function fetchAndUpdateTargetChart(month, year, category) {
+    function fetchAndUpdateTargetChart(month, year, category, view) {
         const url = `/target-revenue/data?month=${month}&year=${year}&category=${encodeURIComponent(
             category
-        )}`;
+        )}&view=${view}`;
         const filterSelectors = [
+            "target-view-select",
             "target-month-select",
             "target-year-select",
             "target-category-select",
@@ -319,16 +382,18 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const triggerUpdate = () => {
+        const view = viewSelect.value;
         const month = monthSelect.value;
         const year = yearSelect.value;
         const category = categorySelect.value;
 
         if (month && year && category) {
-            fetchAndUpdateTargetChart(month, year, category);
+            fetchAndUpdateTargetChart(month, year, category, view);
         }
     };
 
     // Event listeners
+    viewSelect.addEventListener("change", triggerUpdate);
     monthSelect.addEventListener("change", triggerUpdate);
     yearSelect.addEventListener("change", triggerUpdate);
     categorySelect.addEventListener("change", triggerUpdate);
@@ -359,11 +424,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Read URL parameters and set default values
     const urlParams = new URLSearchParams(window.location.search);
+    const urlView = urlParams.get("view");
     const urlMonth = urlParams.get("month");
     const urlYear = urlParams.get("year");
     const urlCategory = urlParams.get("category");
 
-    // Set default values from URL parameters, otherwise use current month
+    // Set default values from URL parameters
+    if (urlView) {
+        viewSelect.value = urlView;
+    }
+
     if (urlMonth) {
         monthSelect.value = urlMonth;
     } else {
@@ -429,12 +499,13 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             // Get current filter values and refresh the chart
+            const view = viewSelect.value;
             const month = monthSelect.value;
             const year = yearSelect.value;
             const category = categorySelect.value;
 
             if (month && year && category) {
-                fetchAndUpdateTargetChart(month, year, category);
+                fetchAndUpdateTargetChart(month, year, category, view);
             }
         });
     }
@@ -446,6 +517,7 @@ document.addEventListener("DOMContentLoaded", function () {
             e.preventDefault();
             e.stopPropagation();
 
+            const view = viewSelect.value;
             const month = monthSelect.value;
             const year = yearSelect.value;
             const category = categorySelect.value;
@@ -468,7 +540,7 @@ document.addEventListener("DOMContentLoaded", function () {
             // Create download URL with parameters
             const exportUrl = `/target-revenue/export-excel?month=${month}&year=${year}&category=${encodeURIComponent(
                 category
-            )}`;
+            )}&view=${view}`;
 
             // Use window.location for direct download
             window.location.href = exportUrl;

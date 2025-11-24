@@ -13,15 +13,20 @@ class TargetRevenueController extends Controller
     public function getData(Request $request)
     {
         try {
-            $month = $request->get('month', date('n')); // Current month
-            $year = $request->get('year', date('Y')); // Current year
+            $month = $request->get('month', date('n'));
+            $year = $request->get('year', date('Y'));
             $category = $request->get('category', 'MIKA');
+            $view = $request->get('view', '1-month');
 
-            // Check if targets exist for this month/year/category
+            if ($view === '4-month') {
+                return $this->get4MonthData($month, $year, $category);
+            }
+
             $targetsExist = DB::table('branch_targets')
                 ->where('month', $month)
                 ->where('year', $year)
                 ->where('category', $category)
+                ->limit(1)
                 ->exists();
 
             if (!$targetsExist) {
@@ -34,13 +39,8 @@ class TargetRevenueController extends Controller
                 ]);
             }
 
-            // Get actual revenue data using the provided query
             $actualData = $this->getActualRevenueData($month, $year, $category);
-
-            // Get target data
             $targetData = $this->getTargetData($month, $year, $category);
-
-            // Format data for horizontal bar chart
             $formattedData = $this->formatTargetRevenueData($actualData, $targetData);
 
             return response()->json($formattedData);
@@ -60,6 +60,125 @@ class TargetRevenueController extends Controller
     {
         $categories = ChartHelper::getCategories();
         return response()->json($categories);
+    }
+
+    private function get4MonthData($startMonth, $startYear, $category)
+    {
+        try {
+            $months = $this->calculate4Months($startMonth, $startYear);
+            $aggregatedActual = [];
+            $aggregatedTarget = [];
+            $monthsWithData = [];
+            $monthsWithoutTarget = [];
+
+            foreach ($months as $monthData) {
+                $month = $monthData['month'];
+                $year = $monthData['year'];
+
+                // Check if target exists for this month
+                $targetsExist = DB::table('branch_targets')
+                    ->where('month', $month)
+                    ->where('year', $year)
+                    ->where('category', $category)
+                    ->exists();
+
+                if (!$targetsExist) {
+                    $monthsWithoutTarget[] = $monthData['label'];
+                    continue;
+                }
+
+                $monthsWithData[] = $monthData['label'];
+
+                $actualData = $this->getActualRevenueData($month, $year, $category);
+                $targetData = $this->getTargetData($month, $year, $category);
+
+                foreach ($actualData as $branch => $data) {
+                    if (!isset($aggregatedActual[$branch])) {
+                        $aggregatedActual[$branch] = ['netto' => 0];
+                    }
+                    $aggregatedActual[$branch]['netto'] += $data['netto'];
+                }
+
+                foreach ($targetData as $branch => $amount) {
+                    if (!isset($aggregatedTarget[$branch])) {
+                        $aggregatedTarget[$branch] = 0;
+                    }
+                    $aggregatedTarget[$branch] += $amount;
+                }
+            }
+
+            // If no months have data, return no_targets response
+            if (empty($monthsWithData)) {
+                // Calculate period info for all requested months
+                $allPeriodLabels = array_column($months, 'label');
+                $periodInfo = implode(', ', $allPeriodLabels);
+
+                return response()->json([
+                    'no_targets' => true,
+                    'message' => 'Target belum diinput untuk periode ini',
+                    'months_without_target' => $monthsWithoutTarget,
+                    'period_info' => $periodInfo,
+                    'view' => '4-month',
+                    'category' => $category // Add category for display
+                ]);
+            }
+
+            $formattedData = $this->formatTargetRevenueData($aggregatedActual, $aggregatedTarget);
+
+            $formattedData['period_info'] = implode(', ', $monthsWithData);
+            $formattedData['view'] = '4-month';
+            $formattedData['months_without_target'] = $monthsWithoutTarget;
+
+            return response()->json($formattedData);
+        } catch (\Exception $e) {
+            Log::error('TargetRevenueController get4MonthData error: ' . $e->getMessage(), [
+                'month' => $startMonth,
+                'year' => $startYear,
+                'category' => $category,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json(['error' => 'Failed to fetch 4-month target revenue data'], 500);
+        }
+    }
+
+    private function calculate4Months($startMonth, $startYear)
+    {
+        $months = [];
+        $monthNames = [
+            '',
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec'
+        ];
+
+        for ($i = 0; $i < 4; $i++) {
+            $month = $startMonth + $i;
+            $year = $startYear;
+
+            // Handle year overflow
+            if ($month > 12) {
+                $month = $month - 12;
+                $year++;
+            }
+
+            $months[] = [
+                'month' => $month,
+                'year' => $year,
+                'label' => $monthNames[$month] . ' ' . $year
+            ];
+        }
+
+        return $months;
     }
 
     private function getActualRevenueData($month, $year, $category)
@@ -311,6 +430,11 @@ class TargetRevenueController extends Controller
         $month = $request->input('month', date('n'));
         $year = $request->input('year', date('Y'));
         $category = $request->input('category', 'MIKA');
+        $view = $request->input('view', '1-month');
+
+        if ($view === '4-month') {
+            return $this->exportExcel4Month($month, $year, $category);
+        }
 
         // Get actual revenue data
         $actualData = $this->getActualRevenueData($month, $year, $category);
@@ -663,5 +787,192 @@ class TargetRevenueController extends Controller
         $pdf->setPaper('A4', 'landscape');
 
         return $pdf->download($filename);
+    }
+
+    private function exportExcel4Month($startMonth, $startYear, $category)
+    {
+        // Calculate 4 consecutive months
+        $months = $this->calculate4Months($startMonth, $startYear);
+
+        // Pre-fetch all data for current year only
+        $dataCache = [];
+        foreach ($months as $monthData) {
+            $month = $monthData['month'];
+            $year = $monthData['year'];
+
+            // Cache current year data
+            $dataCache[$year][$month]['actual'] = $this->getActualRevenueData($month, $year, $category);
+            $dataCache[$year][$month]['target'] = $this->getTargetData($month, $year, $category);
+        }
+
+        // Get all branches from cached data
+        $allBranches = [];
+        foreach ($dataCache as $yearData) {
+            foreach ($yearData as $monthData) {
+                $branches = array_unique(array_merge(
+                    array_keys($monthData['actual']),
+                    array_keys($monthData['target'])
+                ));
+                $allBranches = array_unique(array_merge($allBranches, $branches));
+            }
+        }
+
+        // Sort branches using ChartHelper branch order
+        $branchOrder = ChartHelper::getBranchOrder();
+        $sortedBranches = [];
+        foreach ($branchOrder as $branch) {
+            if (in_array($branch, $allBranches)) {
+                $sortedBranches[] = $branch;
+            }
+        }
+        foreach ($allBranches as $branch) {
+            if (!in_array($branch, $sortedBranches)) {
+                $sortedBranches[] = $branch;
+            }
+        }
+        $allBranches = $sortedBranches;
+
+        // Format category and period for display
+        $formattedCategory = strtoupper($category);
+        $periodLabels = array_column($months, 'label');
+        $periodString = strtoupper($periodLabels[0]) . ' - ' . strtoupper($periodLabels[3]);
+
+        $filename = 'Target_Penjualan_Netto_' . str_replace([' ', ','], ['_', ''], $periodString) . '_' . str_replace(' ', '_', $category) . '.xls';
+
+        // Create XLS content
+        $headers = [
+            'Content-Type' => 'application/vnd.ms-excel',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0'
+        ];
+
+        // Get year label (handle year transition)
+        $firstMonthYear = $months[0]['year'];
+        $lastMonthYear = $months[3]['year'];
+        if ($lastMonthYear > $firstMonthYear) {
+            $yearLabel = $firstMonthYear;
+        } else {
+            $yearLabel = $firstMonthYear;
+        }
+
+        $html = '
+        <html xmlns:x="urn:schemas-microsoft-com:office:excel">
+        <head>
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+            <style>
+                body { font-family: Verdana, sans-serif; }
+                table { border-collapse: collapse; }
+                th, td {
+                    border: 1px solid #000;
+                    padding: 6px 8px;
+                    text-align: left;
+                    font-family: Verdana, sans-serif;
+                    font-size: 10pt;
+                }
+                th {
+                    background-color: #D3D3D3;
+                    color: #000;
+                    font-weight: bold;
+                    text-align: center;
+                    vertical-align: middle;
+                }
+                .title {
+                    font-family: Verdana, sans-serif;
+                    font-size: 16pt;
+                    font-weight: bold;
+                    margin-bottom: 8px;
+                }
+                .period {
+                    font-family: Verdana, sans-serif;
+                    font-size: 12pt;
+                    margin-bottom: 15px;
+                }
+                .branch-header {
+                    font-family: Verdana, sans-serif;
+                    font-size: 12pt;
+                    font-weight: bold;
+                    margin-top: 20px;
+                    margin-bottom: 10px;
+                }
+                .total-row { font-weight: bold; background-color: #E8E8E8; }
+                .number { text-align: right; }
+            </style>
+        </head>
+        <body>
+            <div class="title">TARGET PENJUALAN NETTO ' . $formattedCategory . '</div>
+            <div class="period">PERIODE: ' . $periodString . '</div>
+            <br>';
+
+        // Generate table for each branch
+        foreach ($allBranches as $branchName) {
+            $branchCode = ChartHelper::getBranchAbbreviation($branchName);
+
+            $html .= '
+            <div class="branch-header">CABANG: ' . strtoupper($branchName) . '</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="vertical-align: middle;">BULAN</th>
+                        <th colspan="3" style="text-align: center;">' . $yearLabel . '</th>
+                    </tr>
+                    <tr>
+                        <th style="text-align: right;">TARGET</th>
+                        <th style="text-align: right;">REALISASI</th>
+                        <th style="text-align: right;">ACHV. (%)</th>
+                    </tr>
+                </thead>
+                <tbody>';
+
+            $totalTarget = 0;
+            $totalRealization = 0;
+
+            foreach ($months as $monthData) {
+                $month = $monthData['month'];
+                $year = $monthData['year'];
+                $monthLabel = explode(' ', $monthData['label'])[0]; // Get month name only
+
+                // Get data from cache
+                $currentYearActual = $dataCache[$year][$month]['actual'] ?? [];
+                $currentYearTarget = $dataCache[$year][$month]['target'] ?? [];
+
+                $target = $currentYearTarget[$branchName] ?? 0;
+                $realization = $currentYearActual[$branchName]['netto'] ?? 0;
+                $achv = $target > 0 ? round(($realization / $target) * 100, 2) : 0;
+
+                $totalTarget += $target;
+                $totalRealization += $realization;
+
+                $html .= '<tr>
+                    <td>' . strtoupper(substr($monthLabel, 0, 3)) . '</td>
+                    <td class="number">' . number_format($target, 0, '.', ',') . '</td>
+                    <td class="number">' . number_format($realization, 0, '.', ',') . '</td>
+                    <td class="number">' . number_format($achv, 2, '.', ',') . '%</td>
+                </tr>';
+            }
+
+            // Calculate total achievement percentage
+            $totalAchv = $totalTarget > 0 ? round(($totalRealization / $totalTarget) * 100, 2) : 0;
+
+            $html .= '
+                    <tr class="total-row">
+                        <td><strong>TOTAL</strong></td>
+                        <td class="number"><strong>' . number_format($totalTarget, 0, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($totalRealization, 0, '.', ',') . '</strong></td>
+                        <td class="number"><strong>' . number_format($totalAchv, 2, '.', ',') . '%</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+            <br>';
+        }
+
+        $html .= '
+            <br>
+            <div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
+        </body>
+        </html>';
+
+        return response($html, 200, $headers);
     }
 }
