@@ -136,6 +136,11 @@ main() {
     php artisan view:cache
     print_success "Configuration cached"
     
+    # Warm cache
+    echo "Warming cache..."
+    php artisan cache:warm-return-comparison --last-3-months
+    print_success "Cache warmed for last 3 months"
+    
     # Optimize autoloader
     echo "Optimizing autoloader..."
     composer dump-autoload --optimize
