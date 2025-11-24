@@ -17,7 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         // Data Sync Scheduler
         // --------------------------------------------------------------------
-        // Runs full sync daily at 08:30 WIB (Asia/Jakarta timezone)
+        // Runs full sync daily at 08:30 WIB
         // This ensures 1:1 data parity with all 17 branch databases
         // Uses optimized 3-month date filter for daily updates (data before this is already complete)
         $schedule->command('app:sync-all')
@@ -26,6 +26,17 @@ return Application::configure(basePath: dirname(__DIR__))
             ->timezone('Asia/Jakarta')
             ->sendOutputTo(storage_path('logs/sync-full.log'))
             ->appendOutputTo(storage_path('logs/sync-full.log'));
+
+        // Return Comparison Cache Refresh
+        // --------------------------------------------------------------------
+        // Refresh cache for current month daily at 06:00 WIB
+        // This ensures data for ongoing month is always up-to-date
+        // Past months remain cached for 24 hours (data is final)
+        $schedule->command('cache:warm-return-comparison --current')
+            ->dailyAt('06:00')
+            ->timezone('Asia/Jakarta')
+            ->sendOutputTo(storage_path('logs/cache-return-comparison.log'))
+            ->appendOutputTo(storage_path('logs/cache-return-comparison.log'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
