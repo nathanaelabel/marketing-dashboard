@@ -19,13 +19,10 @@ class ReturnComparisonController extends Controller
     public function getData(Request $request)
     {
         try {
-            // Increase execution time limit for complex queries
-            set_time_limit(180); // Increased to 180 seconds
-
+            set_time_limit(180);
             $month = $request->get("month", date("n"));
             $year = $request->get("year", date("Y"));
 
-            // Validate parameters using TableHelper
             $validationErrors = TableHelper::validatePeriodParameters(
                 $month,
                 $year,
@@ -36,10 +33,33 @@ class ReturnComparisonController extends Controller
 
             // Generate cache key based on month and year
             $cacheKey = "return_comparison_{$year}_{$month}";
+            $checksumKey = "return_comparison_checksum_{$year}_{$month}";
 
-            // Try to get cached data (cache for 6 hours = 21600 seconds)
-            // Longer cache duration to minimize slow query execution
-            $cachedData = Cache::remember($cacheKey, 21600, function () use ($month, $year) {
+            // Smart cache duration based on whether it's current month or past month
+            $currentMonth = (int)date('n');
+            $currentYear = (int)date('Y');
+            $isCurrentMonth = ($month == $currentMonth && $year == $currentYear);
+
+            // Current month: cache 1 hour (data changes daily)
+            // Past months: cache 24 hours but with checksum validation
+            $cacheDuration = $isCurrentMonth ? 3600 : 86400;
+
+            // Check if data has changed by comparing checksums
+            $currentChecksum = $this->calculateDataChecksum($month, $year);
+            $cachedChecksum = Cache::get($checksumKey);
+
+            if ($cachedChecksum && $cachedChecksum !== $currentChecksum) {
+                // Data has changed! Invalidate cache
+                Cache::forget($cacheKey);
+                Cache::forget($checksumKey);
+                Log::info("ReturnComparison: Data changed for {$year}-{$month}, cache invalidated");
+            }
+
+            Log::info("ReturnComparison: Cache duration for {$year}-{$month}: " .
+                ($isCurrentMonth ? "1 hour (current month)" : "24 hours (past month, checksum validated)"));
+
+            // Try to get cached data with smart duration
+            $cachedData = Cache::remember($cacheKey, $cacheDuration, function () use ($month, $year, $checksumKey, $currentChecksum, $cacheDuration) {
                 // Get all branch codes from TableHelper
                 $branchMapping = TableHelper::getBranchMapping();
 
@@ -66,6 +86,9 @@ class ReturnComparisonController extends Controller
 
                 $totalTime = $salesBrutoTime + $cncTime + $barangTime + $cabangPabrikTime;
                 Log::info("ReturnComparison: Total query time {$totalTime}ms for month={$month}, year={$year}");
+
+                // Store checksum for future validation
+                Cache::put($checksumKey, $currentChecksum, $cacheDuration);
 
                 return [
                     'salesBrutoData' => $salesBrutoData,
@@ -1087,6 +1110,56 @@ class ReturnComparisonController extends Controller
                 ["error" => "Failed to clear cache"],
                 500,
             );
+        }
+    }
+
+    /**
+     * Calculate checksum of data for cache invalidation
+     * Uses lightweight query to detect if data has changed
+     */
+    private function calculateDataChecksum($month, $year)
+    {
+        try {
+            // Lightweight query: count + sum to detect changes
+            // Much faster than fetching all data
+            $query = "
+                SELECT 
+                    COUNT(*) as total_records,
+                    COALESCE(SUM(invl.linenetamt), 0) as total_amount,
+                    MAX(inv.updated) as last_updated
+                FROM c_invoice inv
+                INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
+                WHERE inv.ad_client_id = 1000001
+                    AND inv.isactive = 'Y'
+                    AND inv.docstatus IN ('CO', 'CL')
+                    AND EXTRACT(year FROM inv.dateinvoiced) = ?
+                    AND EXTRACT(month FROM inv.dateinvoiced) = ?
+                    AND (
+                        inv.documentno LIKE 'INC%' 
+                        OR inv.documentno LIKE 'CNC%'
+                        OR inv.documentno LIKE 'DNS-%'
+                    )
+            ";
+
+            $result = DB::selectOne($query, [$year, $month]);
+
+            // Create checksum from key metrics
+            $checksumData = [
+                'records' => $result->total_records ?? 0,
+                'amount' => $result->total_amount ?? 0,
+                'updated' => $result->last_updated ?? '',
+            ];
+
+            // Generate MD5 hash as checksum
+            $checksum = md5(json_encode($checksumData));
+
+            Log::debug("ReturnComparison: Checksum for {$year}-{$month}: {$checksum}", $checksumData);
+
+            return $checksum;
+        } catch (\Exception $e) {
+            Log::error("ReturnComparison: Failed to calculate checksum: " . $e->getMessage());
+            // Return timestamp-based checksum as fallback
+            return md5($year . $month . date('YmdH'));
         }
     }
 }

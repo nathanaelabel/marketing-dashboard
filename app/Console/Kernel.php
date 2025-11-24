@@ -12,17 +12,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Data Sync Scheduler
-        // --------------------------------------------------------------------
-        // Runs full sync daily at 08:30 WIB (Asia/Jakarta timezone)
-        // This ensures 1:1 data parity with all 17 branch databases
-        // Uses optimized 3-month date filter for daily updates (data before this is already complete)
-        $schedule->command('app:sync-all')
-            ->dailyAt('08:30')
-            ->withoutOverlapping()
-            ->timezone('Asia/Jakarta')
-            ->sendOutputTo(storage_path('logs/sync-full.log'))
-            ->appendOutputTo(storage_path('logs/sync-full.log'));
+        // Scheduling is now handled in bootstrap/app.php (Laravel 11+)
     }
 
     /**

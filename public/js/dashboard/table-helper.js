@@ -397,27 +397,14 @@ class TableHelper {
                 (error.name === "AbortError" ||
                     error.message.includes("timeout"))
             ) {
-                // Exponential backoff: wait 2^retryCount seconds before retry
                 const waitTime = Math.pow(2, retryCount) * 1000;
                 console.log(
                     `Request aborted/timeout. Retrying in ${
                         waitTime / 1000
                     }s... (Attempt ${retryCount + 1}/${maxRetries})`
                 );
-
-                // Show retry message to user
-                if (this.elements.errorText) {
-                    this.elements.errorText.textContent = `Loading data timed out. Retrying... (Attempt ${
-                        retryCount + 1
-                    }/${maxRetries})`;
-                }
-                if (this.elements.error) {
-                    this.elements.error.classList.remove("hidden");
-                }
-
                 await new Promise((resolve) => setTimeout(resolve, waitTime));
 
-                // Recursive retry
                 return this.fetchData(filters, retryCount + 1);
             }
 
