@@ -97,7 +97,11 @@ main() {
     fi
     
     print_info "Changes detected. Pulling updates..."
-    git pull origin "$BRANCH"
+    
+    # Reset any local changes to avoid merge conflicts
+    print_info "Resetting local changes..."
+    git reset --hard origin/"$BRANCH"
+    
     print_success "Code updated successfully"
     
     # Install/Update Composer dependencies
@@ -148,6 +152,14 @@ main() {
     
     # Set proper permissions
     print_header "Setting Permissions"
+    
+    # Set ownership to web server user (www-data for Apache/Nginx)
+    print_info "Setting ownership to www-data..."
+    chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || \
+    chown -R nginx:nginx storage bootstrap/cache 2>/dev/null || \
+    print_info "Could not change ownership (may need sudo)"
+    
+    # Set proper permissions
     chmod -R 775 storage bootstrap/cache
     print_success "Permissions set"
     
