@@ -17,8 +17,19 @@
             <div class="md:justify-self-start">
                 <h3 class="text-2xl font-bold text-gray-900" x-text="translations.title[currentLang]">Target Net Revenue
                 </h3>
+                <p id="target-period-info" class="text-sm text-gray-600 mt-1 hidden"></p>
             </div>
             <div class="flex items-end space-x-3 md:justify-self-end justify-center mt-3 md:mt-0">
+                <!-- View Selector -->
+                <div>
+                    <label for="target-view-select" class="block text-xs font-medium text-gray-500 mb-1">View</label>
+                    <select id="target-view-select"
+                        class="pl-3 pr-8 py-1.5 w-32 text-sm rounded-md border border-gray-300 shadow-sm focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 focus:ring-opacity-50">
+                        <option value="1-month" selected>1-month</option>
+                        <option value="4-month">4-month</option>
+                    </select>
+                </div>
+
                 <!-- Month Selector -->
                 <div>
                     <label for="target-month-select" class="block text-xs font-medium text-gray-500 mb-1">Month</label>

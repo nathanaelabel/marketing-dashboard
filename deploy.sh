@@ -10,11 +10,11 @@
 set -e  # Exit on any error
 
 # Colors for output (optimized for dark terminal background)
-RED='\033[1;91m'      # Bright red
-GREEN='\033[1;92m'    # Bright green
-YELLOW='\033[1;93m'   # Bright yellow
-BLUE='\033[1;96m'     # Bright cyan (more visible than blue)
-NC='\033[0m'          # No Color
+RED='\033[1;91m'
+GREEN='\033[1;92m'
+YELLOW='\033[1;93m'
+BLUE='\033[1;96m'
+NC='\033[0m'
 
 # Configuration
 APP_DIR="/var/www/html/web/marketing-dashboard"
@@ -135,6 +135,11 @@ main() {
     php artisan route:cache
     php artisan view:cache
     print_success "Configuration cached"
+    
+    # Warm cache
+    echo "Warming cache..."
+    php artisan cache:warm-return-comparison --last-3-months
+    print_success "Cache warmed for last 3 months"
     
     # Optimize autoloader
     echo "Optimizing autoloader..."
