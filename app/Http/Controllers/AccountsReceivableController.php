@@ -38,20 +38,21 @@ class AccountsReceivableController extends Controller
             $sql = "
             SELECT
                 branch_name,
-                SUM(CASE WHEN age >= 0 AND age <= 104 AND (totallines - (bayar * pengali)) <> 0
+                SUM(CASE WHEN age >= 0 AND age <= 104 AND totallines > (bayar * pengali)
                     THEN (totallines - (bayar * pengali)) ELSE 0 END) as range_0_104,
-                SUM(CASE WHEN age >= 105 AND age <= 120 AND (totallines - (bayar * pengali)) <> 0
+                SUM(CASE WHEN age >= 105 AND age <= 120 AND totallines > (bayar * pengali)
                     THEN (totallines - (bayar * pengali)) ELSE 0 END) as range_105_120,
-                SUM(CASE WHEN age > 120 AND (totallines - (bayar * pengali)) <> 0
+                SUM(CASE WHEN age > 120 AND totallines > (bayar * pengali)
                     THEN (totallines - (bayar * pengali)) ELSE 0 END) as range_120_plus,
-                SUM(CASE WHEN age >= 0 AND (totallines - (bayar * pengali)) <> 0
+                SUM(CASE WHEN age >= 0 AND totallines > (bayar * pengali)
                     THEN (totallines - (bayar * pengali)) ELSE 0 END) as total_overdue
             FROM (
                 SELECT
                     inv.totallines,
                     org.name as branch_name,
                     (
-                        SELECT COALESCE(SUM(alocln.amount + alocln.writeoffamt + alocln.discountamt), 0)
+                        SELECT COALESCE(SUM(alocln.amount + alocln.writeoffamt + alocln.discountamt
+                            + CASE WHEN SUBSTR(inv.documentno, 1, 3) = 'CNC' THEN alocln.overunderamt ELSE 0 END), 0)
                         FROM c_allocationline alocln
                         INNER JOIN c_allocationhdr alochdr ON alocln.c_allocationhdr_id = alochdr.c_allocationhdr_id
                         WHERE alocln.c_invoice_id = inv.c_invoice_id
@@ -78,7 +79,7 @@ class AccountsReceivableController extends Controller
                     AND inv.c_bpartner_id IS NOT NULL
                     AND inv.totallines IS NOT NULL
             ) as source
-            WHERE (totallines - (bayar * pengali)) <> 0
+            WHERE totallines <> abs(bayar * pengali)
                 AND age >= 0
             GROUP BY branch_name
             ORDER BY total_overdue DESC
@@ -88,18 +89,19 @@ class AccountsReceivableController extends Controller
             $sql = "
             SELECT
                 branch_name,
-                SUM(CASE WHEN age >= 105 AND age <= 120 AND (totallines - (bayar * pengali)) <> 0
+                SUM(CASE WHEN age >= 105 AND age <= 120 AND totallines > (bayar * pengali)
                     THEN (totallines - (bayar * pengali)) ELSE 0 END) as range_105_120,
-                SUM(CASE WHEN age > 120 AND (totallines - (bayar * pengali)) <> 0
+                SUM(CASE WHEN age > 120 AND totallines > (bayar * pengali)
                     THEN (totallines - (bayar * pengali)) ELSE 0 END) as range_120_plus,
-                SUM(CASE WHEN age >= 105 AND (totallines - (bayar * pengali)) <> 0
+                SUM(CASE WHEN age >= 105 AND totallines > (bayar * pengali)
                     THEN (totallines - (bayar * pengali)) ELSE 0 END) as total_overdue
             FROM (
                 SELECT
                     inv.totallines,
                     org.name as branch_name,
                     (
-                        SELECT COALESCE(SUM(alocln.amount + alocln.writeoffamt + alocln.discountamt), 0)
+                        SELECT COALESCE(SUM(alocln.amount + alocln.writeoffamt + alocln.discountamt
+                            + CASE WHEN SUBSTR(inv.documentno, 1, 3) = 'CNC' THEN alocln.overunderamt ELSE 0 END), 0)
                         FROM c_allocationline alocln
                         INNER JOIN c_allocationhdr alochdr ON alocln.c_allocationhdr_id = alochdr.c_allocationhdr_id
                         WHERE alocln.c_invoice_id = inv.c_invoice_id
@@ -126,7 +128,7 @@ class AccountsReceivableController extends Controller
                     AND inv.c_bpartner_id IS NOT NULL
                     AND inv.totallines IS NOT NULL
             ) as source
-            WHERE (totallines - (bayar * pengali)) <> 0
+            WHERE totallines <> abs(bayar * pengali)
                 AND age >= 105
             GROUP BY branch_name
             ORDER BY total_overdue DESC
@@ -260,13 +262,13 @@ class AccountsReceivableController extends Controller
         $sql = "
         SELECT
             branch_name,
-            SUM(CASE WHEN age >= 0 AND age <= 104 AND (totallines - (bayar * pengali)) <> 0
+            SUM(CASE WHEN age >= 0 AND age <= 104 AND totallines > (bayar * pengali)
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_0_104,
-            SUM(CASE WHEN age >= 105 AND age <= 120 AND (totallines - (bayar * pengali)) <> 0
+            SUM(CASE WHEN age >= 105 AND age <= 120 AND totallines > (bayar * pengali)
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_105_120,
-            SUM(CASE WHEN age > 120 AND (totallines - (bayar * pengali)) <> 0
+            SUM(CASE WHEN age > 120 AND totallines > (bayar * pengali)
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_120_plus,
-            SUM(CASE WHEN age >= 0 AND (totallines - (bayar * pengali)) <> 0
+            SUM(CASE WHEN age >= 0 AND totallines > (bayar * pengali)
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as total_overdue
         FROM (
             SELECT
@@ -274,7 +276,8 @@ class AccountsReceivableController extends Controller
                 org.name as branch_name,
                 -- Correlated subquery to get payment per invoice
                 (
-                    SELECT COALESCE(SUM(alocln.amount + alocln.writeoffamt + alocln.discountamt), 0)
+                    SELECT COALESCE(SUM(alocln.amount + alocln.writeoffamt + alocln.discountamt
+                        + CASE WHEN SUBSTR(inv.documentno, 1, 3) = 'CNC' THEN alocln.overunderamt ELSE 0 END), 0)
                     FROM c_allocationline alocln
                     INNER JOIN c_allocationhdr alochdr ON alocln.c_allocationhdr_id = alochdr.c_allocationhdr_id
                     WHERE alocln.c_invoice_id = inv.c_invoice_id
@@ -301,7 +304,7 @@ class AccountsReceivableController extends Controller
                 AND inv.c_bpartner_id IS NOT NULL
                 AND inv.totallines IS NOT NULL
         ) as source
-        WHERE (totallines - (bayar * pengali)) <> 0
+        WHERE totallines <> abs(bayar * pengali)
             AND age >= 0
         GROUP BY branch_name
         ORDER BY total_overdue DESC
@@ -564,13 +567,13 @@ class AccountsReceivableController extends Controller
         $sql = "
         SELECT
             branch_name,
-            SUM(CASE WHEN age >= 0 AND age <= 104 AND (totallines - (bayar * pengali)) <> 0
+            SUM(CASE WHEN age >= 0 AND age <= 104 AND totallines > (bayar * pengali)
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_0_104,
-            SUM(CASE WHEN age >= 105 AND age <= 120 AND (totallines - (bayar * pengali)) <> 0
+            SUM(CASE WHEN age >= 105 AND age <= 120 AND totallines > (bayar * pengali)
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_105_120,
-            SUM(CASE WHEN age > 120 AND (totallines - (bayar * pengali)) <> 0
+            SUM(CASE WHEN age > 120 AND totallines > (bayar * pengali)
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as overdue_120_plus,
-            SUM(CASE WHEN age >= 0 AND (totallines - (bayar * pengali)) <> 0
+            SUM(CASE WHEN age >= 0 AND totallines > (bayar * pengali)
                 THEN (totallines - (bayar * pengali)) ELSE 0 END) as total_overdue
         FROM (
             SELECT
@@ -578,7 +581,8 @@ class AccountsReceivableController extends Controller
                 org.name as branch_name,
                 -- Correlated subquery to get payment per invoice
                 (
-                    SELECT COALESCE(SUM(alocln.amount + alocln.writeoffamt + alocln.discountamt), 0)
+                    SELECT COALESCE(SUM(alocln.amount + alocln.writeoffamt + alocln.discountamt
+                        + CASE WHEN SUBSTR(inv.documentno, 1, 3) = 'CNC' THEN alocln.overunderamt ELSE 0 END), 0)
                     FROM c_allocationline alocln
                     INNER JOIN c_allocationhdr alochdr ON alocln.c_allocationhdr_id = alochdr.c_allocationhdr_id
                     WHERE alocln.c_invoice_id = inv.c_invoice_id
@@ -605,7 +609,7 @@ class AccountsReceivableController extends Controller
                 AND inv.c_bpartner_id IS NOT NULL
                 AND inv.totallines IS NOT NULL
         ) as source
-        WHERE (totallines - (bayar * pengali)) <> 0
+        WHERE totallines <> abs(bayar * pengali)
             AND age >= 0
         GROUP BY branch_name
         ORDER BY total_overdue DESC
