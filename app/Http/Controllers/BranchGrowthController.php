@@ -31,7 +31,17 @@ class BranchGrowthController extends Controller
             $branch = $request->get('branch', 'National');
             $type = $request->get('type', 'NETTO');
 
+            Log::info('BranchGrowthController getData called', [
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+                'category' => $category,
+                'branch' => $branch,
+                'type' => $type
+            ]);
+
             $data = $this->getRevenueDataByDateRange($startDate, $endDate, $category, $branch, $type);
+
+            Log::info('BranchGrowthController getData result', ['count' => count($data)]);
 
             $formattedData = $this->formatMonthlyGrowthData($data, $startDate, $endDate);
 
@@ -88,32 +98,52 @@ class BranchGrowthController extends Controller
     private function getRevenueDataByDateRange($startDate, $endDate, $category, $branch, $type = 'NETTO')
     {
         try {
+            // Increase PHP execution time limit for heavy queries
+            set_time_limit(180);
+
+            try {
+                $driver = DB::connection()->getDriverName();
+                if ($driver === 'pgsql') {
+                    DB::statement("SET statement_timeout = 120000");
+                }
+            } catch (\Exception $e) {
+                Log::debug('Could not set statement timeout', ['error' => $e->getMessage()]);
+            }
+
             $branchCondition = '';
-            $branchBinding = [];
+            $bindings = [];
+
             if ($branch !== 'National') {
                 $branchCondition = 'AND org.name = ?';
-                $branchBinding[] = $branch;
+                $bindings = [$branch, $startDate, $endDate, $category, $category];
+            } else {
+                $bindings = [$startDate, $endDate, $category, $category];
             }
 
             if ($type === 'BRUTO') {
-                // Bruto query - only INC documents
+                // Bruto query - only INC documents (aligned with MonthlyBranchController)
                 $query = "
                     SELECT
                         EXTRACT(year FROM h.dateinvoiced) as year,
                         EXTRACT(month FROM h.dateinvoiced) as month,
                         COALESCE(SUM(d.linenetamt), 0) as net_revenue
                     FROM
-                        c_invoiceline d
-                        INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+                        c_invoice h
+                        INNER JOIN c_invoiceline d ON h.c_invoice_id = d.c_invoice_id
                         INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
                         INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                         INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                         INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                         LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                     WHERE
-                        h.issotrx = 'Y'
-                        AND h.ad_client_id = 1000001
+                        h.ad_client_id = 1000001
+                        AND h.issotrx = 'Y'
+                        AND d.qtyinvoiced > 0
+                        AND d.linenetamt > 0
                         AND h.docstatus IN ('CO', 'CL')
+                        AND h.isactive = 'Y'
+                        {$branchCondition}
+                        AND h.dateinvoiced::date BETWEEN ? AND ?
                         AND h.documentno LIKE 'INC%'
                         AND (
                             CASE 
@@ -128,9 +158,7 @@ class BranchGrowthController extends Controller
                                 ELSE cat.name = ?
                             END
                         )
-                        AND DATE(h.dateinvoiced) BETWEEN ? AND ?
                         AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
-                        {$branchCondition}
                     GROUP BY
                         EXTRACT(year FROM h.dateinvoiced),
                         EXTRACT(month FROM h.dateinvoiced)
@@ -148,20 +176,22 @@ class BranchGrowthController extends Controller
                             WHEN SUBSTR(h.documentno, 1, 3) IN ('CNC') THEN -d.linenetamt
                         END), 0) as net_revenue
                     FROM
-                        c_invoiceline d
-                        INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+                        c_invoice h
+                        INNER JOIN c_invoiceline d ON h.c_invoice_id = d.c_invoice_id
                         INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
                         INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                         INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                         INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                         LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                     WHERE
-                        h.issotrx = 'Y'
-                        AND h.ad_client_id = 1000001
+                        h.ad_client_id = 1000001
+                        AND h.issotrx = 'Y'
                         AND d.qtyinvoiced > 0
                         AND d.linenetamt > 0
                         AND h.docstatus IN ('CO', 'CL')
                         AND h.isactive = 'Y'
+                        {$branchCondition}
+                        AND h.dateinvoiced::date BETWEEN ? AND ?
                         AND SUBSTR(h.documentno, 1, 3) IN ('INC', 'CNC')
                         AND (
                             CASE 
@@ -176,9 +206,7 @@ class BranchGrowthController extends Controller
                                 ELSE cat.name = ?
                             END
                         )
-                        AND h.dateinvoiced::date BETWEEN ? AND ?
                         AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
-                        {$branchCondition}
                     GROUP BY
                         EXTRACT(year FROM h.dateinvoiced),
                         EXTRACT(month FROM h.dateinvoiced)
@@ -187,12 +215,28 @@ class BranchGrowthController extends Controller
                 ";
             }
 
-            $bindings = array_merge([$category, $category, $startDate, $endDate], $branchBinding);
-
             $result = DB::select($query, $bindings);
+
+            try {
+                $driver = DB::connection()->getDriverName();
+                if ($driver === 'pgsql') {
+                    DB::statement("SET statement_timeout = 0");
+                }
+            } catch (\Exception $e) {
+                // Ignore reset error
+            }
 
             return $result;
         } catch (\Exception $e) {
+            try {
+                $driver = DB::connection()->getDriverName();
+                if ($driver === 'pgsql') {
+                    DB::statement("SET statement_timeout = 0");
+                }
+            } catch (\Exception $resetError) {
+                // Ignore reset error
+            }
+
             Log::error('Error fetching revenue data by date range', [
                 'start_date' => $startDate,
                 'end_date' => $endDate,
@@ -202,20 +246,18 @@ class BranchGrowthController extends Controller
                 'error' => $e->getMessage()
             ]);
 
-            return [];
+            throw $e;
         }
     }
 
     private function formatMonthlyGrowthData($data, $startDate, $endDate)
     {
         try {
-            // Parse start and end dates to get year range
             $start = new \DateTime($startDate);
             $end = new \DateTime($endDate);
             $startYear = (int)$start->format('Y');
             $endYear = (int)$end->format('Y');
 
-            // Month labels (Jan - Dec)
             $monthLabels = [
                 'January',
                 'February',
@@ -231,25 +273,23 @@ class BranchGrowthController extends Controller
                 'December'
             ];
 
-            // Group data by year
             $yearlyData = [];
             foreach ($data as $row) {
                 $year = (int)$row->year;
                 $month = (int)$row->month;
                 if (!isset($yearlyData[$year])) {
-                    $yearlyData[$year] = array_fill(1, 12, 0); // Initialize months 1-12 with 0
+                    $yearlyData[$year] = array_fill(1, 12, 0);
                 }
                 $yearlyData[$year][$month] = (float)$row->net_revenue;
             }
 
-            // Create datasets for each year
             $datasets = [];
             $defaultColors = [
-                'rgba(59, 130, 246, 0.8)',   // Blue
-                'rgba(16, 185, 129, 0.8)',   // Green
-                'rgba(245, 158, 11, 0.8)',   // Yellow
-                'rgba(239, 68, 68, 0.8)',    // Red
-                'rgba(139, 92, 246, 0.8)'    // Purple
+                'rgba(59, 130, 246, 0.8)',
+                'rgba(16, 185, 129, 0.8)',
+                'rgba(245, 158, 11, 0.8)',
+                'rgba(239, 68, 68, 0.8)',
+                'rgba(139, 92, 246, 0.8)'
             ];
             $colorIndex = 0;
             $allValues = [];
@@ -257,7 +297,6 @@ class BranchGrowthController extends Controller
             for ($year = $startYear; $year <= $endYear; $year++) {
                 $monthlyValues = [];
 
-                // Get data for each month (1-12)
                 for ($month = 1; $month <= 12; $month++) {
                     $value = isset($yearlyData[$year][$month]) ? $yearlyData[$year][$month] : 0;
                     $monthlyValues[] = $value;
@@ -266,10 +305,8 @@ class BranchGrowthController extends Controller
                     }
                 }
 
-                // Use default colors cycling through them
                 $color = $defaultColors[$colorIndex % count($defaultColors)];
 
-                // Create formatted values for chart display
                 $formattedValues = [];
                 foreach ($monthlyValues as $value) {
                     $formattedValues[] = ChartHelper::formatNumberForDisplay($value, 1);
@@ -289,10 +326,8 @@ class BranchGrowthController extends Controller
                 $colorIndex++;
             }
 
-            // Calculate max value for Y-axis
             $maxValue = !empty($allValues) ? max($allValues) : 100;
 
-            // Use ChartHelper for Y-axis configuration
             $yAxisConfig = ChartHelper::getYAxisConfig($maxValue, null, $allValues);
             $suggestedMax = ChartHelper::calculateSuggestedMax($maxValue, $yAxisConfig['divisor']);
 
@@ -334,7 +369,6 @@ class BranchGrowthController extends Controller
     private function getMultiYearRevenueData($startYear, $endYear, $category, $branch)
     {
         try {
-            // Branch condition - if National, sum all branches, otherwise filter by specific branch
             $branchCondition = '';
             $branchBinding = [];
             if ($branch !== 'National') {
@@ -342,7 +376,6 @@ class BranchGrowthController extends Controller
                 $branchBinding[] = $branch;
             }
 
-            // Build conditional aggregation for all years and months (BRUTO - RETUR)
             $yearSelects = [];
             for ($year = $startYear; $year <= $endYear; $year++) {
                 for ($month = 1; $month <= 12; $month++) {
@@ -394,7 +427,6 @@ class BranchGrowthController extends Controller
                     {$branchCondition}
             ";
 
-            // Use date range instead of EXTRACT for better performance
             $startDate = $startYear . '-01-01';
             $endDate = ($endYear + 1) . '-01-01';
 
@@ -416,7 +448,6 @@ class BranchGrowthController extends Controller
                 'result' => $result
             ]);
 
-            // Convert result to year-based structure
             $data = [];
             if (!empty($result) && isset($result[0])) {
                 $row = $result[0];
@@ -467,7 +498,6 @@ class BranchGrowthController extends Controller
                 'error' => $e->getMessage()
             ]);
 
-            // Return default zero data for all years on error
             $data = [];
             for ($year = $startYear; $year <= $endYear; $year++) {
                 $data[$year] = (object)[
@@ -500,12 +530,11 @@ class BranchGrowthController extends Controller
         $startDate = $startYear . '-01-01';
         $endDate = $endYear . '-12-31';
 
-        // Get all branches
         $branches = ChartHelper::getLocations();
 
         // Get revenue data for all branches and all years in range
         if ($type === 'BRUTO') {
-            // Bruto query - only INC documents
+            // Bruto query - only INC documents (aligned with MonthlyBranchController)
             $query = "
                 SELECT
                     org.name AS branch_name,
@@ -513,17 +542,21 @@ class BranchGrowthController extends Controller
                     EXTRACT(year FROM h.dateinvoiced) AS year_number,
                     COALESCE(SUM(d.linenetamt), 0) as net_revenue
                 FROM
-                    c_invoiceline d
-                    INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+                    c_invoice h
+                    INNER JOIN c_invoiceline d ON h.c_invoice_id = d.c_invoice_id
                     INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
                     INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                     INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                     LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                 WHERE
-                    h.issotrx = 'Y'
-                    AND h.ad_client_id = 1000001
+                    h.ad_client_id = 1000001
+                    AND h.issotrx = 'Y'
+                    AND d.qtyinvoiced > 0
+                    AND d.linenetamt > 0
                     AND h.docstatus IN ('CO', 'CL')
+                    AND h.isactive = 'Y'
+                    AND h.dateinvoiced::date BETWEEN ? AND ?
                     AND h.documentno LIKE 'INC%'
                     AND (
                         CASE 
@@ -538,7 +571,6 @@ class BranchGrowthController extends Controller
                             ELSE cat.name = ?
                         END
                     )
-                    AND DATE(h.dateinvoiced) BETWEEN ? AND ?
                     AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     org.name, EXTRACT(month FROM h.dateinvoiced), EXTRACT(year FROM h.dateinvoiced)
@@ -557,20 +589,21 @@ class BranchGrowthController extends Controller
                         WHEN SUBSTR(h.documentno, 1, 3) IN ('CNC') THEN -d.linenetamt
                     END), 0) as net_revenue
                 FROM
-                    c_invoiceline d
-                    INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+                    c_invoice h
+                    INNER JOIN c_invoiceline d ON h.c_invoice_id = d.c_invoice_id
                     INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
                     INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                     INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                     LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                 WHERE
-                    h.issotrx = 'Y'
-                    AND h.ad_client_id = 1000001
+                    h.ad_client_id = 1000001
+                    AND h.issotrx = 'Y'
                     AND d.qtyinvoiced > 0
                     AND d.linenetamt > 0
                     AND h.docstatus IN ('CO', 'CL')
                     AND h.isactive = 'Y'
+                    AND h.dateinvoiced::date BETWEEN ? AND ?
                     AND SUBSTR(h.documentno, 1, 3) IN ('INC', 'CNC')
                     AND (
                         CASE 
@@ -585,7 +618,6 @@ class BranchGrowthController extends Controller
                             ELSE cat.name = ?
                         END
                     )
-                    AND h.dateinvoiced::date BETWEEN ? AND ?
                     AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     org.name, EXTRACT(month FROM h.dateinvoiced), EXTRACT(year FROM h.dateinvoiced)
@@ -594,12 +626,10 @@ class BranchGrowthController extends Controller
             ";
         }
 
-        $allData = DB::select($query, [$category, $category, $startDate, $endDate]);
+        $allData = DB::select($query, [$startDate, $endDate, $category, $category]);
 
-        // Sort data by branch order
         $allData = ChartHelper::sortByBranchOrder(collect($allData), 'branch_name')->all();
 
-        // Detect last available month in end year data
         $lastAvailableMonth = 0;
         foreach ($allData as $row) {
             if ((int)$row->year_number == $endYear) {
@@ -607,18 +637,16 @@ class BranchGrowthController extends Controller
             }
         }
 
-        // If no data for end year, default to 12 (full year)
         if ($lastAvailableMonth == 0) {
             $lastAvailableMonth = 12;
         }
 
-        // Determine months to show
+        // Set months to show based on last available month
         $monthsToShow = 12;
         if ($endYear == $currentYear && $lastAvailableMonth < 12) {
             $monthsToShow = $lastAvailableMonth;
         }
 
-        // Organize data by branch and year
         $allBranchesData = [];
         foreach ($branches as $branch) {
             $branchData = [
@@ -627,12 +655,10 @@ class BranchGrowthController extends Controller
                 'years' => []
             ];
 
-            // Initialize data for all years in range
             for ($year = $startYear; $year <= $endYear; $year++) {
                 $branchData['years'][$year] = array_fill(1, 12, 0);
             }
 
-            // Fill data from query results
             foreach ($allData as $row) {
                 if ($row->branch_name === $branch) {
                     $month = (int)$row->month_number;
@@ -648,7 +674,6 @@ class BranchGrowthController extends Controller
 
         $filename = 'Pertumbuhan_Penjualan_Cabang_' . $startYear . '-' . $endYear . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
 
-        // Create XLS content using HTML table format
         $headers = [
             'Content-Type' => 'application/vnd.ms-excel',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
@@ -731,7 +756,6 @@ class BranchGrowthController extends Controller
             <div class="title">PERTUMBUHAN PENJUALAN CABANG ' . $startYear . ' - ' . $endYear . ' | Kategori ' . htmlspecialchars($category) . ' | Tipe ' . htmlspecialchars($type) . '</div>
             <br>';
 
-        // Calculate NATIONAL totals first
         $nationalData = [
             'branch' => 'NATIONAL',
             'code' => 'NATIONAL',
@@ -748,7 +772,6 @@ class BranchGrowthController extends Controller
             }
         }
 
-        // Function to render a branch table
         $renderBranchTable = function ($branchData, $branchName, $addSpacing = true) use ($startYear, $endYear, $monthsToShow, $monthLabels) {
             $tableHtml = '';
             if ($addSpacing) {
@@ -760,7 +783,6 @@ class BranchGrowthController extends Controller
                     <tr>
                         <th>TH / BLN</th>';
 
-            // Month headers (only up to monthsToShow)
             for ($month = 1; $month <= $monthsToShow; $month++) {
                 $tableHtml .= '<th>' . strtoupper($monthLabels[$month - 1]) . '</th>';
             }
@@ -772,7 +794,6 @@ class BranchGrowthController extends Controller
                 </thead>
                 <tbody>';
 
-            // Data rows for each year
             for ($year = $startYear; $year <= $endYear; $year++) {
                 $tableHtml .= '<tr>
                     <td class="year-header">' . $year . '</td>';
@@ -784,14 +805,11 @@ class BranchGrowthController extends Controller
                     $tableHtml .= '<td class="number">' . number_format($value, 0, '.', ',') . '</td>';
                 }
 
-                // TOTAL
                 $tableHtml .= '<td class="number"><strong>' . number_format($yearTotal, 0, '.', ',') . '</strong></td>';
 
-                // AVERAGE
                 $average = $monthsToShow > 0 ? $yearTotal / $monthsToShow : 0;
                 $tableHtml .= '<td class="number">' . number_format($average, 0, '.', ',') . '</td>';
 
-                // % GROWTH (compared to previous year)
                 $growth = 0;
                 if ($year > $startYear) {
                     $prevYear = $year - 1;
@@ -814,7 +832,6 @@ class BranchGrowthController extends Controller
             return $tableHtml;
         };
 
-        // Render table for each branch
         $isFirst = true;
         foreach ($allBranchesData as $branchData) {
             $branchName = ChartHelper::getBranchDisplayName($branchData['branch']);
@@ -822,10 +839,8 @@ class BranchGrowthController extends Controller
             $isFirst = false;
         }
 
-        // Render NATIONAL table at the end
         $html .= $renderBranchTable($nationalData, 'NASIONAL', true);
 
-        // Footer
         $html .= '<div style="font-family: Verdana, sans-serif; font-size: 8pt; font-style: italic; margin-top: 10px;">' . htmlspecialchars(Auth::user()->name) . ' (' . date('d/m/Y - H.i') . ' WIB)</div>
         </body>
         </html>';
@@ -844,12 +859,10 @@ class BranchGrowthController extends Controller
         $startDate = $startYear . '-01-01';
         $endDate = $endYear . '-12-31';
 
-        // Get all branches
         $branches = ChartHelper::getLocations();
 
-        // Get revenue data for all branches and all years in range
         if ($type === 'BRUTO') {
-            // Bruto query - only INC documents
+            // Bruto query - only INC documents (aligned with MonthlyBranchController)
             $query = "
                 SELECT
                     org.name AS branch_name,
@@ -857,17 +870,21 @@ class BranchGrowthController extends Controller
                     EXTRACT(year FROM h.dateinvoiced) AS year_number,
                     COALESCE(SUM(d.linenetamt), 0) as net_revenue
                 FROM
-                    c_invoiceline d
-                    INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+                    c_invoice h
+                    INNER JOIN c_invoiceline d ON h.c_invoice_id = d.c_invoice_id
                     INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
                     INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                     INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                     LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                 WHERE
-                    h.issotrx = 'Y'
-                    AND h.ad_client_id = 1000001
+                    h.ad_client_id = 1000001
+                    AND h.issotrx = 'Y'
+                    AND d.qtyinvoiced > 0
+                    AND d.linenetamt > 0
                     AND h.docstatus IN ('CO', 'CL')
+                    AND h.isactive = 'Y'
+                    AND h.dateinvoiced::date BETWEEN ? AND ?
                     AND h.documentno LIKE 'INC%'
                     AND (
                         CASE 
@@ -882,7 +899,6 @@ class BranchGrowthController extends Controller
                             ELSE cat.name = ?
                         END
                     )
-                    AND DATE(h.dateinvoiced) BETWEEN ? AND ?
                     AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     org.name, EXTRACT(month FROM h.dateinvoiced), EXTRACT(year FROM h.dateinvoiced)
@@ -901,20 +917,21 @@ class BranchGrowthController extends Controller
                         WHEN SUBSTR(h.documentno, 1, 3) IN ('CNC') THEN -d.linenetamt
                     END), 0) as net_revenue
                 FROM
-                    c_invoiceline d
-                    INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
+                    c_invoice h
+                    INNER JOIN c_invoiceline d ON h.c_invoice_id = d.c_invoice_id
                     INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
                     INNER JOIN c_bpartner cust ON h.c_bpartner_id = cust.c_bpartner_id
                     INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                     INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                     LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                 WHERE
-                    h.issotrx = 'Y'
-                    AND h.ad_client_id = 1000001
+                    h.ad_client_id = 1000001
+                    AND h.issotrx = 'Y'
                     AND d.qtyinvoiced > 0
                     AND d.linenetamt > 0
                     AND h.docstatus IN ('CO', 'CL')
                     AND h.isactive = 'Y'
+                    AND h.dateinvoiced::date BETWEEN ? AND ?
                     AND SUBSTR(h.documentno, 1, 3) IN ('INC', 'CNC')
                     AND (
                         CASE 
@@ -929,7 +946,6 @@ class BranchGrowthController extends Controller
                             ELSE cat.name = ?
                         END
                     )
-                    AND h.dateinvoiced::date BETWEEN ? AND ?
                     AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     org.name, EXTRACT(month FROM h.dateinvoiced), EXTRACT(year FROM h.dateinvoiced)
@@ -938,7 +954,7 @@ class BranchGrowthController extends Controller
             ";
         }
 
-        $allData = DB::select($query, [$category, $category, $startDate, $endDate]);
+        $allData = DB::select($query, [$startDate, $endDate, $category, $category]);
 
         // Sort data by branch order
         $allData = ChartHelper::sortByBranchOrder(collect($allData), 'branch_name')->all();
@@ -962,7 +978,6 @@ class BranchGrowthController extends Controller
             $monthsToShow = $lastAvailableMonth;
         }
 
-        // Organize data by branch and year
         $allBranchesData = [];
         foreach ($branches as $branch) {
             $branchData = [
@@ -971,12 +986,10 @@ class BranchGrowthController extends Controller
                 'years' => []
             ];
 
-            // Initialize data for all years in range
             for ($year = $startYear; $year <= $endYear; $year++) {
                 $branchData['years'][$year] = array_fill(1, 12, 0);
             }
 
-            // Fill data from query results
             foreach ($allData as $row) {
                 if ($row->branch_name === $branch) {
                     $month = (int)$row->month_number;

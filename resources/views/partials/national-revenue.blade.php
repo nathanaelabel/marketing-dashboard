@@ -2,7 +2,7 @@
     currentLang: localStorage.getItem('language') || 'id',
     translations: {
         title: {
-            id: 'Pendapatan Nasional',
+            id: 'Sales Nasional',
             en: 'National Revenue'
         }
     },

@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\SalesMetricsController;
+// use App\Http\Controllers\SalesMetricsController; // temporarily disabled
 use App\Http\Controllers\NationalRevenueController;
 use App\Http\Controllers\AccountsReceivableController;
 use App\Http\Controllers\CategoryItemController;
@@ -33,8 +33,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/accounts-receivable/data', [AccountsReceivableController::class, 'data'])->name('accounts-receivable.data');
     Route::get('/accounts-receivable/export-excel', [AccountsReceivableController::class, 'exportExcel'])->name('accounts-receivable.export-excel');
     Route::get('/accounts-receivable/export-pdf', [AccountsReceivableController::class, 'exportPdf'])->name('accounts-receivable.export-pdf');
-    Route::get('/sales-metrics/data', [SalesMetricsController::class, 'getData'])->name('sales-metrics.data');
-    Route::get('/sales-metrics/locations', [SalesMetricsController::class, 'getLocations'])->name('sales-metrics.locations');
+    // Route::get('/sales-metrics/data', [SalesMetricsController::class, 'getData'])->name('sales-metrics.data'); // temporarily disabled
+    // Route::get('/sales-metrics/locations', [SalesMetricsController::class, 'getLocations'])->name('sales-metrics.locations'); // temporarily disabled
     Route::get('/category-item/data', [CategoryItemController::class, 'getData'])->name('category-item.data');
     Route::get('/category-item/export-excel', [CategoryItemController::class, 'exportExcel'])->name('category-item.export-excel');
     Route::get('/category-item/export-pdf', [CategoryItemController::class, 'exportPdf'])->name('category-item.export-pdf');
