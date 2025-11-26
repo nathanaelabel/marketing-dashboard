@@ -13,19 +13,15 @@ class BranchGrowthController extends Controller
     public function getData(Request $request)
     {
         try {
-            // Handle both year parameters (from frontend) and date parameters (legacy)
             $startYear = $request->input('start_year');
             $endYear = $request->input('end_year');
             $startDate = $request->input('start_date');
             $endDate = $request->input('end_date');
 
-            // Convert years to date ranges if year parameters are provided
             if ($startYear && $endYear) {
                 $startDate = $startYear . '-01-01';
                 $endDate = $endYear . '-12-31';
             } else {
-                // Fallback to date parameters or defaults
-                // Use yesterday (H-1) since dashboard is updated daily at night
                 $yesterday = date('Y-m-d', strtotime('-1 day'));
                 $startDate = $startDate ?: '2024-01-01';
                 $endDate = $endDate ?: $yesterday;
@@ -33,12 +29,10 @@ class BranchGrowthController extends Controller
 
             $category = $request->get('category', 'MIKA');
             $branch = $request->get('branch', 'National');
-            $type = $request->get('type', 'NETTO'); // Default to NETTO
+            $type = $request->get('type', 'NETTO');
 
-            // Get revenue data using date range filtering like National Revenue
             $data = $this->getRevenueDataByDateRange($startDate, $endDate, $category, $branch, $type);
 
-            // Format data for line chart
             $formattedData = $this->formatMonthlyGrowthData($data, $startDate, $endDate);
 
             return response()->json($formattedData);
@@ -69,7 +63,6 @@ class BranchGrowthController extends Controller
         try {
             $branches = ChartHelper::getLocations();
 
-            // Add National option at the beginning
             $branchOptions = collect([
                 [
                     'value' => 'National',
@@ -77,7 +70,6 @@ class BranchGrowthController extends Controller
                 ]
             ]);
 
-            // Map branches to include both value (full name) and display name
             $individualBranches = $branches->map(function ($branch) {
                 return [
                     'value' => $branch,
@@ -85,7 +77,6 @@ class BranchGrowthController extends Controller
                 ];
             });
 
-            // Merge National option with branch options
             $allOptions = $branchOptions->merge($individualBranches);
 
             return response()->json($allOptions);
@@ -97,7 +88,6 @@ class BranchGrowthController extends Controller
     private function getRevenueDataByDateRange($startDate, $endDate, $category, $branch, $type = 'NETTO')
     {
         try {
-            // Branch condition - if National, sum all branches, otherwise filter by specific branch
             $branchCondition = '';
             $branchBinding = [];
             if ($branch !== 'National') {
@@ -148,16 +138,15 @@ class BranchGrowthController extends Controller
                         year, month
                 ";
             } else {
-                // Netto query - INC minus CNC
+                // Netto query - INC minus CNC (aligned with MonthlyBranchController)
                 $query = "
                     SELECT
                         EXTRACT(year FROM h.dateinvoiced) as year,
                         EXTRACT(month FROM h.dateinvoiced) as month,
-                        SUM(CASE
-                            WHEN h.documentno LIKE 'INC%' THEN d.linenetamt
-                            WHEN h.documentno LIKE 'CNC%' THEN -d.linenetamt
-                            ELSE 0
-                        END) as net_revenue
+                        COALESCE(SUM(CASE
+                            WHEN SUBSTR(h.documentno, 1, 3) IN ('INC') THEN d.linenetamt
+                            WHEN SUBSTR(h.documentno, 1, 3) IN ('CNC') THEN -d.linenetamt
+                        END), 0) as net_revenue
                     FROM
                         c_invoiceline d
                         INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
@@ -169,8 +158,11 @@ class BranchGrowthController extends Controller
                     WHERE
                         h.issotrx = 'Y'
                         AND h.ad_client_id = 1000001
+                        AND d.qtyinvoiced > 0
+                        AND d.linenetamt > 0
                         AND h.docstatus IN ('CO', 'CL')
-                        AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
+                        AND h.isactive = 'Y'
+                        AND SUBSTR(h.documentno, 1, 3) IN ('INC', 'CNC')
                         AND (
                             CASE 
                                 WHEN ? = 'MIKA' THEN (
@@ -184,7 +176,7 @@ class BranchGrowthController extends Controller
                                 ELSE cat.name = ?
                             END
                         )
-                        AND DATE(h.dateinvoiced) BETWEEN ? AND ?
+                        AND h.dateinvoiced::date BETWEEN ? AND ?
                         AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                         {$branchCondition}
                     GROUP BY
@@ -554,17 +546,16 @@ class BranchGrowthController extends Controller
                     org.name, year_number, month_number
             ";
         } else {
-            // Netto query - INC minus CNC
+            // Netto query - INC minus CNC (aligned with MonthlyBranchController)
             $query = "
                 SELECT
                     org.name AS branch_name,
                     EXTRACT(month FROM h.dateinvoiced) AS month_number,
                     EXTRACT(year FROM h.dateinvoiced) AS year_number,
-                    SUM(CASE
-                        WHEN h.documentno LIKE 'INC%' THEN d.linenetamt
-                        WHEN h.documentno LIKE 'CNC%' THEN -d.linenetamt
-                        ELSE 0
-                    END) as net_revenue
+                    COALESCE(SUM(CASE
+                        WHEN SUBSTR(h.documentno, 1, 3) IN ('INC') THEN d.linenetamt
+                        WHEN SUBSTR(h.documentno, 1, 3) IN ('CNC') THEN -d.linenetamt
+                    END), 0) as net_revenue
                 FROM
                     c_invoiceline d
                     INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
@@ -576,8 +567,11 @@ class BranchGrowthController extends Controller
                 WHERE
                     h.issotrx = 'Y'
                     AND h.ad_client_id = 1000001
+                    AND d.qtyinvoiced > 0
+                    AND d.linenetamt > 0
                     AND h.docstatus IN ('CO', 'CL')
-                    AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
+                    AND h.isactive = 'Y'
+                    AND SUBSTR(h.documentno, 1, 3) IN ('INC', 'CNC')
                     AND (
                         CASE 
                             WHEN ? = 'MIKA' THEN (
@@ -591,7 +585,7 @@ class BranchGrowthController extends Controller
                             ELSE cat.name = ?
                         END
                     )
-                    AND DATE(h.dateinvoiced) BETWEEN ? AND ?
+                    AND h.dateinvoiced::date BETWEEN ? AND ?
                     AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     org.name, EXTRACT(month FROM h.dateinvoiced), EXTRACT(year FROM h.dateinvoiced)
@@ -896,17 +890,16 @@ class BranchGrowthController extends Controller
                     org.name, year_number, month_number
             ";
         } else {
-            // Netto query - INC minus CNC
+            // Netto query - INC minus CNC (aligned with MonthlyBranchController)
             $query = "
                 SELECT
                     org.name AS branch_name,
                     EXTRACT(month FROM h.dateinvoiced) AS month_number,
                     EXTRACT(year FROM h.dateinvoiced) AS year_number,
-                    SUM(CASE
-                        WHEN h.documentno LIKE 'INC%' THEN d.linenetamt
-                        WHEN h.documentno LIKE 'CNC%' THEN -d.linenetamt
-                        ELSE 0
-                    END) as net_revenue
+                    COALESCE(SUM(CASE
+                        WHEN SUBSTR(h.documentno, 1, 3) IN ('INC') THEN d.linenetamt
+                        WHEN SUBSTR(h.documentno, 1, 3) IN ('CNC') THEN -d.linenetamt
+                    END), 0) as net_revenue
                 FROM
                     c_invoiceline d
                     INNER JOIN c_invoice h ON d.c_invoice_id = h.c_invoice_id
@@ -918,8 +911,11 @@ class BranchGrowthController extends Controller
                 WHERE
                     h.issotrx = 'Y'
                     AND h.ad_client_id = 1000001
+                    AND d.qtyinvoiced > 0
+                    AND d.linenetamt > 0
                     AND h.docstatus IN ('CO', 'CL')
-                    AND (h.documentno LIKE 'INC%' OR h.documentno LIKE 'CNC%')
+                    AND h.isactive = 'Y'
+                    AND SUBSTR(h.documentno, 1, 3) IN ('INC', 'CNC')
                     AND (
                         CASE 
                             WHEN ? = 'MIKA' THEN (
@@ -933,7 +929,7 @@ class BranchGrowthController extends Controller
                             ELSE cat.name = ?
                         END
                     )
-                    AND DATE(h.dateinvoiced) BETWEEN ? AND ?
+                    AND h.dateinvoiced::date BETWEEN ? AND ?
                     AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                 GROUP BY
                     org.name, EXTRACT(month FROM h.dateinvoiced), EXTRACT(year FROM h.dateinvoiced)
