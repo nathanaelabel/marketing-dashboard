@@ -12,7 +12,7 @@ class NationalRevenueController extends Controller
 
     public function data(Request $request)
     {
-        // Use yesterday (H-1) since dashboard is updated daily
+        // Gunakan H-1 karena dashboard diupdate setiap hari
         $yesterday = date('Y-m-d', strtotime('-1 day'));
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', $yesterday);
@@ -20,7 +20,7 @@ class NationalRevenueController extends Controller
         $type = $request->input('type', 'BRUTO');
 
         if ($type === 'NETTO') {
-            // Netto query - includes returns (CNC documents) as negative values
+            // Query Netto - termasuk retur (dokumen CNC) sebagai nilai negatif
             $queryResult = DB::select("
                 SELECT
                     org.name AS branch_name,
@@ -50,7 +50,10 @@ class NationalRevenueController extends Controller
                     total_revenue DESC
             ", [$organization, $startDate, $endDate]);
 
-            // Convert stdClass to array format for ChartHelper
+            // Tingkatkan batas waktu eksekusi untuk query berat
+            set_time_limit(120);
+
+            // Konversi stdClass ke format array untuk ChartHelper
             $queryResult = collect($queryResult)->map(function ($item) {
                 return (object) [
                     'branch_name' => $item->branch_name,
@@ -58,7 +61,7 @@ class NationalRevenueController extends Controller
                 ];
             });
         } else {
-            // Bruto query - original query (only INC documents)
+            // Query Bruto - query asli (hanya dokumen INC)
             $queryResult = DB::table('c_invoice as inv')
                 ->join('c_invoiceline as invl', 'inv.c_invoice_id', '=', 'invl.c_invoice_id')
                 ->join('ad_org as org', 'inv.ad_org_id', '=', 'org.ad_org_id')
@@ -86,16 +89,16 @@ class NationalRevenueController extends Controller
 
     public function exportExcel(Request $request)
     {
-        // Use yesterday (H-1) since dashboard is updated daily
+        // Gunakan kemarin (H-1) karena dashboard diperbarui setiap hari
         $yesterday = date('Y-m-d', strtotime('-1 day'));
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', $yesterday);
         $organization = $request->input('organization', '%');
         $type = $request->input('type', 'BRUTO');
 
-        // Get the same data as the chart
+        // Dapatkan data yang sama dengan chart
         if ($type === 'NETTO') {
-            // Netto query - includes returns (CNC documents) as negative values
+            // Query Netto - termasuk pengembalian (dokumen CNC) sebagai nilai negatif
             $queryResult = DB::select("
                 SELECT
                     org.name AS branch_name,
@@ -125,7 +128,10 @@ class NationalRevenueController extends Controller
                     total_revenue DESC
             ", [$organization, $startDate, $endDate]);
 
-            // Convert stdClass to array format
+            // Tingkatkan batas waktu eksekusi untuk query berat
+            set_time_limit(120);
+
+            // Konversi stdClass ke format array
             $queryResult = collect($queryResult)->map(function ($item) {
                 return (object) [
                     'branch_name' => $item->branch_name,
@@ -133,7 +139,7 @@ class NationalRevenueController extends Controller
                 ];
             });
         } else {
-            // Bruto query - original query (only INC documents)
+            // Query Bruto - query asli (hanya dokumen INC)
             $queryResult = DB::table('c_invoice as inv')
                 ->join('c_invoiceline as invl', 'inv.c_invoice_id', '=', 'invl.c_invoice_id')
                 ->join('ad_org as org', 'inv.ad_org_id', '=', 'org.ad_org_id')
@@ -154,12 +160,12 @@ class NationalRevenueController extends Controller
                 ->get();
         }
 
-        // Sort by branch order
+        // Urutkan berdasarkan urutan cabang
         $queryResult = ChartHelper::sortByBranchOrder(collect($queryResult), 'branch_name');
 
         $totalRevenue = $queryResult->sum('total_revenue');
 
-        // Format dates for filename and display
+        // Format tanggal untuk nama file dan tampilan
         $formattedStartDate = \Carbon\Carbon::parse($startDate)->format('d F Y');
         $formattedEndDate = \Carbon\Carbon::parse($endDate)->format('d F Y');
         $fileStartDate = \Carbon\Carbon::parse($startDate)->format('d-m-Y');
@@ -167,7 +173,10 @@ class NationalRevenueController extends Controller
         $typeLabel = $type === 'NETTO' ? 'Netto' : 'Bruto';
         $filename = 'Penjualan_Nasional_' . $typeLabel . '_' . $fileStartDate . '_sampai_' . $fileEndDate . '.xls';
 
-        // Create XLS content using HTML table format
+        // Tingkatkan batas waktu eksekusi untuk operasi export
+        set_time_limit(120);
+
+        // Buat konten XLS menggunakan format tabel HTML
         $headers = [
             'Content-Type' => 'application/vnd.ms-excel',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
@@ -281,16 +290,15 @@ class NationalRevenueController extends Controller
 
     public function exportPdf(Request $request)
     {
-        // Use yesterday (H-1) since dashboard is updated daily
+        // Gunakan H-1 karena dashboard diupdate setiap hari
         $yesterday = date('Y-m-d', strtotime('-1 day'));
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', $yesterday);
         $organization = $request->input('organization', '%');
         $type = $request->input('type', 'BRUTO');
 
-        // Get the same data as the chart
         if ($type === 'NETTO') {
-            // Netto query - includes returns (CNC documents) as negative values
+            // Query Netto - termasuk retur (dokumen CNC) sebagai nilai negatif
             $queryResult = DB::select("
                 SELECT
                     org.name AS branch_name,
@@ -320,7 +328,6 @@ class NationalRevenueController extends Controller
                     total_revenue DESC
             ", [$organization, $startDate, $endDate]);
 
-            // Convert stdClass to array format
             $queryResult = collect($queryResult)->map(function ($item) {
                 return (object) [
                     'branch_name' => $item->branch_name,
@@ -349,20 +356,15 @@ class NationalRevenueController extends Controller
                 ->get();
         }
 
-        // Sort by branch order
         $queryResult = ChartHelper::sortByBranchOrder(collect($queryResult), 'branch_name');
 
-        // Calculate total
         $totalRevenue = $queryResult->sum('total_revenue');
-
-        // Format dates for filename and display
         $formattedStartDate = \Carbon\Carbon::parse($startDate)->format('d F Y');
         $formattedEndDate = \Carbon\Carbon::parse($endDate)->format('d F Y');
         $fileStartDate = \Carbon\Carbon::parse($startDate)->format('d-m-Y');
         $fileEndDate = \Carbon\Carbon::parse($endDate)->format('d-m-Y');
         $typeLabel = $type === 'NETTO' ? 'Netto' : 'Bruto';
 
-        // Create HTML for PDF
         $html = '
         <!DOCTYPE html>
         <html>

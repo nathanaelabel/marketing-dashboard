@@ -13,8 +13,8 @@ class NationalYearlyController extends Controller
 {
     public function getData(Request $request)
     {
-        // Increase PHP execution time limit for heavy queries
-        set_time_limit(120); // 2 minutes
+        // Tingkatkan batas waktu eksekusi untuk query berat
+        set_time_limit(120); // 2 menit
 
         $year = null;
         $startDate = null;
@@ -25,14 +25,12 @@ class NationalYearlyController extends Controller
             $year = $request->input('year');
             $startDate = $request->input('start_date');
             $endDate = $request->input('end_date');
-            // Use yesterday (H-1) since dashboard is updated daily at night
             $yesterday = date('Y-m-d', strtotime('-1 day'));
             $currentYear = date('Y');
 
             if ($year) {
-                // Validate year input
                 if (!is_numeric($year) || $year < 2020 || $year > 2050) {
-                    Log::warning('NationalYearlyController: Invalid year parameter', ['year' => $year]);
+                    Log::warning('NationalYearlyController: Parameter tahun tidak valid', ['year' => $year]);
                     $year = $currentYear;
                 }
 
@@ -50,23 +48,21 @@ class NationalYearlyController extends Controller
 
             $previousYear = $year - 1;
             $category = $request->get('category', 'MIKA');
-            $type = $request->get('type', 'NETTO'); // Default to NETTO
+            $type = $request->get('type', 'NETTO');
 
-            // Validate category
             if (!in_array($category, ['MIKA', 'SPARE PART'])) {
                 $category = 'MIKA';
             }
 
-            // Validate type
             if (!in_array($type, ['NETTO', 'BRUTO'])) {
                 $type = 'NETTO';
             }
 
-            // Calculate date ranges with error handling
+            // Hitung rentang tanggal dengan penanganan kesalahan
             try {
                 $dateRanges = ChartHelper::calculateFairComparisonDateRanges($endDate, $previousYear);
             } catch (\Exception $e) {
-                Log::error('NationalYearlyController: Error calculating date ranges', [
+                Log::error('NationalYearlyController: Kesalahan menghitung rentang tanggal', [
                     'end_date' => $endDate,
                     'previous_year' => $previousYear,
                     'error' => $e->getMessage()
@@ -74,11 +70,11 @@ class NationalYearlyController extends Controller
                 throw $e;
             }
 
-            // Fetch data with timeout handling
+            // Ambil data dengan penanganan timeout
             try {
                 $currentYearData = $this->getRevenueData($dateRanges['current']['start'], $dateRanges['current']['end'], $category, $type);
             } catch (\Exception $e) {
-                Log::error('NationalYearlyController: Error fetching current year data', [
+                Log::error('NationalYearlyController: Kesalahan mengambil data tahun saat ini', [
                     'start' => $dateRanges['current']['start'],
                     'end' => $dateRanges['current']['end'],
                     'category' => $category,
@@ -91,7 +87,7 @@ class NationalYearlyController extends Controller
             try {
                 $previousYearData = $this->getRevenueData($dateRanges['previous']['start'], $dateRanges['previous']['end'], $category, $type);
             } catch (\Exception $e) {
-                Log::error('NationalYearlyController: Error fetching previous year data', [
+                Log::error('NationalYearlyController: Kesalahan mengambil data tahun sebelumnya', [
                     'start' => $dateRanges['previous']['start'],
                     'end' => $dateRanges['previous']['end'],
                     'category' => $category,
@@ -117,11 +113,11 @@ class NationalYearlyController extends Controller
             ]);
 
             return response()->json([
-                'error' => 'Database connection timeout. Please try again.',
-                'message' => 'The request took too long to process. Please refresh the page.'
+                'error' => 'Koneksi database timeout. Silakan coba lagi.',
+                'message' => 'Permintaan membutuhkan waktu lama untuk diproses. Silakan refresh halaman.'
             ], 500);
         } catch (\Error $e) {
-            // Handle fatal errors like maximum execution time exceeded
+            // Tangani kesalahan fatal seperti waktu eksekusi maksimum terlampaui
             $errorMessage = $e->getMessage();
             $isTimeout = strpos($errorMessage, 'Maximum execution time') !== false ||
                 strpos($errorMessage, 'execution time') !== false;
@@ -140,8 +136,8 @@ class NationalYearlyController extends Controller
             return response()->json([
                 'error' => $isTimeout ? 'Request timeout' : 'Server error',
                 'message' => $isTimeout
-                    ? 'The query is taking too long to execute. Please try again or contact support if the problem persists.'
-                    : 'An unexpected error occurred. Please try again.'
+                    ? 'Query membutuhkan waktu lama untuk dieksekusi. Silakan coba lagi atau hubungi dukungan jika masalah berlanjut.'
+                    : 'Terjadi kesalahan tidak terduga. Silakan coba lagi.'
             ], 500);
         } catch (\Exception $e) {
             Log::error('NationalYearlyController getData error: ' . $e->getMessage(), [
@@ -156,15 +152,15 @@ class NationalYearlyController extends Controller
             ]);
 
             return response()->json([
-                'error' => 'Failed to fetch national yearly data',
-                'message' => 'An error occurred while processing your request. Please try again.'
+                'error' => 'Gagal mengambil data tahunan nasional',
+                'message' => 'Terjadi kesalahan saat memproses permintaan Anda. Silakan coba lagi.'
             ], 500);
         }
     }
 
     public function getCategories()
     {
-        // Delegate to shared helper to avoid duplication and keep logic centralized
+        // Delegasikan ke helper bersama untuk menghindari duplikasi
         $categories = ChartHelper::getCategories();
         return response()->json($categories);
     }
@@ -172,22 +168,18 @@ class NationalYearlyController extends Controller
     private function getRevenueData($startDate, $endDate, $category, $type = 'BRUTO')
     {
         try {
-            // Set statement timeout for this query (in milliseconds for PostgreSQL)
-            // 600000 = 10 minutes timeout
-            // Only set if using PostgreSQL
             try {
                 $driver = DB::connection()->getDriverName();
                 if ($driver === 'pgsql') {
-                    // Set statement timeout to 2 minutes (120000 milliseconds)
+                    // Set timeout 2 menit
                     DB::statement("SET statement_timeout = 120000");
                 }
             } catch (\Exception $e) {
-                // Ignore if statement timeout is not supported
                 Log::debug('Could not set statement timeout', ['error' => $e->getMessage()]);
             }
 
             if ($type === 'NETTO') {
-                // Netto query - includes returns (CNC documents) as negative values
+                // Query Netto - INC dikurangi CNC
                 $query = "
                     SELECT
                         org.name AS branch_name,
@@ -233,7 +225,7 @@ class NationalYearlyController extends Controller
                         org.name
                 ";
             } else {
-                // Bruto query - original query (only INC documents)
+                // Query Bruto - hanya dokumen INC
                 $query = "
                     SELECT
                         org.name AS branch_name,
@@ -279,29 +271,24 @@ class NationalYearlyController extends Controller
 
             $result = DB::select($query, [$startDate, $endDate, $category, $category]);
 
-            // Reset statement timeout (only for PostgreSQL)
             try {
                 $driver = DB::connection()->getDriverName();
                 if ($driver === 'pgsql') {
                     DB::statement("SET statement_timeout = 0");
                 }
             } catch (\Exception $e) {
-                // Ignore reset error
             }
 
-            // Sort result by branch order
             $sortedResult = ChartHelper::sortByBranchOrder(collect($result), 'branch_name');
 
             return $sortedResult->all();
         } catch (\PDOException $e) {
-            // Reset statement timeout on error (only for PostgreSQL)
             try {
                 $driver = DB::connection()->getDriverName();
                 if ($driver === 'pgsql') {
                     DB::statement("SET statement_timeout = 0");
                 }
             } catch (\Exception $resetError) {
-                // Ignore reset error
             }
 
             Log::error('NationalYearlyController getRevenueData PDO error', [
@@ -315,14 +302,12 @@ class NationalYearlyController extends Controller
 
             throw $e;
         } catch (\Exception $e) {
-            // Reset statement timeout on error (only for PostgreSQL)
             try {
                 $driver = DB::connection()->getDriverName();
                 if ($driver === 'pgsql') {
                     DB::statement("SET statement_timeout = 0");
                 }
             } catch (\Exception $resetError) {
-                // Ignore reset error
             }
 
             Log::error('NationalYearlyController getRevenueData error', [
@@ -339,7 +324,7 @@ class NationalYearlyController extends Controller
 
     private function formatYearlyComparisonData($currentYearData, $previousYearData, $year, $previousYear)
     {
-        // Get all unique branches from both datasets
+        // Ambil semua cabang unik dari kedua dataset
         $allBranches = collect($currentYearData)->pluck('branch_name')
             ->merge(collect($previousYearData)->pluck('branch_name'))
             ->unique()
@@ -367,12 +352,12 @@ class NationalYearlyController extends Controller
             $previousYearValues = [];
             $maxValue = 0;
         } else {
-            // Get branch abbreviations
+            // Ambil singkatan cabang
             $labels = $allBranches->map(function ($name) {
                 return ChartHelper::getBranchAbbreviation($name);
             });
 
-            // Get max value for Y-axis scaling
+            // Ambil nilai maksimum untuk skala sumbu Y
             $maxValue = 0;
             if (!empty($currentYearValues) && !empty($previousYearValues)) {
                 $maxValue = max(max($currentYearValues), max($previousYearValues));
@@ -383,11 +368,8 @@ class NationalYearlyController extends Controller
             }
         }
 
-        // Use ChartHelper for Y-axis configuration
         $yAxisConfig = ChartHelper::getYAxisConfig($maxValue, null, array_merge($currentYearValues, $previousYearValues));
         $suggestedMax = ChartHelper::calculateSuggestedMax($maxValue, $yAxisConfig['divisor']);
-
-        // Get datasets using ChartHelper
         $datasets = ChartHelper::getYearlyComparisonDatasets($year, $previousYear, $currentYearValues, $previousYearValues);
 
         return [
@@ -405,7 +387,6 @@ class NationalYearlyController extends Controller
         $year = $request->input('year', date('Y'));
         $category = $request->input('category', 'MIKA');
         $type = $request->input('type', 'BRUTO');
-        // Use yesterday (H-1) since dashboard is updated daily at night
         $yesterday = date('Y-m-d', strtotime('-1 day'));
         $currentYear = date('Y');
 
@@ -422,22 +403,19 @@ class NationalYearlyController extends Controller
         $currentYearData = $this->getRevenueData($dateRanges['current']['start'], $dateRanges['current']['end'], $category, $type);
         $previousYearData = $this->getRevenueData($dateRanges['previous']['start'], $dateRanges['previous']['end'], $category, $type);
 
-        // Get all unique branches from both datasets
+        // Ambil semua cabang unik dari kedua dataset
         $allBranches = collect($currentYearData)->pluck('branch_name')
             ->merge(collect($previousYearData)->pluck('branch_name'))
             ->unique()
             ->sort()
             ->values();
 
-        // Map data for each year
         $currentYearMap = collect($currentYearData)->keyBy('branch_name');
         $previousYearMap = collect($previousYearData)->keyBy('branch_name');
 
-        // Generate date range information text
         $currentYearEndDate = date('Y-m-d', strtotime($dateRanges['current']['end']));
         $previousYearEndDate = date('Y-m-d', strtotime($dateRanges['previous']['end']));
 
-        // Check if it's a complete year comparison or partial year
         $isCompleteYear = ($currentYearEndDate == $year . '-12-31');
 
         if ($isCompleteYear) {
@@ -452,10 +430,8 @@ class NationalYearlyController extends Controller
 
         $filename = 'Penjualan_Tahunan_Nasional_' . $previousYear . '-' . $year . '_' . str_replace(' ', '_', $category) . '_' . $type . '.xls';
 
-        // Sort branches by ChartHelper branch order for exportExcel
         $allBranches = ChartHelper::sortByBranchOrder($allBranches, null);
 
-        // Create XLS content using HTML table format
         $headers = [
             'Content-Type' => 'application/vnd.ms-excel',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
@@ -595,7 +571,6 @@ class NationalYearlyController extends Controller
         $year = $request->input('year', date('Y'));
         $category = $request->input('category', 'MIKA');
         $type = $request->input('type', 'BRUTO');
-        // Use yesterday (H-1) since dashboard is updated daily at night
         $yesterday = date('Y-m-d', strtotime('-1 day'));
         $currentYear = date('Y');
 
@@ -612,22 +587,18 @@ class NationalYearlyController extends Controller
         $currentYearData = $this->getRevenueData($dateRanges['current']['start'], $dateRanges['current']['end'], $category, $type);
         $previousYearData = $this->getRevenueData($dateRanges['previous']['start'], $dateRanges['previous']['end'], $category, $type);
 
-        // Get all unique branches from both datasets
+        // Ambil semua cabang unik dari kedua dataset
         $allBranches = collect($currentYearData)->pluck('branch_name')
             ->merge(collect($previousYearData)->pluck('branch_name'))
             ->unique()
             ->sort()
             ->values();
 
-        // Map data for each year
         $currentYearMap = collect($currentYearData)->keyBy('branch_name');
         $previousYearMap = collect($previousYearData)->keyBy('branch_name');
-
-        // Generate date range information text
         $currentYearEndDate = date('Y-m-d', strtotime($dateRanges['current']['end']));
         $previousYearEndDate = date('Y-m-d', strtotime($dateRanges['previous']['end']));
 
-        // Check if it's a complete year comparison or partial year
         $isCompleteYear = ($currentYearEndDate == $year . '-12-31');
 
         if ($isCompleteYear) {
@@ -640,10 +611,8 @@ class NationalYearlyController extends Controller
             $dateRangeInfo = 'Periode: 1 Januari - ' . $previousEndDateFormatted . ' ' . $previousYear . ' VS 1 Januari - ' . $currentEndDateFormatted . ' ' . $year;
         }
 
-        // Sort branches by ChartHelper branch order for exportPdf
         $allBranches = ChartHelper::sortByBranchOrder($allBranches, null);
 
-        // Create HTML for PDF
         $html = '
         <!DOCTYPE html>
         <html>

@@ -17,10 +17,8 @@ class BranchTargetController extends Controller
         $category = $request->get('category', 'MIKA');
         $isEditMode = $request->has('edit');
 
-        // Get all branches
         $branches = ChartHelper::getLocations();
 
-        // Get existing targets if any
         $existingTargets = DB::table('branch_targets')
             ->where('month', $month)
             ->where('year', $year)
@@ -39,7 +37,6 @@ class BranchTargetController extends Controller
             $category = $request->input('category');
             $targets = $request->input('targets', []);
 
-            // Validation rules
             $validator = Validator::make($request->all(), [
                 'month' => 'required|integer|between:1,12',
                 'year' => 'required|integer|between:2021,2025',
@@ -56,10 +53,10 @@ class BranchTargetController extends Controller
                 ], 422);
             }
 
-            // Get all expected branches
+            // Ambil semua cabang yang diharapkan
             $expectedBranches = ChartHelper::getLocations()->toArray();
 
-            // Check if all branches have targets
+            // Cek apakah semua cabang memiliki target
             $missingBranches = [];
             foreach ($expectedBranches as $branch) {
                 if (!isset($targets[$branch]) || empty($targets[$branch])) {
@@ -78,14 +75,13 @@ class BranchTargetController extends Controller
             DB::beginTransaction();
 
             try {
-                // Delete existing targets for this period
                 DB::table('branch_targets')
                     ->where('month', $month)
                     ->where('year', $year)
                     ->where('category', $category)
                     ->delete();
 
-                // Insert new targets
+                // Buat target baru
                 $insertData = [];
                 foreach ($targets as $branchName => $targetAmount) {
                     if (in_array($branchName, $expectedBranches)) {
@@ -109,7 +105,7 @@ class BranchTargetController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Targets saved successfully',
+                    'message' => 'Target berhasil disimpan',
                     'redirect_url' => route('dashboard') .
                         '?month=' . $month .
                         '&year=' . $year .
@@ -130,7 +126,7 @@ class BranchTargetController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to save targets. Please try again.'
+                'message' => 'Gagal menyimpan target. Silakan coba lagi.'
             ], 500);
         }
     }
@@ -142,7 +138,6 @@ class BranchTargetController extends Controller
             $year = $request->input('year');
             $category = $request->input('category');
 
-            // Validation rules
             $validator = Validator::make($request->all(), [
                 'month' => 'required|integer|between:1,12',
                 'year' => 'required|integer|between:2021,2025',
@@ -152,7 +147,7 @@ class BranchTargetController extends Controller
             if ($validator->fails()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Validation failed',
+                    'message' => 'Validasi gagal',
                     'errors' => $validator->errors()
                 ], 422);
             }
@@ -160,7 +155,7 @@ class BranchTargetController extends Controller
             DB::beginTransaction();
 
             try {
-                // Check if targets exist
+                // Cek apakah target sudah ada untuk cabang/bulan/tahun/kategori ini
                 $targetsExist = DB::table('branch_targets')
                     ->where('month', $month)
                     ->where('year', $year)
@@ -170,11 +165,11 @@ class BranchTargetController extends Controller
                 if (!$targetsExist) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'No targets found for the specified period'
+                        'message' => 'Tidak ada target untuk periode yang ditentukan'
                     ], 404);
                 }
 
-                // Delete targets for this period
+                // Hapus semua target untuk bulan/tahun/kategori ini
                 $deletedCount = DB::table('branch_targets')
                     ->where('month', $month)
                     ->where('year', $year)

@@ -34,7 +34,7 @@ class SyncResumeInterruptedCommand extends Command
             $query->orWhere(function ($q) use ($maxAgeHours) {
                 $q->where('status', 'running')
                     ->where('started_at', '>=', now()->subHours($maxAgeHours))
-                    ->where('started_at', '<=', now()->subHours(6)); // Stuck for more than 6 hours
+                    ->where('started_at', '<=', now()->subHours(6));
             });
         }
 
@@ -50,7 +50,6 @@ class SyncResumeInterruptedCommand extends Command
         $this->warn("Found {$interruptedBatches->count()} interrupted batch(es):");
         $this->line('');
 
-        // Display interrupted batches
         $headers = ['Batch ID', 'Status', 'Started At', 'Progress', 'Failed Tables'];
         $rows = [];
 
@@ -71,13 +70,11 @@ class SyncResumeInterruptedCommand extends Command
         $this->table($headers, $rows);
         $this->line('');
 
-        // Resume the most recent interrupted batch
         $latestBatch = $interruptedBatches->first();
 
         $this->info("Resuming latest interrupted batch: {$latestBatch->batch_id}");
         $this->line('');
 
-        // Call sync-all with resume option
         $exitCode = Artisan::call('app:sync-all', [
             '--resume' => $latestBatch->batch_id,
         ], $this->output);

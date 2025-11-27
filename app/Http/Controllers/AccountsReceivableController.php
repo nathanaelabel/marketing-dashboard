@@ -12,15 +12,13 @@ class AccountsReceivableController extends Controller
 {
     public function data(Request $request)
     {
-        // Increase execution time limit for querying multiple databases
-        set_time_limit(300); // 5 minutes
+        // Tingkatkan batas waktu eksekusi untuk query multi-database
+        set_time_limit(300);
         ini_set('max_execution_time', 300);
 
-        // Get current date from request or default to today
         $currentDate = $request->input('current_date', now()->toDateString());
         $filter = $request->input('filter', 'overdue');
 
-        // Get branch connections from ChartHelper
         $branchOrder = ChartHelper::getBranchOrder();
         $branchConnections = [];
         foreach ($branchOrder as $branchName) {
@@ -30,11 +28,11 @@ class AccountsReceivableController extends Controller
             }
         }
 
-        // Define branches that are known to have anomalies
+        // Cabang yang diketahui memiliki anomali data
         $anomalyBranches = ['pgsql_mks', 'pgsql_sby'];
 
         if ($filter === 'all') {
-            // All: Show 0-104 Days, 105-120 Days, >120 Days
+            // Filter All: tampilkan semua rentang umur piutang
             $sql = "
             SELECT
                 branch_name,
@@ -85,7 +83,7 @@ class AccountsReceivableController extends Controller
             ORDER BY total_overdue DESC
             ";
         } else {
-            // Overdue: Show only 105-120 Days and >120 Days
+            // Filter Overdue: hanya tampilkan piutang jatuh tempo
             $sql = "
             SELECT
                 branch_name,
@@ -135,18 +133,14 @@ class AccountsReceivableController extends Controller
             ";
         }
 
-        // Query all branch databases and collect results
         $allResults = collect();
         $failedBranches = [];
 
         foreach ($branchConnections as $connection) {
-            // Skip anomaly branches - they will be added as ANOMALY bars
             if (in_array($connection, $anomalyBranches)) {
-                // Don't add to failedBranches, will be handled separately
                 continue;
             }
 
-            // Perform lightweight socket check before attempting database query
             if (!$this->canConnectToBranch($connection)) {
                 Log::warning("Skipping {$connection} due to connectivity check failure");
                 $failedBranches[] = $connection;
@@ -154,7 +148,7 @@ class AccountsReceivableController extends Controller
             }
 
             try {
-                // Set shorter timeout per connection (45 seconds)
+                // Timeout per koneksi 45 detik
                 DB::connection($connection)->statement("SET statement_timeout = 45000");
 
                 $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate, $currentDate]);
@@ -168,7 +162,6 @@ class AccountsReceivableController extends Controller
                 try {
                     DB::connection($connection)->statement("SET statement_timeout = 0");
                 } catch (\Exception $resetError) {
-                    // Ignore reset errors
                 }
                 continue;
             }
@@ -178,7 +171,6 @@ class AccountsReceivableController extends Controller
             Log::info("Accounts Receivable - Failed branches: " . implode(', ', $failedBranches));
         }
 
-        // Map results based on filter type and ensure no negative values
         $queryResult = $allResults->map(function ($item) use ($filter) {
             if ($filter === 'all') {
                 $item->range_0_104 = max(0, (float) ($item->range_0_104 ?? 0));
@@ -192,7 +184,6 @@ class AccountsReceivableController extends Controller
             return $item;
         });
 
-        // Pass branch order, failed branches, and anomaly branches to formatter
         $formattedData = ChartHelper::formatAccountsReceivableData(
             $queryResult,
             $currentDate,
@@ -205,9 +196,7 @@ class AccountsReceivableController extends Controller
         return response()->json($formattedData);
     }
 
-    /**
-     * Perform a quick socket connectivity check to avoid long Postgres connection timeouts.
-     */
+    // Cek konektivitas socket untuk menghindari timeout koneksi database yang lama
     protected function canConnectToBranch(string $connection, int $timeoutSeconds = 3): bool
     {
         $config = config("database.connections.{$connection}");
@@ -240,15 +229,12 @@ class AccountsReceivableController extends Controller
 
     public function exportExcel(Request $request)
     {
-        // Increase execution time limit for export operations
-        set_time_limit(300); // 5 minutes
+        set_time_limit(300);
         ini_set('max_execution_time', 300);
 
-        // Get current date and filter from request
         $currentDate = $request->input('current_date', now()->toDateString());
-        $filter = 'all'; // Always use 'all' filter for export
+        $filter = 'all';
 
-        // Get branch connections from ChartHelper
         $branchOrder = ChartHelper::getBranchOrder();
         $branchConnections = [];
         foreach ($branchOrder as $branchName) {
@@ -258,7 +244,7 @@ class AccountsReceivableController extends Controller
             }
         }
 
-        // Use correlated subquery to calculate payment per invoice with new aging ranges (0-104, 105-120, >120)
+        // Query dengan subquery korelasi untuk menghitung pembayaran per invoice
         $sql = "
         SELECT
             branch_name,
@@ -310,7 +296,6 @@ class AccountsReceivableController extends Controller
         ORDER BY total_overdue DESC
         ";
 
-        // Query all branch databases and collect results
         $allResults = collect();
         $failedBranches = [];
 
@@ -323,48 +308,38 @@ class AccountsReceivableController extends Controller
             }
 
             try {
-                // Set timeout per connection (30 seconds untuk export)
-                DB::connection($connection)->statement("SET statement_timeout = 30000"); // 30 seconds
+                DB::connection($connection)->statement("SET statement_timeout = 30000");
 
                 $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate, $currentDate]);
                 $allResults = $allResults->merge($branchResults);
 
-                // Reset timeout
                 DB::connection($connection)->statement("SET statement_timeout = 0");
             } catch (\Exception $e) {
-                // Log error and track failed branch
                 Log::warning("Export Excel - Failed to query {$connection}: " . $e->getMessage());
                 $failedBranches[] = $connection;
 
-                // Try to reset timeout even on error
                 try {
                     DB::connection($connection)->statement("SET statement_timeout = 0");
                 } catch (\Exception $resetError) {
-                    // Ignore reset errors
                 }
 
-                // Continue to next branch without breaking
                 continue;
             }
         }
 
-        // Log summary of failed branches if any
         if (!empty($failedBranches)) {
             Log::info("Export Excel - Failed branches: " . implode(', ', $failedBranches));
         }
 
-        // Fix branch names and convert to float
         $queryResult = $allResults->map(function ($item) {
-            // Replace old branch names with standardized branch names used in getBranchOrder()
+            // Standarisasi nama cabang
             if ($item->branch_name === 'PT. Putra Mandiri Damai') {
                 $item->branch_name = 'PWM Makassar';
             }
             if ($item->branch_name === 'PT. CIPTA ARDANA KENCANA') {
-                // This partner represents MPM Tangerang (TGR) in the branch order
                 $item->branch_name = 'MPM Tangerang';
             }
 
-            // Normalize overdue values (treat very small amounts as 0)
             $fields = ['overdue_0_104', 'overdue_105_120', 'overdue_120_plus', 'total_overdue'];
             foreach ($fields as $field) {
                 $value = (float) ($item->{$field} ?? 0);
@@ -374,26 +349,22 @@ class AccountsReceivableController extends Controller
             return $item;
         });
 
-        // Exclude branches with known anomaly from export (PWM Makassar, PWM Surabaya)
+        // Kecualikan cabang dengan anomali data (PWM Makassar, PWM Surabaya)
         $queryResult = $queryResult->reject(function ($item) {
             return in_array($item->branch_name, ['PWM Makassar', 'PWM Surabaya'], true);
         })->values();
 
-        // Sort by branch order
         $queryResult = ChartHelper::sortByBranchOrder($queryResult, 'branch_name');
 
-        // Calculate totals
         $total_0_104 = $queryResult->sum('overdue_0_104');
         $total_105_120 = $queryResult->sum('overdue_105_120');
         $total_120_plus = $queryResult->sum('overdue_120_plus');
         $grandTotal = $queryResult->sum('total_overdue');
 
-        // Format date for filename and display
         $formattedDate = \Carbon\Carbon::parse($currentDate)->format('d F Y');
         $fileDate = \Carbon\Carbon::parse($currentDate)->format('d-m-Y');
         $filename = 'Piutang_Usaha_' . $fileDate . '.xls';
 
-        // Create XLS content using HTML table format
         $headers = [
             'Content-Type' => 'application/vnd.ms-excel',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
@@ -487,7 +458,6 @@ class AccountsReceivableController extends Controller
 
         $no = 1;
         foreach ($queryResult as $row) {
-            // Skip offline branches (show as empty or dash)
             $val_0_104 = number_format($row->overdue_0_104, 2, '.', ',');
             $val_105_120 = number_format($row->overdue_105_120, 2, '.', ',');
             $val_120_plus = number_format($row->overdue_120_plus, 2, '.', ',');
@@ -504,7 +474,6 @@ class AccountsReceivableController extends Controller
             </tr>';
         }
 
-        // Append rows for branches that failed to connect (connection failed)
         if (!empty($failedBranches)) {
             foreach ($branchOrder as $branchName) {
                 $connection = ChartHelper::getBranchConnection($branchName);
@@ -545,15 +514,13 @@ class AccountsReceivableController extends Controller
 
     public function exportPdf(Request $request)
     {
-        // Increase execution time limit for export operations
-        set_time_limit(300); // 5 minutes
+        // Tingkatkan batas waktu eksekusi untuk operasi export
+        set_time_limit(300);
         ini_set('max_execution_time', 300);
 
-        // Get current date and filter from request
         $currentDate = $request->input('current_date', now()->toDateString());
-        $filter = 'all'; // Always use 'all' filter for export
+        $filter = 'all';
 
-        // Get branch connections from ChartHelper
         $branchOrder = ChartHelper::getBranchOrder();
         $branchConnections = [];
         foreach ($branchOrder as $branchName) {
@@ -563,7 +530,7 @@ class AccountsReceivableController extends Controller
             }
         }
 
-        // Use correlated subquery to calculate payment per invoice with new aging ranges (0-104, 105-120, >120)
+        // Query dengan subquery korelasi untuk menghitung pembayaran per invoice
         $sql = "
         SELECT
             branch_name,
@@ -615,7 +582,6 @@ class AccountsReceivableController extends Controller
         ORDER BY total_overdue DESC
         ";
 
-        // Query all branch databases and collect results
         $allResults = collect();
         $failedBranches = [];
 
@@ -628,48 +594,38 @@ class AccountsReceivableController extends Controller
             }
 
             try {
-                // Set timeout per connection (30 seconds untuk export)
-                DB::connection($connection)->statement("SET statement_timeout = 30000"); // 30 seconds
+                // Timeout per koneksi 30 detik
+                DB::connection($connection)->statement("SET statement_timeout = 30000");
 
                 $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate, $currentDate]);
                 $allResults = $allResults->merge($branchResults);
 
-                // Reset timeout
                 DB::connection($connection)->statement("SET statement_timeout = 0");
             } catch (\Exception $e) {
-                // Log error and track failed branch
                 Log::warning("Export PDF - Failed to query {$connection}: " . $e->getMessage());
                 $failedBranches[] = $connection;
 
-                // Try to reset timeout even on error
                 try {
                     DB::connection($connection)->statement("SET statement_timeout = 0");
                 } catch (\Exception $resetError) {
-                    // Ignore reset errors
                 }
 
-                // Continue to next branch without breaking
                 continue;
             }
         }
 
-        // Log summary of failed branches if any
         if (!empty($failedBranches)) {
             Log::info("Export PDF - Failed branches: " . implode(', ', $failedBranches));
         }
 
-        // Fix branch names and convert to float
         $queryResult = $allResults->map(function ($item) {
-            // Replace old branch names with standardized branch names used in getBranchOrder()
             if ($item->branch_name === 'PT. Putra Mandiri Damai') {
                 $item->branch_name = 'PWM Makassar';
             }
             if ($item->branch_name === 'PT. CIPTA ARDANA KENCANA') {
-                // This partner represents MPM Tangerang (TGR) in the branch order
                 $item->branch_name = 'MPM Tangerang';
             }
 
-            // Normalize overdue values (treat very small amounts as 0)
             $fields = ['overdue_0_104', 'overdue_105_120', 'overdue_120_plus', 'total_overdue'];
             foreach ($fields as $field) {
                 $value = (float) ($item->{$field} ?? 0);
@@ -679,25 +635,21 @@ class AccountsReceivableController extends Controller
             return $item;
         });
 
-        // Exclude branches with known anomaly from export (PWM Makassar, PWM Surabaya)
+        // Kecualikan cabang dengan anomali data (PWM Makassar, PWM Surabaya)
         $queryResult = $queryResult->reject(function ($item) {
             return in_array($item->branch_name, ['PWM Makassar', 'PWM Surabaya'], true);
         })->values();
 
-        // Sort by branch order
         $queryResult = ChartHelper::sortByBranchOrder($queryResult, 'branch_name');
 
-        // Calculate totals
         $total_0_104 = $queryResult->sum('overdue_0_104');
         $total_105_120 = $queryResult->sum('overdue_105_120');
         $total_120_plus = $queryResult->sum('overdue_120_plus');
         $grandTotal = $queryResult->sum('total_overdue');
 
-        // Format date for filename and display
         $formattedDate = \Carbon\Carbon::parse($currentDate)->format('d F Y');
         $fileDate = \Carbon\Carbon::parse($currentDate)->format('d-m-Y');
 
-        // Create HTML for PDF
         $html = '
         <!DOCTYPE html>
         <html>
@@ -777,7 +729,6 @@ class AccountsReceivableController extends Controller
 
         $no = 1;
         foreach ($queryResult as $row) {
-            // Values are already normalized; always render numeric 0 instead of '-'
             $val_0_104 = number_format($row->overdue_0_104, 2, '.', ',');
             $val_105_120 = number_format($row->overdue_105_120, 2, '.', ',');
             $val_120_plus = number_format($row->overdue_120_plus, 2, '.', ',');
@@ -810,7 +761,6 @@ class AccountsReceivableController extends Controller
         </body>
         </html>';
 
-        // Use DomPDF to generate PDF
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'landscape');
 

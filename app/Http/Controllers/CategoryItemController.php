@@ -12,7 +12,7 @@ class CategoryItemController extends Controller
 {
     public function getData(Request $request)
     {
-        // Use yesterday (H-1) since dashboard is updated daily at night
+        // Gunakan H-1 karena dashboard diupdate setiap malam
         $yesterday = Carbon::now()->subDay();
         $startDate = $request->input('start_date', $yesterday->copy()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', $yesterday->toDateString());
@@ -20,8 +20,7 @@ class CategoryItemController extends Controller
         $page = (int)$request->input('page', 1);
         $perPage = $page === 1 ? 9 : 8;
 
-        // Base query to get all branches with invoices in the date range for pagination
-        // Must filter by document type to match the main query
+        // Query dasar untuk mendapatkan semua cabang dengan faktur dalam rentang tanggal untuk pagination
         $baseQuery = DB::table('c_invoice as h')
             ->join('ad_org as org', 'h.ad_org_id', '=', 'org.ad_org_id')
             ->join('c_bpartner as cust', 'h.c_bpartner_id', '=', 'cust.c_bpartner_id')
@@ -32,7 +31,7 @@ class CategoryItemController extends Controller
             ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate])
             ->whereRaw('UPPER(cust.name) NOT LIKE ?', ['%KARYAWAN%']);
 
-        // Apply document type filter based on revenue type
+        // Terapkan filter jenis dokumen berdasarkan jenis pendapatan
         if ($type === 'NETTO') {
             $baseQuery->whereRaw('SUBSTR(h.documentno, 1, 3) IN (?, ?)', ['INC', 'CNC']);
         } else {
@@ -44,7 +43,7 @@ class CategoryItemController extends Controller
 
         $rawBranches = $baseQuery->get()->pluck('branch');
 
-        // Sort branches using ChartHelper's branch order
+        // Urutkan cabang menggunakan ChartHelper's branch order
         $branchOrder = ChartHelper::getBranchOrder();
 
         $sortedBranches = [];
@@ -54,7 +53,7 @@ class CategoryItemController extends Controller
             }
         }
 
-        // Add any branches not in predefined order
+        // Tambahkan cabang yang tidak ada dalam urutan yang telah ditentukan
         foreach ($rawBranches as $branch) {
             if (!in_array($branch, $sortedBranches)) {
                 $sortedBranches[] = $branch;
@@ -63,7 +62,7 @@ class CategoryItemController extends Controller
 
         $allBranches = collect($sortedBranches);
 
-        // Calculate offset for pagination with different page sizes
+        // Tingkatkan batas waktu eksekusi untuk operasi export dengan ukuran halaman yang berbeda
         $offset = $page === 1 ? 0 : 9 + (($page - 2) * 8);
         $paginatedBranches = $allBranches->slice($offset, $perPage)->values();
 
@@ -80,7 +79,7 @@ class CategoryItemController extends Controller
             ]);
         }
 
-        // Main data query based on the provided SQL
+        // Query data utama
         $dataQuery = DB::table('c_invoiceline as d')
             ->join('c_invoice as h', 'd.c_invoice_id', '=', 'h.c_invoice_id')
             ->join('ad_org as org', 'h.ad_org_id', '=', 'org.ad_org_id')
@@ -97,9 +96,8 @@ class CategoryItemController extends Controller
             ->whereIn('org.name', $paginatedBranches)
             ->whereRaw('UPPER(cust.name) NOT LIKE ?', ['%KARYAWAN%']);
 
-        // Apply different calculation based on type
+        // Terapkan perhitungan berbeda berdasarkan type
         if ($type === 'NETTO') {
-            // Netto: INC adds, CNC subtracts
             $dataQuery->select(
                 'org.name as branch',
                 DB::raw("CASE 
@@ -116,7 +114,6 @@ class CategoryItemController extends Controller
                 ->where('d.linenetamt', '>', 0)
                 ->whereRaw('SUBSTR(h.documentno, 1, 3) IN (?, ?)', ['INC', 'CNC']);
         } else {
-            // Bruto: simple sum (only INC documents)
             $dataQuery->select(
                 'org.name as branch',
                 DB::raw("CASE 
@@ -138,10 +135,9 @@ class CategoryItemController extends Controller
 
         $data = $dataQuery->get();
 
-        // Enforce legend order
+        // Terapkan urutan legenda
         $desiredOrder = ['MIKA', 'SPARE PART', 'CAT', 'PRODUCT IMPORT', 'AKSESORIS'];
         $foundCategories = $data->pluck('category')->unique()->values();
-        // Keep only categories present in data, in the desired order
         $categories = collect($desiredOrder)
             ->filter(function ($c) use ($foundCategories) {
                 return $foundCategories->contains($c);
@@ -150,7 +146,6 @@ class CategoryItemController extends Controller
         $dataByBranch = $data->groupBy('branch');
 
         $branchTotals = $paginatedBranches->mapWithKeys(function ($branch) use ($dataByBranch) {
-            // Ensure branch total is never negative
             return [$branch => max(0, $dataByBranch->get($branch, collect())->sum('total_revenue'))];
         });
 
@@ -161,10 +156,8 @@ class CategoryItemController extends Controller
         $datasets = $categories->map(function ($category) use ($paginatedBranches, $dataByBranch, $branchTotals, $totalRevenueForPage, $categoryColors) {
             $dataPoints = $paginatedBranches->map(function ($branch) use ($category, $dataByBranch, $branchTotals, $totalRevenueForPage) {
                 $branchData = $dataByBranch->get($branch, collect());
-                // Ensure revenue is never negative
                 $revenue = max(0, $branchData->where('category', $category)->sum('total_revenue'));
                 $totalForBranch = $branchTotals->get($branch, 0);
-                // Ensure percentage is never negative
                 $percentage = $totalForBranch > 0 ? ($revenue / $totalForBranch) : 0;
                 return [
                     'x' => $branch,
@@ -183,12 +176,10 @@ class CategoryItemController extends Controller
         });
 
 
-        // Map branch names to abbreviations
         $abbreviatedLabels = $paginatedBranches->map(function ($branch) {
             return ChartHelper::getBranchAbbreviation($branch);
         })->toArray();
 
-        // Calculate hasMorePages based on new pagination logic
         $totalProcessed = $page === 1 ? 9 : 9 + (($page - 1) * 8);
         $hasMorePages = $allBranches->count() > $totalProcessed;
 
@@ -206,13 +197,13 @@ class CategoryItemController extends Controller
 
     public function exportExcel(Request $request)
     {
-        // Use yesterday (H-1) since dashboard is updated daily at night
+        // Gunakan H-1 karena dashboard diupdate setiap malam
         $yesterday = Carbon::now()->subDay();
         $startDate = $request->input('start_date', $yesterday->copy()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', $yesterday->toDateString());
         $type = $request->input('type', 'BRUTO'); // BRUTO or NETTO
 
-        // Main data query based on the provided SQL
+        // Query data utama
         $dataQuery = DB::table('c_invoiceline as d')
             ->join('c_invoice as h', 'd.c_invoice_id', '=', 'h.c_invoice_id')
             ->join('ad_org as org', 'h.ad_org_id', '=', 'org.ad_org_id')
@@ -228,9 +219,8 @@ class CategoryItemController extends Controller
             ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate])
             ->whereRaw('UPPER(cust.name) NOT LIKE ?', ['%KARYAWAN%']);
 
-        // Apply different calculation based on type
+        // Terapkan perhitungan berbeda berdasarkan type
         if ($type === 'NETTO') {
-            // Netto: INC adds, CNC subtracts
             $dataQuery->select(
                 'org.name as branch',
                 DB::raw("CASE 
@@ -247,7 +237,6 @@ class CategoryItemController extends Controller
                 ->where('d.linenetamt', '>', 0)
                 ->whereRaw('SUBSTR(h.documentno, 1, 3) IN (?, ?)', ['INC', 'CNC']);
         } else {
-            // Bruto: simple sum (only INC documents)
             $dataQuery->select(
                 'org.name as branch',
                 DB::raw("CASE 
@@ -270,20 +259,16 @@ class CategoryItemController extends Controller
 
         $data = $dataQuery->get();
 
-        // Get all unique branches and categories
         $branches = $data->pluck('branch')->unique()->sort()->values();
         $categories = ['MIKA', 'SPARE PART', 'CAT', 'PRODUCT IMPORT', 'AKSESORIS'];
 
-        // Filter categories to only those present in data
         $foundCategories = $data->pluck('category')->unique()->values();
         $categories = collect($categories)->filter(function ($c) use ($foundCategories) {
             return $foundCategories->contains($c);
         })->values();
 
-        // Group data by branch
         $dataByBranch = $data->groupBy('branch');
 
-        // Format dates for filename and display
         $formattedStartDate = Carbon::parse($startDate)->format('d F Y');
         $formattedEndDate = Carbon::parse($endDate)->format('d F Y');
         $fileStartDate = Carbon::parse($startDate)->format('d-m-Y');
@@ -291,7 +276,6 @@ class CategoryItemController extends Controller
         $typeLabel = $type === 'NETTO' ? 'Netto' : 'Bruto';
         $filename = 'Kontribusi_Kategori_Barang_' . $typeLabel . '_' . $fileStartDate . '_sampai_' . $fileEndDate . '.xls';
 
-        // Sort branches by ChartHelper branch order for exportExcel
         $branches = ChartHelper::sortByBranchOrder($branches, null);
 
         // Create XLS content using HTML table format
@@ -432,13 +416,13 @@ class CategoryItemController extends Controller
 
     public function exportPdf(Request $request)
     {
-        // Use yesterday (H-1) since dashboard is updated daily at night
+        // Gunakan H-1 karena dashboard diupdate setiap malam
         $yesterday = Carbon::now()->subDay();
         $startDate = $request->input('start_date', $yesterday->copy()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', $yesterday->toDateString());
         $type = $request->input('type', 'BRUTO'); // BRUTO or NETTO
 
-        // Main data query based on the provided SQL
+        // Query data utama
         $dataQuery = DB::table('c_invoiceline as d')
             ->join('c_invoice as h', 'd.c_invoice_id', '=', 'h.c_invoice_id')
             ->join('ad_org as org', 'h.ad_org_id', '=', 'org.ad_org_id')
@@ -454,9 +438,8 @@ class CategoryItemController extends Controller
             ->whereBetween(DB::raw('DATE(h.dateinvoiced)'), [$startDate, $endDate])
             ->whereRaw('UPPER(cust.name) NOT LIKE ?', ['%KARYAWAN%']);
 
-        // Apply different calculation based on type
+        // Terapkan perhitungan berbeda berdasarkan type
         if ($type === 'NETTO') {
-            // Netto: INC adds, CNC subtracts
             $dataQuery->select(
                 'org.name as branch',
                 DB::raw("CASE 
@@ -473,7 +456,6 @@ class CategoryItemController extends Controller
                 ->where('d.linenetamt', '>', 0)
                 ->whereRaw('SUBSTR(h.documentno, 1, 3) IN (?, ?)', ['INC', 'CNC']);
         } else {
-            // Bruto: simple sum (only INC documents)
             $dataQuery->select(
                 'org.name as branch',
                 DB::raw("CASE 
@@ -496,27 +478,22 @@ class CategoryItemController extends Controller
 
         $data = $dataQuery->get();
 
-        // Get all unique branches and categories
         $branches = $data->pluck('branch')->unique()->sort()->values();
         $categories = ['MIKA', 'SPARE PART', 'CAT', 'PRODUCT IMPORT', 'AKSESORIS'];
 
-        // Filter categories to only those present in data
         $foundCategories = $data->pluck('category')->unique()->values();
         $categories = collect($categories)->filter(function ($c) use ($foundCategories) {
             return $foundCategories->contains($c);
         })->values();
 
-        // Group data by branch
         $dataByBranch = $data->groupBy('branch');
 
-        // Format dates for filename and display
         $formattedStartDate = Carbon::parse($startDate)->format('d F Y');
         $formattedEndDate = Carbon::parse($endDate)->format('d F Y');
         $fileStartDate = Carbon::parse($startDate)->format('d-m-Y');
         $fileEndDate = Carbon::parse($endDate)->format('d-m-Y');
         $typeLabel = $type === 'NETTO' ? 'Netto' : 'Bruto';
 
-        // Sort branches by ChartHelper branch order for exportPdf
         $branches = ChartHelper::sortByBranchOrder($branches, null);
 
         // Create HTML for PDF

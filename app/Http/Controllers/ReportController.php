@@ -11,7 +11,7 @@ class ReportController extends Controller
      */
     public function index()
     {
-        // Use yesterday (H-1) since dashboard is updated daily at night
+        // Gunakan H-1 karena dashboard diupdate setiap malam
         $yesterday = now()->subDay();
         $startDate = $yesterday->copy()->startOfMonth()->toDateString();
         $endDate = $yesterday->toDateString();

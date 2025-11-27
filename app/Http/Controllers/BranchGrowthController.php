@@ -98,7 +98,7 @@ class BranchGrowthController extends Controller
     private function getRevenueDataByDateRange($startDate, $endDate, $category, $branch, $type = 'NETTO')
     {
         try {
-            // Increase PHP execution time limit for heavy queries
+            // Tingkatkan batas waktu eksekusi untuk query berat
             set_time_limit(180);
 
             try {
@@ -121,7 +121,7 @@ class BranchGrowthController extends Controller
             }
 
             if ($type === 'BRUTO') {
-                // Bruto query - only INC documents (aligned with MonthlyBranchController)
+                // Query Bruto - hanya dokumen INC
                 $query = "
                     SELECT
                         EXTRACT(year FROM h.dateinvoiced) as year,
@@ -166,7 +166,7 @@ class BranchGrowthController extends Controller
                         year, month
                 ";
             } else {
-                // Netto query - INC minus CNC (aligned with MonthlyBranchController)
+                // Query Netto - INC dikurangi CNC
                 $query = "
                     SELECT
                         EXTRACT(year FROM h.dateinvoiced) as year,
@@ -223,7 +223,6 @@ class BranchGrowthController extends Controller
                     DB::statement("SET statement_timeout = 0");
                 }
             } catch (\Exception $e) {
-                // Ignore reset error
             }
 
             return $result;
@@ -234,7 +233,6 @@ class BranchGrowthController extends Controller
                     DB::statement("SET statement_timeout = 0");
                 }
             } catch (\Exception $resetError) {
-                // Ignore reset error
             }
 
             Log::error('Error fetching revenue data by date range', [
@@ -469,7 +467,6 @@ class BranchGrowthController extends Controller
                     $data[$year] = $yearData;
                 }
             } else {
-                // Return default zero data for all years
                 for ($year = $startYear; $year <= $endYear; $year++) {
                     $data[$year] = (object)[
                         'b01' => 0,
@@ -532,9 +529,8 @@ class BranchGrowthController extends Controller
 
         $branches = ChartHelper::getLocations();
 
-        // Get revenue data for all branches and all years in range
         if ($type === 'BRUTO') {
-            // Bruto query - only INC documents (aligned with MonthlyBranchController)
+            // Query Bruto - hanya dokumen INC
             $query = "
                 SELECT
                     org.name AS branch_name,
@@ -578,7 +574,7 @@ class BranchGrowthController extends Controller
                     org.name, year_number, month_number
             ";
         } else {
-            // Netto query - INC minus CNC (aligned with MonthlyBranchController)
+            // Query Netto - INC dikurangi CNC
             $query = "
                 SELECT
                     org.name AS branch_name,
@@ -641,7 +637,6 @@ class BranchGrowthController extends Controller
             $lastAvailableMonth = 12;
         }
 
-        // Set months to show based on last available month
         $monthsToShow = 12;
         if ($endYear == $currentYear && $lastAvailableMonth < 12) {
             $monthsToShow = $lastAvailableMonth;
@@ -862,7 +857,7 @@ class BranchGrowthController extends Controller
         $branches = ChartHelper::getLocations();
 
         if ($type === 'BRUTO') {
-            // Bruto query - only INC documents (aligned with MonthlyBranchController)
+            // Query Bruto - hanya dokumen INC
             $query = "
                 SELECT
                     org.name AS branch_name,
@@ -906,7 +901,7 @@ class BranchGrowthController extends Controller
                     org.name, year_number, month_number
             ";
         } else {
-            // Netto query - INC minus CNC (aligned with MonthlyBranchController)
+            // Query Netto - INC dikurangi CNC
             $query = "
                 SELECT
                     org.name AS branch_name,
