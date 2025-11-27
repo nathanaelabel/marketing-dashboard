@@ -75,7 +75,7 @@ class TargetRevenueController extends Controller
                 $month = $monthData['month'];
                 $year = $monthData['year'];
 
-                // Check if target exists for this month
+                // Cek apakah target ada untuk bulan ini
                 $targetsExist = DB::table('branch_targets')
                     ->where('month', $month)
                     ->where('year', $year)
@@ -107,9 +107,9 @@ class TargetRevenueController extends Controller
                 }
             }
 
-            // If no months have data, return no_targets response
+            // Jika tidak ada bulan dengan data, kembalikan response no_targets
             if (empty($monthsWithData)) {
-                // Calculate period info for all requested months
+                // Hitung info periode untuk semua bulan yang diminta
                 $allPeriodLabels = array_column($months, 'label');
                 $periodInfo = implode(', ', $allPeriodLabels);
 
@@ -119,7 +119,7 @@ class TargetRevenueController extends Controller
                     'months_without_target' => $monthsWithoutTarget,
                     'period_info' => $periodInfo,
                     'view' => '4-month',
-                    'category' => $category // Add category for display
+                    'category' => $category
                 ]);
             }
 
@@ -165,7 +165,6 @@ class TargetRevenueController extends Controller
             $month = $startMonth + $i;
             $year = $startYear;
 
-            // Handle year overflow
             if ($month > 12) {
                 $month = $month - 12;
                 $year++;
@@ -280,10 +279,9 @@ class TargetRevenueController extends Controller
 
             $results = DB::select($query, [$category, $category, $month, $year, $category, $category, $month, $year]);
 
-            // Sort results by branch order
+            // Urutkan hasil berdasarkan urutan cabang
             $results = ChartHelper::sortByBranchOrder(collect($results), 'cabang')->all();
 
-            // Convert to associative array with branch name as key
             $data = [];
             foreach ($results as $result) {
                 $data[$result->cabang] = [
@@ -336,10 +334,9 @@ class TargetRevenueController extends Controller
     private function formatTargetRevenueData($actualData, $targetData)
     {
         try {
-            // Get all branch names from both actual and target data
+            // Ambil semua nama cabang dari data aktual dan target
             $allBranches = array_unique(array_merge(array_keys($actualData), array_keys($targetData)));
 
-            // Sort branches using ChartHelper branch order
             $branchOrder = ChartHelper::getBranchOrder();
             $sortedBranches = [];
             foreach ($branchOrder as $branch) {
@@ -347,7 +344,6 @@ class TargetRevenueController extends Controller
                     $sortedBranches[] = $branch;
                 }
             }
-            // Add any branches not in predefined order
             foreach ($allBranches as $branch) {
                 if (!in_array($branch, $sortedBranches)) {
                     $sortedBranches[] = $branch;
@@ -370,16 +366,13 @@ class TargetRevenueController extends Controller
                 $targetValues[] = $target;
                 $realizationValues[] = $actual;
 
-                // Calculate percentage
                 $percentage = $target > 0 ? ($actual / $target) * 100 : 0;
                 $percentages[] = round($percentage);
             }
 
-            // Calculate max value for Y-axis scaling
             $allValues = array_merge($targetValues, $realizationValues);
             $maxValue = empty($allValues) ? 0 : max($allValues);
 
-            // Use ChartHelper for Y-axis configuration
             $yAxisConfig = ChartHelper::getYAxisConfig($maxValue, null, $allValues);
             $suggestedMax = ChartHelper::calculateSuggestedMax($maxValue, $yAxisConfig['divisor']);
 
@@ -396,7 +389,7 @@ class TargetRevenueController extends Controller
                     [
                         'label' => 'Realization',
                         'data' => $realizationValues,
-                        'backgroundColor' => 'rgba(251, 191, 36, 0.8)', // Orange/yellow
+                        'backgroundColor' => 'rgba(251, 191, 36, 0.8)',
                         'borderColor' => 'rgba(245, 158, 11, 1)',
                         'borderWidth' => 1
                     ]
@@ -436,16 +429,12 @@ class TargetRevenueController extends Controller
             return $this->exportExcel4Month($month, $year, $category);
         }
 
-        // Get actual revenue data
         $actualData = $this->getActualRevenueData($month, $year, $category);
 
-        // Get target data
         $targetData = $this->getTargetData($month, $year, $category);
 
-        // Get all branch names
         $allBranches = array_unique(array_merge(array_keys($actualData), array_keys($targetData)));
 
-        // Sort branches using ChartHelper branch order
         $branchOrder = ChartHelper::getBranchOrder();
         $sortedBranches = [];
         foreach ($branchOrder as $branch) {
@@ -453,7 +442,6 @@ class TargetRevenueController extends Controller
                 $sortedBranches[] = $branch;
             }
         }
-        // Add any branches not in predefined order
         foreach ($allBranches as $branch) {
             if (!in_array($branch, $sortedBranches)) {
                 $sortedBranches[] = $branch;
@@ -461,7 +449,6 @@ class TargetRevenueController extends Controller
         }
         $allBranches = $sortedBranches;
 
-        // Calculate totals
         $totalTarget = array_sum($targetData);
         $totalRealization = 0;
         foreach ($actualData as $data) {
@@ -469,7 +456,6 @@ class TargetRevenueController extends Controller
         }
         $totalPercentage = $totalTarget > 0 ? round(($totalRealization / $totalTarget) * 100) : 0;
 
-        // Format month and category for display
         $months = [
             '',
             'January',
@@ -489,7 +475,6 @@ class TargetRevenueController extends Controller
         $formattedCategory = ucwords(strtolower($category));
         $filename = 'Target_Penjualan_Netto_' . $monthName . '_' . $year . '_' . str_replace(' ', '_', $category) . '.xls';
 
-        // Create XLS content using HTML table format
         $headers = [
             'Content-Type' => 'application/vnd.ms-excel',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
@@ -621,16 +606,12 @@ class TargetRevenueController extends Controller
         $year = $request->input('year', date('Y'));
         $category = $request->input('category', 'MIKA');
 
-        // Get actual revenue data
         $actualData = $this->getActualRevenueData($month, $year, $category);
 
-        // Get target data
         $targetData = $this->getTargetData($month, $year, $category);
 
-        // Get all branch names
         $allBranches = array_unique(array_merge(array_keys($actualData), array_keys($targetData)));
 
-        // Sort branches using ChartHelper branch order
         $branchOrder = ChartHelper::getBranchOrder();
         $sortedBranches = [];
         foreach ($branchOrder as $branch) {
@@ -638,7 +619,6 @@ class TargetRevenueController extends Controller
                 $sortedBranches[] = $branch;
             }
         }
-        // Add any branches not in predefined order
         foreach ($allBranches as $branch) {
             if (!in_array($branch, $sortedBranches)) {
                 $sortedBranches[] = $branch;
@@ -646,7 +626,6 @@ class TargetRevenueController extends Controller
         }
         $allBranches = $sortedBranches;
 
-        // Calculate totals
         $totalTarget = array_sum($targetData);
         $totalRealization = 0;
         foreach ($actualData as $data) {
@@ -654,7 +633,6 @@ class TargetRevenueController extends Controller
         }
         $totalPercentage = $totalTarget > 0 ? round(($totalRealization / $totalTarget) * 100) : 0;
 
-        // Format month and category for display
         $months = [
             '',
             'January',
@@ -674,7 +652,6 @@ class TargetRevenueController extends Controller
         $formattedCategory = ucwords(strtolower($category));
         $filename = 'Target_Penjualan_Netto_' . $monthName . '_' . $year . '_' . str_replace(' ', '_', $category) . '.pdf';
 
-        // Create HTML for PDF
         $html = '
         <!DOCTYPE html>
         <html>
@@ -782,7 +759,6 @@ class TargetRevenueController extends Controller
         </body>
         </html>';
 
-        // Use DomPDF to generate PDF
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'landscape');
 
@@ -791,21 +767,17 @@ class TargetRevenueController extends Controller
 
     private function exportExcel4Month($startMonth, $startYear, $category)
     {
-        // Calculate 4 consecutive months
         $months = $this->calculate4Months($startMonth, $startYear);
 
-        // Pre-fetch all data for current year only
         $dataCache = [];
         foreach ($months as $monthData) {
             $month = $monthData['month'];
             $year = $monthData['year'];
 
-            // Cache current year data
             $dataCache[$year][$month]['actual'] = $this->getActualRevenueData($month, $year, $category);
             $dataCache[$year][$month]['target'] = $this->getTargetData($month, $year, $category);
         }
 
-        // Get all branches from cached data
         $allBranches = [];
         foreach ($dataCache as $yearData) {
             foreach ($yearData as $monthData) {
@@ -817,7 +789,6 @@ class TargetRevenueController extends Controller
             }
         }
 
-        // Sort branches using ChartHelper branch order
         $branchOrder = ChartHelper::getBranchOrder();
         $sortedBranches = [];
         foreach ($branchOrder as $branch) {
@@ -832,14 +803,12 @@ class TargetRevenueController extends Controller
         }
         $allBranches = $sortedBranches;
 
-        // Format category and period for display
         $formattedCategory = strtoupper($category);
         $periodLabels = array_column($months, 'label');
         $periodString = strtoupper($periodLabels[0]) . ' - ' . strtoupper($periodLabels[3]);
 
         $filename = 'Target_Penjualan_Netto_' . str_replace([' ', ','], ['_', ''], $periodString) . '_' . str_replace(' ', '_', $category) . '.xls';
 
-        // Create XLS content
         $headers = [
             'Content-Type' => 'application/vnd.ms-excel',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
@@ -848,7 +817,6 @@ class TargetRevenueController extends Controller
             'Expires' => '0'
         ];
 
-        // Get year label (handle year transition)
         $firstMonthYear = $months[0]['year'];
         $lastMonthYear = $months[3]['year'];
         if ($lastMonthYear > $firstMonthYear) {
@@ -905,7 +873,6 @@ class TargetRevenueController extends Controller
             <div class="period">PERIODE: ' . $periodString . '</div>
             <br>';
 
-        // Generate table for each branch
         foreach ($allBranches as $branchName) {
             $branchCode = ChartHelper::getBranchAbbreviation($branchName);
 
@@ -931,9 +898,8 @@ class TargetRevenueController extends Controller
             foreach ($months as $monthData) {
                 $month = $monthData['month'];
                 $year = $monthData['year'];
-                $monthLabel = explode(' ', $monthData['label'])[0]; // Get month name only
+                $monthLabel = explode(' ', $monthData['label'])[0];
 
-                // Get data from cache
                 $currentYearActual = $dataCache[$year][$month]['actual'] ?? [];
                 $currentYearTarget = $dataCache[$year][$month]['target'] ?? [];
 
@@ -952,7 +918,6 @@ class TargetRevenueController extends Controller
                 </tr>';
             }
 
-            // Calculate total achievement percentage
             $totalAchv = $totalTarget > 0 ? round(($totalRealization / $totalTarget) * 100, 2) : 0;
 
             $html .= '

@@ -6,38 +6,28 @@ use Illuminate\Support\Facades\DB;
 
 class ChartHelper
 {
-    /**
-     * Determines Y-axis configuration based on the maximum value.
-     *
-     * @param float $maxValue The maximum value in the dataset.
-     * @param ?float $averageRelevantValue Optional average of relevant (e.g., non-zero) values in the dataset.
-     * @return array An array containing 'label', 'divisor', and 'unit'.
-     */
+    // Menentukan konfigurasi sumbu Y berdasarkan nilai maksimum
     public static function getYAxisConfig(float $maxValue, ?float $averageRelevantValue = null, array $allDataValues = []): array
     {
-        $billionThreshold = 1e9; // 1 Billion
-        $forceVeryHighBillionsThreshold = 2 * 1e9; // e.g., if max is 2B or more, definitely use Billions
-        $forceMillionLowThreshold = 2 * 1e6; // Values below this (e.g., 2M) will definitely use Millions scale
-        $significantSmallerValueThreshold = 0.7 * 1e9; // e.g., 700M. If a bar is below this, it's a 'smaller' significant value.
+        $billionThreshold = 1e9; // 1 Miliar
+        $forceVeryHighBillionsThreshold = 2 * 1e9;
+        $forceMillionLowThreshold = 2 * 1e6;
+        $significantSmallerValueThreshold = 0.7 * 1e9;
 
         if ($maxValue < $forceMillionLowThreshold) {
             return ['label' => 'Juta Rupiah', 'divisor' => 1e6, 'unit' => 'Jt'];
         }
 
-        // If maxValue is very high, force Billions
         if ($maxValue >= $forceVeryHighBillionsThreshold) {
             return ['label' => 'Miliar Rupiah', 'divisor' => 1e9, 'unit' => 'M'];
         }
 
-        // If maxValue is between 1B (inclusive) and forceVeryHighBillionsThreshold (exclusive)
         if ($maxValue >= $billionThreshold) {
             $preferMillions = false;
             if (!empty($allDataValues)) {
                 $nonZeroValues = array_filter($allDataValues, fn($v) => $v > 0.001 * $billionThreshold);
                 if (count($nonZeroValues) > 1) {
                     foreach ($nonZeroValues as $value) {
-                        // If there's any significant bar that's considerably smaller than 1B (e.g. < 700M)
-                        // then prefer Millions to keep that bar's value readable.
                         if ($value < $significantSmallerValueThreshold) {
                             $preferMillions = true;
                             break;
@@ -49,21 +39,13 @@ class ChartHelper
             if ($preferMillions) {
                 return ['label' => 'Juta Rupiah', 'divisor' => 1e6, 'unit' => 'Jt'];
             }
-            // Otherwise (maxValue is 1B up to $forceVeryHighBillionsThreshold and no significantly smaller bars, or only one bar), use Billions
             return ['label' => 'Miliar Rupiah', 'divisor' => 1e9, 'unit' => 'M'];
         }
 
-        // Default: maxValue is < 1B (and >= $forceMillionLowThreshold)
         return ['label' => 'Juta Rupiah', 'divisor' => 1e6, 'unit' => 'Jt'];
     }
 
-    /**
-     * Formats a number into a compact representation (e.g., 23M, 1.2B, 500K).
-     *
-     * @param float $value The value to format.
-     * @param int $precision The number of decimal places for the compact form.
-     * @return string The formatted compact number string.
-     */
+    // Format angka menjadi representasi ringkas (contoh: 23M, 1.2B, 500K)
     public static function formatNumberForDisplay(float $value, int $precision = 1): string
     {
         if ($value >= 1e9) {
@@ -78,26 +60,13 @@ class ChartHelper
         return (string)round($value, $precision);
     }
 
-    /**
-     * Formats a number as full Indonesian Rupiah currency.
-     *
-     * @param float $value The value to format.
-     * @return string The formatted currency string.
-     */
+    // Format angka sebagai mata uang Rupiah Indonesia
     public static function formatFullCurrency(float $value): string
     {
         return 'Rp ' . number_format($value, 0, ',', '.');
     }
 
-    /**
-     * Calculates a suggested maximum for a Chart.js Y-axis based on data.
-     *
-     * @param float $maxDataValue The actual maximum data point in the dataset.
-     * @param float $divisor The divisor being used for the axis (e.g., 1e6 for millions, 1e9 for billions).
-     * @param float $paddingFactor Padding factor to apply above the maxDataValue (e.g., 1.2 for 20% padding).
-     * @param float $minSuggestedMaxDivisorUnits Minimum suggested max in terms of divisor units (e.g., 5 means 5M or 5B if data is very small or zero).
-     * @return float The suggested maximum value for the Y-axis, in raw unscaled units.
-     */
+    // Hitung nilai maksimum yang disarankan untuk sumbu Y Chart.js
     public static function calculateSuggestedMax(
         float $maxDataValue,
         float $divisor,
@@ -108,10 +77,8 @@ class ChartHelper
             return $minSuggestedMaxDivisorUnits * $divisor;
         }
 
-        // Calculate the scaled value (e.g., if maxDataValue is 6.5M and divisor is 1e9, scaledValue = 6.5)
         $scaledValue = $maxDataValue / $divisor;
 
-        // For very small values (<= 5), just round up to 5
         if ($scaledValue <= 5) {
             return 5 * $divisor;
         }
@@ -120,9 +87,6 @@ class ChartHelper
         $roundedUp = 0;
 
         if ($scaledValue <= 10) {
-            // For values <= 10, round to next integer, then add 1-2 units
-            // Example: 6.5 -> round to 7 -> add 1 = 8
-            // Example: 8.0 -> round to 8 -> add 2 = 10
             $roundedUp = ceil($scaledValue);
             if ($scaledValue <= 7.5) {
                 $padding = 1;
@@ -133,35 +97,25 @@ class ChartHelper
             $roundedUp = ceil($scaledValue);
             $padding = 2;
         } elseif ($scaledValue <= 50) {
-            // For values 20-50, round to next 2, then add 3-5 units
-            // Example: 34 -> round to 34 -> add 5 = 39, then round to 40
             $roundedUp = ceil($scaledValue / 2) * 2;
             $padding = 3;
         } elseif ($scaledValue <= 100) {
-            // For values 50-100, round to next 5, then add 5 units
-            // Example: 75 -> round to 75 -> add 5 = 80
             $roundedUp = ceil($scaledValue / 5) * 5;
             $padding = 5;
         } else {
-            // For larger values, round to next 10, then add 10 units
             $roundedUp = ceil($scaledValue / 10) * 10;
             $padding = 10;
         }
 
         $suggestedMaxScaled = $roundedUp + $padding;
 
-        // Round to nearest nice number for cleaner axis labels
         if ($suggestedMaxScaled <= 10) {
-            // Round to nearest integer for values <= 10
             $suggestedMaxScaled = ceil($suggestedMaxScaled);
         } elseif ($suggestedMaxScaled <= 20) {
-            // Round to nearest integer for values 10-20
             $suggestedMaxScaled = ceil($suggestedMaxScaled);
         } elseif ($suggestedMaxScaled <= 50) {
-            // Round to nearest 2 for values 20-50
             $suggestedMaxScaled = ceil($suggestedMaxScaled / 2) * 2;
         } else {
-            // Round to nearest 5 for larger values
             $suggestedMaxScaled = ceil($suggestedMaxScaled / 5) * 5;
         }
 
@@ -177,7 +131,6 @@ class ChartHelper
 
     public static function formatAccountsReceivableData($data, $currentDate, $filter = 'overdue', $branchOrder = [], $failedBranches = [], $anomalyBranches = [])
     {
-        // Create a mapping of branch connection to abbreviation
         $connectionToAbbr = [
             'pgsql_trg' => 'TGR',
             'pgsql_bks' => 'BKS',
@@ -198,21 +151,17 @@ class ChartHelper
             'pgsql_pku' => 'PKU',
         ];
 
-        // Create a mapping of branch name to data
+        // Mapping nama cabang ke data berdasarkan branch_name
         $dataByBranchName = $data->keyBy('branch_name');
 
-        // Initialize ordered arrays
         $orderedLabels = [];
         $orderedData = [];
 
-        // Process branches in the specified order
         foreach ($branchOrder as $connection) {
             $abbr = $connectionToAbbr[$connection] ?? strtoupper(str_replace('pgsql_', '', $connection));
             $orderedLabels[] = $abbr;
 
-            // Check if this branch has anomaly
             if (in_array($connection, $anomalyBranches)) {
-                // Add anomaly placeholder data
                 if ($filter === 'all') {
                     $orderedData[] = [
                         'range_0_104' => null,
@@ -234,7 +183,6 @@ class ChartHelper
                     ];
                 }
             } elseif (in_array($connection, $failedBranches)) {
-                // Add connection failed placeholder data
                 if ($filter === 'all') {
                     $orderedData[] = [
                         'range_0_104' => null,
@@ -256,7 +204,6 @@ class ChartHelper
                     ];
                 }
             } else {
-                // Find matching data by branch name
                 $branchData = null;
                 foreach ($dataByBranchName as $branchName => $item) {
                     $itemAbbr = self::getBranchAbbreviation($branchName);
@@ -288,7 +235,6 @@ class ChartHelper
                         ];
                     }
                 } else {
-                    // Branch has no data (might have failed query)
                     if ($filter === 'all') {
                         $orderedData[] = [
                             'range_0_104' => null,
@@ -313,36 +259,33 @@ class ChartHelper
             }
         }
 
-        // Calculate total (only from online branches)
+        // Hitung total hanya dari cabang yang online
         $totalOverdue = collect($orderedData)
             ->where('is_offline', false)
             ->sum('total_overdue');
 
-        // Build datasets based on filter type
         if ($filter === 'all') {
-            // All: Show 0-104 Days (green), 105-120 Days (yellow), >120 Days (red)
             $datasets = [
                 [
                     'label' => '0 - 104 Hari',
                     'data' => collect($orderedData)->pluck('range_0_104')->all(),
-                    'backgroundColor' => 'rgba(34, 197, 94, 0.8)', // Green
+                    'backgroundColor' => 'rgba(34, 197, 94, 0.8)',
                     'borderRadius' => 5,
                 ],
                 [
                     'label' => '105 - 120 Hari',
                     'data' => collect($orderedData)->pluck('range_105_120')->all(),
-                    'backgroundColor' => 'rgba(234, 179, 8, 0.8)', // Yellow
+                    'backgroundColor' => 'rgba(234, 179, 8, 0.8)',
                     'borderRadius' => 5,
                 ],
                 [
                     'label' => '> 120 Hari',
                     'data' => collect($orderedData)->pluck('range_120_plus')->all(),
-                    'backgroundColor' => 'rgba(239, 68, 68, 0.8)', // Red
+                    'backgroundColor' => 'rgba(239, 68, 68, 0.8)',
                     'borderRadius' => 5,
                 ],
             ];
         } else {
-            // Overdue: Show only 105-120 Days (yellow) and >120 Days (red)
             $datasets = [
                 [
                     'label' => '105 - 120 Hari',
@@ -359,7 +302,6 @@ class ChartHelper
             ];
         }
 
-        // Calculate max value from online branches for special bar sizing
         $maxValue = 0;
         foreach ($orderedData as $item) {
             if (!$item['is_offline'] && !$item['is_anomaly'] && !$item['is_connection_failed']) {
@@ -372,8 +314,7 @@ class ChartHelper
             }
         }
 
-        // Add ANOMALY dataset (displayed as orange striped pattern)
-        // Use 50% of max value for visibility
+        // Dataset khusus untuk cabang anomali
         $anomalyBarValue = max($maxValue * 0.5, 50000000);
         $anomalyData = [];
         foreach ($orderedData as $item) {
@@ -383,11 +324,11 @@ class ChartHelper
         $datasets[] = [
             'label' => 'ANOMALY',
             'data' => $anomalyData,
-            'backgroundColor' => 'rgba(251, 146, 60, 0.3)', // Orange with transparency
-            'borderColor' => 'rgba(249, 115, 22, 0.8)', // Darker orange border
+            'backgroundColor' => 'rgba(251, 146, 60, 0.3)',
+            'borderColor' => 'rgba(249, 115, 22, 0.8)',
             'borderWidth' => 2,
             'borderRadius' => 5,
-            'borderDash' => [5, 5], // Dashed border pattern
+            'borderDash' => [5, 5],
             'datalabels' => [
                 'display' => true,
                 'color' => 'rgba(194, 65, 12, 0.9)',
@@ -395,12 +336,11 @@ class ChartHelper
                     'weight' => 'bold',
                     'size' => 14,
                 ],
-                'rotation' => -90, // Rotate text vertically
+                'rotation' => -90,
             ],
         ];
 
-        // Add Connection Failed dataset (displayed as gray striped pattern)
-        // Use 50% of max value for visibility
+        // Dataset khusus untuk koneksi yang gagal
         $connectionFailedBarValue = max($maxValue * 0.5, 50000000);
         $connectionFailedData = [];
         foreach ($orderedData as $item) {
@@ -469,9 +409,7 @@ class ChartHelper
         return $abbreviations[$branchName] ?? $branchName;
     }
 
-    /**
-     * Get category color mapping for consistent chart colors
-     */
+    // Mapping warna kategori untuk konsistensi warna chart
     public static function getCategoryColors(): array
     {
         return [
@@ -483,9 +421,7 @@ class ChartHelper
         ];
     }
 
-    /**
-     * Format date range for display
-     */
+    // Format rentang tanggal untuk tampilan
     public static function formatDateRange(string $startDate, string $endDate): string
     {
         $formattedStart = \Carbon\Carbon::parse($startDate)->format('j M Y');
@@ -493,9 +429,7 @@ class ChartHelper
         return $formattedStart . ' - ' . $formattedEnd;
     }
 
-    /**
-     * Get standard invoice query filters
-     */
+    // Filter query invoice standar
     public static function getStandardInvoiceFilters(): array
     {
         return [
@@ -505,9 +439,7 @@ class ChartHelper
         ];
     }
 
-    /**
-     * Build accounts receivable aging query with subqueries (sudah tidak dipakai untuk range aging ini)
-     */
+    // Query piutang usaha dengan subquery (sudah tidak dipakai)
     public static function buildAccountsReceivableQuery(string $locationFilter = null): array
     {
         $paymentsSubquery = "
@@ -588,9 +520,7 @@ class ChartHelper
         ];
     }
 
-    /**
-     * Get the standard branch order
-     */
+    // Urutan cabang standar
     public static function getBranchOrder()
     {
         return [
@@ -614,9 +544,7 @@ class ChartHelper
         ];
     }
 
-    /**
-     * Sort collection by branch order
-     */
+    // Urutkan collection berdasarkan urutan cabang
     public static function sortByBranchOrder($collection, $branchFieldName = 'branch_name')
     {
         $branchOrder = self::getBranchOrder();
@@ -668,14 +596,12 @@ class ChartHelper
         try {
             $branchOrder = self::getBranchOrder();
 
-            // Get all active locations from database
             $rawLocations = DB::table('ad_org')
                 ->where('isactive', 'Y')
                 ->whereNotIn('name', ['*', 'HQ', 'Store', 'PWM Pusat'])
                 ->pluck('name')
                 ->toArray();
 
-            // Sort locations based on the defined order
             $sortedLocations = [];
             foreach ($branchOrder as $branch) {
                 if (in_array($branch, $rawLocations)) {
@@ -683,7 +609,6 @@ class ChartHelper
                 }
             }
 
-            // Add any locations not in the predefined order at the end
             foreach ($rawLocations as $location) {
                 if (!in_array($location, $sortedLocations)) {
                     $sortedLocations[] = $location;
@@ -745,12 +670,7 @@ class ChartHelper
         return $displayNames[$branchName] ?? $branchName;
     }
 
-    /**
-     * Map branch name to database connection
-     *
-     * @param string $branchName Full branch name (e.g., 'PWM Bandung', 'MPM Tangerang')
-     * @return string|null Database connection name (e.g., 'pgsql_bdg', 'pgsql_trg') or null if not found
-     */
+    // Mapping nama cabang ke koneksi database
     public static function getBranchConnection(string $branchName): ?string
     {
         $branchToConnection = [
@@ -776,14 +696,7 @@ class ChartHelper
         return $branchToConnection[$branchName] ?? null;
     }
 
-    /**
-     * Calculate percentage growth between two values with decimal precision
-     *
-     * @param float $currentValue Current period value
-     * @param float $previousValue Previous period value
-     * @param int $decimalPlaces Number of decimal places (default: 1)
-     * @return string|null Formatted percentage string or null if calculation not possible
-     */
+    // Hitung persentase pertumbuhan antara dua nilai
     public static function calculatePercentageGrowth(float $currentValue, float $previousValue, int $decimalPlaces = 1): ?string
     {
         if ($currentValue <= 0 || $previousValue <= 0) {
@@ -796,15 +709,7 @@ class ChartHelper
         return $prefix . number_format($growth, $decimalPlaces, '.', '') . '%';
     }
 
-    /**
-     * Format value with appropriate unit (M/B) and decimal precision
-     *
-     * @param float $value Raw value
-     * @param float $divisor Divisor (1e6 for millions, 1e9 for billions)
-     * @param string $unit Unit string ('M' or 'B')
-     * @param int $decimalPlaces Number of decimal places
-     * @return string|null Formatted value string or null for zero values
-     */
+    // Format nilai dengan unit yang sesuai (M/B)
     public static function formatValueWithUnit(float $value, float $divisor, string $unit, int $decimalPlaces = 1): ?string
     {
         if ($value === 0) {
@@ -822,9 +727,7 @@ class ChartHelper
         return number_format(round($scaledValue), 0) . 'Jt';
     }
 
-    /**
-     * Get available product categories
-     */
+    // Ambil kategori produk yang tersedia
     public static function getCategories()
     {
         return DB::table('m_product_category')
@@ -836,32 +739,15 @@ class ChartHelper
             ->get();
     }
 
-    /**
-     * Calculate fair comparison date ranges for year-over-year analysis
-     *
-     * This method ensures both years have the same period length for accurate comparison.
-     * For example, if today is September 24, 2025, instead of comparing:
-     * - 2024: Jan 1 - Dec 31 (full year)
-     * - 2025: Jan 1 - Sep 24 (partial year)
-     *
-     * It will compare:
-     * - 2024: Jan 1 - Sep 24 (same period)
-     * - 2025: Jan 1 - Sep 24 (same period)
-     *
-     * This eliminates unfair percentage comparisons caused by different period lengths.
-     *
-     * @param string $currentEndDate Current period end date (Y-m-d format)
-     * @param int $previousYear Previous year to compare against
-     * @return array Array with 'current' and 'previous' date range arrays
-     */
+    // Hitung rentang tanggal perbandingan yang adil untuk analisis year-over-year
     public static function calculateFairComparisonDateRanges(string $currentEndDate, int $previousYear): array
     {
         $currentYear = date('Y', strtotime($currentEndDate));
 
-        // Current year range: Jan 1 to specified end date
+        // Rentang tahun berjalan: 1 Jan sampai tanggal akhir yang ditentukan
         $currentStartDate = $currentYear . '-01-01';
 
-        // Previous year range: Jan 1 to same month/day as current end date
+        // Rentang tahun sebelumnya: 1 Jan sampai bulan/tanggal yang sama
         $endDateParts = explode('-', $currentEndDate);
         $currentMonth = $endDateParts[1];
         $currentDay = $endDateParts[2];
@@ -869,9 +755,9 @@ class ChartHelper
         $previousStartDate = $previousYear . '-01-01';
         $previousEndDate = $previousYear . '-' . $currentMonth . '-' . $currentDay;
 
-        // Validate the previous end date exists (handle Feb 29 on non-leap years)
+        // Validasi tanggal akhir tahun sebelumnya (tangani 29 Feb pada tahun non-kabisat)
         if (!checkdate($currentMonth, $currentDay, $previousYear)) {
-            // If date doesn't exist (like Feb 29 on non-leap year), use last day of that month
+            // Jika tanggal tidak ada, gunakan hari terakhir bulan tersebut
             $previousEndDate = date('Y-m-t', strtotime($previousYear . '-' . $currentMonth . '-01'));
         }
 

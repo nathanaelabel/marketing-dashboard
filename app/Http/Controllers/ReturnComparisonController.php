@@ -19,6 +19,7 @@ class ReturnComparisonController extends Controller
     public function getData(Request $request)
     {
         try {
+            // Tingkatkan batas waktu eksekusi untuk query berat
             set_time_limit(180);
             $month = $request->get("month", date("n"));
             $year = $request->get("year", date("Y"));
@@ -31,25 +32,24 @@ class ReturnComparisonController extends Controller
                 return response()->json(["error" => $validationErrors[0]], 400);
             }
 
-            // Generate cache key based on month and year
+            // Buat cache key berdasarkan bulan dan tahun
             $cacheKey = "return_comparison_{$year}_{$month}";
             $checksumKey = "return_comparison_checksum_{$year}_{$month}";
 
-            // Smart cache duration based on whether it's current month or past month
+            // Durasi cache berdasarkan apakah bulan berjalan atau bulan lalu
             $currentMonth = (int)date('n');
             $currentYear = (int)date('Y');
             $isCurrentMonth = ($month == $currentMonth && $year == $currentYear);
 
-            // Current month: cache 1 hour (data changes daily)
-            // Past months: cache 24 hours but with checksum validation
+            // Bulan berjalan: cache 1 jam, bulan lalu: cache 24 jam dengan validasi checksum
             $cacheDuration = $isCurrentMonth ? 3600 : 86400;
 
-            // Check if data has changed by comparing checksums
+            // Cek apakah data berubah dengan membandingkan checksum
             $currentChecksum = $this->calculateDataChecksum($month, $year);
             $cachedChecksum = Cache::get($checksumKey);
 
             if ($cachedChecksum && $cachedChecksum !== $currentChecksum) {
-                // Data has changed! Invalidate cache
+                // Data berubah, invalidasi cache
                 Cache::forget($cacheKey);
                 Cache::forget($checksumKey);
                 Log::info("ReturnComparison: Data changed for {$year}-{$month}, cache invalidated");
@@ -58,12 +58,11 @@ class ReturnComparisonController extends Controller
             Log::info("ReturnComparison: Cache duration for {$year}-{$month}: " .
                 ($isCurrentMonth ? "1 hour (current month)" : "24 hours (past month, checksum validated)"));
 
-            // Try to get cached data with smart duration
+            // Coba ambil data dari cache
             $cachedData = Cache::remember($cacheKey, $cacheDuration, function () use ($month, $year, $checksumKey, $currentChecksum, $cacheDuration) {
-                // Get all branch codes from TableHelper
                 $branchMapping = TableHelper::getBranchMapping();
 
-                // Get all data in single queries (optimized) with timing
+                // Ambil semua data dalam query tunggal (dioptimasi)
                 $startTime = microtime(true);
                 $salesBrutoData = $this->getAllSalesBruto($month, $year);
                 $salesBrutoTime = round((microtime(true) - $startTime) * 1000, 2);
@@ -87,7 +86,7 @@ class ReturnComparisonController extends Controller
                 $totalTime = $salesBrutoTime + $cncTime + $barangTime + $cabangPabrikTime;
                 Log::info("ReturnComparison: Total query time {$totalTime}ms for month={$month}, year={$year}");
 
-                // Store checksum for future validation
+                // Tingkatkan batas waktu eksekusi untuk operasi export
                 Cache::put($checksumKey, $currentChecksum, $cacheDuration);
 
                 return [
@@ -99,7 +98,7 @@ class ReturnComparisonController extends Controller
                 ];
             });
 
-            // Extract cached data
+            // Ekstrak data dari cache
             $salesBrutoData = $cachedData['salesBrutoData'];
             $cncData = $cachedData['cncData'];
             $barangData = $cachedData['barangData'];
@@ -109,7 +108,6 @@ class ReturnComparisonController extends Controller
             $data = [];
             $no = 1;
 
-            // Initialize totals
             $totals = [
                 "sales_bruto_rp" => 0,
                 "cnc_pc" => 0,
@@ -120,7 +118,7 @@ class ReturnComparisonController extends Controller
                 "cabang_pabrik_rp" => 0,
             ];
 
-            // Iterate through each branch and combine data
+            // Iterasi setiap cabang dan gabungkan data
             foreach ($branchMapping as $branchName => $branchCode) {
                 $salesBruto = $salesBrutoData[$branchName] ?? [
                     "pc" => 0,
@@ -133,7 +131,6 @@ class ReturnComparisonController extends Controller
                     "rp" => 0,
                 ];
 
-                // Calculate percentages
                 $cncPercent =
                     $salesBruto["rp"] > 0
                     ? ($cnc["rp"] / $salesBruto["rp"]) * 100
@@ -164,7 +161,6 @@ class ReturnComparisonController extends Controller
                     "cabang_pabrik_percent" => $cabangPabrikPercent,
                 ];
 
-                // Accumulate totals
                 $totals["sales_bruto_rp"] += $salesBruto["rp"];
                 $totals["cnc_pc"] += $cnc["pc"];
                 $totals["cnc_rp"] += $cnc["rp"];
@@ -174,7 +170,7 @@ class ReturnComparisonController extends Controller
                 $totals["cabang_pabrik_rp"] += $cabangPabrik["rp"];
             }
 
-            // Calculate total percentages
+            // Hitung persentase total
             $totals["cnc_percent"] = $totals["sales_bruto_rp"] > 0
                 ? ($totals["cnc_rp"] / $totals["sales_bruto_rp"]) * 100
                 : 0;
@@ -402,7 +398,6 @@ class ReturnComparisonController extends Controller
             $month = $request->get("month", date("n"));
             $year = $request->get("year", date("Y"));
 
-            // Validate parameters using TableHelper
             $validationErrors = TableHelper::validatePeriodParameters(
                 $month,
                 $year,
@@ -411,7 +406,6 @@ class ReturnComparisonController extends Controller
                 return response()->json(["error" => $validationErrors[0]], 400);
             }
 
-            // Get all data
             $dataRequest = new Request(["month" => $month, "year" => $year]);
             $dataResponse = $this->getData($dataRequest);
             $responseData = json_decode($dataResponse->getContent(), true);
@@ -432,7 +426,6 @@ class ReturnComparisonController extends Controller
                 str_replace(" ", "_", $period["month_name"] . "_" . $year) .
                 ".xls";
 
-            // Create XLS content using HTML table format
             $headers = [
                 "Content-Type" => "application/vnd.ms-excel",
                 "Content-Disposition" =>
@@ -612,7 +605,6 @@ class ReturnComparisonController extends Controller
                 </tr>';
             }
 
-            // Add TOTAL row for Excel export
             if ($totals) {
                 $html .=
                     '<tr style="background-color: #F0F0F0; font-weight: bold; border-top: 2px solid #000;">
@@ -734,7 +726,6 @@ class ReturnComparisonController extends Controller
             $month = $request->get("month", date("n"));
             $year = $request->get("year", date("Y"));
 
-            // Validate parameters using TableHelper
             $validationErrors = TableHelper::validatePeriodParameters(
                 $month,
                 $year,
@@ -743,7 +734,6 @@ class ReturnComparisonController extends Controller
                 return response()->json(["error" => $validationErrors[0]], 400);
             }
 
-            // Get all data
             $dataRequest = new Request(["month" => $month, "year" => $year]);
             $dataResponse = $this->getData($dataRequest);
             $responseData = json_decode($dataResponse->getContent(), true);
@@ -1056,9 +1046,6 @@ class ReturnComparisonController extends Controller
         }
     }
 
-    /**
-     * Clear cache for specific month/year or all return comparison cache
-     */
     public function clearCache(Request $request)
     {
         try {
@@ -1066,7 +1053,6 @@ class ReturnComparisonController extends Controller
             $year = $request->get("year");
 
             if ($month && $year) {
-                // Clear specific month/year cache
                 $cacheKey = "return_comparison_{$year}_{$month}";
                 Cache::forget($cacheKey);
 
@@ -1075,8 +1061,7 @@ class ReturnComparisonController extends Controller
                     "message" => "Cache cleared for {$month}/{$year}",
                 ]);
             } else {
-                // Clear all return comparison cache
-                // Get all possible cache keys for the last 12 months
+                // Gunakan H-1 karena dashboard diupdate setiap malam
                 $clearedKeys = [];
                 $currentDate = now();
 
@@ -1113,15 +1098,9 @@ class ReturnComparisonController extends Controller
         }
     }
 
-    /**
-     * Calculate checksum of data for cache invalidation
-     * Uses lightweight query to detect if data has changed
-     */
     private function calculateDataChecksum($month, $year)
     {
         try {
-            // Lightweight query: count + sum to detect changes
-            // Much faster than fetching all data
             $query = "
                 SELECT 
                     COUNT(*) as total_records,
@@ -1143,14 +1122,12 @@ class ReturnComparisonController extends Controller
 
             $result = DB::selectOne($query, [$year, $month]);
 
-            // Create checksum from key metrics
             $checksumData = [
                 'records' => $result->total_records ?? 0,
                 'amount' => $result->total_amount ?? 0,
                 'updated' => $result->last_updated ?? '',
             ];
 
-            // Generate MD5 hash as checksum
             $checksum = md5(json_encode($checksumData));
 
             Log::debug("ReturnComparison: Checksum for {$year}-{$month}: {$checksum}", $checksumData);
@@ -1158,7 +1135,6 @@ class ReturnComparisonController extends Controller
             return $checksum;
         } catch (\Exception $e) {
             Log::error("ReturnComparison: Failed to calculate checksum: " . $e->getMessage());
-            // Return timestamp-based checksum as fallback
             return md5($year . $month . date('YmdH'));
         }
     }

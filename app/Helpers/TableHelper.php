@@ -6,9 +6,7 @@ use Illuminate\Support\Facades\Log;
 
 class TableHelper
 {
-    /**
-     * Standard branch mapping for PWM branches
-     */
+    // Mapping cabang standar untuk cabang PWM
     public static function getBranchMapping()
     {
         return [
@@ -32,17 +30,13 @@ class TableHelper
         ];
     }
 
-    /**
-     * Get ordered list of branch codes
-     */
+    // Ambil daftar kode cabang yang terurut
     public static function getBranchCodes()
     {
         return ['TGR', 'BKS', 'JKT', 'PTK', 'LMP', 'BJM', 'CRB', 'BDG', 'MKS', 'SBY', 'SMG', 'PWT', 'DPS', 'PLB', 'PDG', 'MDN', 'PKU'];
     }
 
-    /**
-     * Validate month and year parameters
-     */
+    // Validasi parameter bulan dan tahun
     public static function validatePeriodParameters($month, $year)
     {
         $errors = [];
@@ -58,9 +52,7 @@ class TableHelper
         return $errors;
     }
 
-    /**
-     * Calculate pagination metadata
-     */
+    // Hitung metadata pagination
     public static function calculatePagination($currentPage, $perPage, $totalCount)
     {
         $totalPages = ceil($totalCount / $perPage);
@@ -75,9 +67,7 @@ class TableHelper
         ];
     }
 
-    /**
-     * Format period information with date range
-     */
+    // Format informasi periode dengan rentang tanggal
     public static function formatPeriodInfo($month, $year)
     {
         $monthName = date('F', mktime(0, 0, 0, $month, 1));
@@ -96,20 +86,20 @@ class TableHelper
             'December' => 'Desember'
         ];
 
-        // Get the last day of the month
+        // Ambil hari terakhir bulan
         $lastDayOfMonth = date('t', mktime(0, 0, 0, $month, 1, $year));
 
-        // Check if it's the current month and year
+        // Cek apakah ini bulan dan tahun berjalan
         $currentMonth = (int)date('n');
         $currentYear = (int)date('Y');
         $yesterday = (int)date('j') - 1; // H-1 (yesterday)
 
         if ($month == $currentMonth && $year == $currentYear) {
-            // For current month, show 1 to yesterday
+            // Untuk bulan berjalan, tampilkan 1 sampai kemarin
             $endDay = $yesterday > 0 ? $yesterday : 1;
             $dateRange = "01-{$endDay} {$monthNameId[$monthName]} {$year}";
         } else {
-            // For past months, show full month range
+            // Untuk bulan lalu, tampilkan rentang bulan penuh
             $dateRange = "01-{$lastDayOfMonth} {$monthNameId[$monthName]} {$year}";
         }
 
@@ -122,9 +112,7 @@ class TableHelper
         ];
     }
 
-    /**
-     * Standard success response format
-     */
+    // Format response sukses standar
     public static function successResponse($data, $pagination, $period, $additionalData = [])
     {
         return array_merge([
@@ -134,9 +122,7 @@ class TableHelper
         ], $additionalData);
     }
 
-    /**
-     * Standard error response format
-     */
+    // Format response error standar
     public static function errorResponse($message = 'An error occurred while retrieving data. Please try again.', $statusCode = 500)
     {
         return response()->json([
@@ -145,9 +131,7 @@ class TableHelper
         ], $statusCode);
     }
 
-    /**
-     * Log error with standard format
-     */
+    // Log error dengan format standar
     public static function logError($controllerName, $method, $exception, $context = [])
     {
         Log::error("{$controllerName} {$method} error: " . $exception->getMessage(), array_merge([
@@ -155,25 +139,18 @@ class TableHelper
         ], $context));
     }
 
-    /**
-     * Transform raw data by grouping and aggregating branch values
-     * 
-     * @param array $rawData - Raw query results
-     * @param string $keyField - Field to group by (e.g., 'product_name', 'family_name')
-     * @param string $valueField - Field containing the numeric value
-     * @param array $additionalFields - Additional fields to include in grouping
-     */
+    // Transform data mentah dengan mengelompokkan dan mengagregasi nilai cabang
     public static function transformDataForBranchTable($rawData, $keyField, $valueField, $additionalFields = [])
     {
         $branchMapping = self::getBranchMapping();
         $branchCodes = self::getBranchCodes();
 
-        // Group data by key
+        // Kelompokkan data berdasarkan key
         $groupedData = [];
         $nationalTotals = [];
 
         foreach ($rawData as $row) {
-            // Create unique key including additional fields
+            // Buat key unik termasuk field tambahan
             $keyParts = [$row->$keyField];
             foreach ($additionalFields as $field) {
                 $keyParts[] = $row->$field ?? '';
@@ -188,7 +165,7 @@ class TableHelper
                     'branches' => []
                 ];
 
-                // Add additional fields to the grouped data
+                // Tambahkan field tambahan ke data yang dikelompokkan
                 foreach ($additionalFields as $field) {
                     $groupedData[$itemKey][$field] = $row->$field ?? '';
                 }
@@ -196,7 +173,7 @@ class TableHelper
 
             $groupedData[$itemKey]['branches'][$branchAbbr] = (float)($row->$valueField ?? 0);
 
-            // Calculate national total
+            // Hitung total nasional
             if (!isset($nationalTotals[$itemKey])) {
                 $nationalTotals[$itemKey] = 0;
             }
@@ -206,9 +183,7 @@ class TableHelper
         return self::formatTableData($groupedData, $nationalTotals, $keyField, $branchCodes, $additionalFields);
     }
 
-    /**
-     * Format grouped data into final table structure
-     */
+    // Format data yang dikelompokkan ke struktur tabel final
     private static function formatTableData($groupedData, $nationalTotals, $keyField, $branchCodes, $additionalFields)
     {
         $tableData = [];
@@ -219,7 +194,7 @@ class TableHelper
                 'no' => $no++,
             ];
 
-            // Add main field
+            // Tambahkan field utama
             $rowData[$keyField] = $itemData[$keyField];
 
             // Add additional fields
@@ -227,12 +202,12 @@ class TableHelper
                 $rowData[$field] = $itemData[$field];
             }
 
-            // Add branch data
+            // Tambahkan data cabang
             foreach ($branchCodes as $branchCode) {
                 $rowData[strtolower($branchCode)] = $itemData['branches'][$branchCode] ?? 0;
             }
 
-            // Add national total
+            // Tambahkan total nasional
             $rowData['nasional'] = $nationalTotals[$itemKey];
 
             $tableData[] = $rowData;
@@ -241,9 +216,7 @@ class TableHelper
         return $tableData;
     }
 
-    /**
-     * Build base sales query with common conditions
-     */
+    // Bangun query penjualan dasar dengan kondisi umum
     public static function buildBaseSalesQuery($selectFields, $additionalJoins = '', $additionalConditions = '', $groupBy = '', $orderBy = '')
     {
         $baseQuery = "
@@ -274,10 +247,7 @@ class TableHelper
         return $baseQuery;
     }
 
-    /**
-     * Get standard value calculation for INC/CNC documents
-     * Can be used for both amount (linenetamt) and quantity (qtyinvoiced)
-     */
+    // Kalkulasi nilai standar untuk dokumen INC/CNC
     public static function getValueCalculation($field)
     {
         return "SUM(CASE
@@ -287,9 +257,7 @@ class TableHelper
         END)";
     }
 
-    /**
-     * Build count query for pagination
-     */
+    // Bangun query count untuk pagination
     public static function buildCountQuery($countField, $additionalJoins = '', $additionalConditions = '')
     {
         return "

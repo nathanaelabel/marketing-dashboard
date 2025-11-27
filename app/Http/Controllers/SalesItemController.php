@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
 use App\Helpers\TableHelper;
 
@@ -18,22 +17,20 @@ class SalesItemController extends Controller
     public function getData(Request $request)
     {
         try {
-            // Use yesterday (H-1) since dashboard is updated daily
+            // Gunakan H-1 karena dashboard diupdate setiap hari
             $yesterday = date('Y-m-d', strtotime('-1 day'));
             $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
             $endDate = $request->input('end_date', $yesterday);
-            $type = $request->get('type', 'rp'); // 'rp' or 'pcs'
+            $type = $request->get('type', 'rp');
 
-            // Validate type parameter
             if (!in_array($type, ['rp', 'pcs'])) {
                 return response()->json(['error' => 'Invalid type parameter'], 400);
             }
 
-            // Validate date range
             $start = \Carbon\Carbon::parse($startDate);
             $end = \Carbon\Carbon::parse($endDate);
 
-            // Check if start date is after end date
+            // Cek apakah tanggal mulai setelah tanggal akhir
             if ($start->gt($end)) {
                 return response()->json([
                     'error' => 'Invalid date range',
@@ -41,7 +38,7 @@ class SalesItemController extends Controller
                 ], 400);
             }
 
-            // Check if date range is too large (max 1 year)
+            // Cek apakah rentang tanggal terlalu besar (maks 1 tahun)
             $daysDiff = $start->diffInDays($end);
             if ($daysDiff > 365) {
                 return response()->json([
@@ -50,7 +47,7 @@ class SalesItemController extends Controller
                 ], 400);
             }
 
-            // Check if dates are too far in the past (before 2020)
+            // Cek apakah tanggal terlalu jauh di masa lalu (sebelum 2020)
             if ($start->year < 2020) {
                 return response()->json([
                     'error' => 'Invalid date range',
@@ -58,7 +55,6 @@ class SalesItemController extends Controller
                 ], 400);
             }
 
-            // Check if dates are in the future
             if ($end->isFuture()) {
                 return response()->json([
                     'error' => 'Invalid date range',
@@ -66,10 +62,9 @@ class SalesItemController extends Controller
                 ], 400);
             }
 
-            // Get all data at once for client-side pagination
+            // Ambil semua data sekaligus untuk pagination sisi klien
             $branchData = $this->getAllSalesItemData($startDate, $endDate, $type);
 
-            // Transform data using TableHelper
             $valueField = $type === 'pcs' ? 'total_qty' : 'total_net';
             $transformedData = TableHelper::transformDataForBranchTable(
                 $branchData,
@@ -78,7 +73,6 @@ class SalesItemController extends Controller
                 ['product_status']
             );
 
-            // Format period info for date range
             $formattedStartDate = \Carbon\Carbon::parse($startDate)->format('d F Y');
             $formattedEndDate = \Carbon\Carbon::parse($endDate)->format('d F Y');
             $period = [
@@ -106,11 +100,11 @@ class SalesItemController extends Controller
 
     private function getAllSalesItemData($startDate, $endDate, $type)
     {
-        // Choose field based on type
+        // Pilih field berdasarkan type
         $valueField = $type === 'pcs' ? 'qtyinvoiced' : 'linenetamt';
         $totalField = $type === 'pcs' ? 'total_qty' : 'total_net';
 
-        // Get all sales data at once for client-side pagination
+        // Ambil semua data penjualan sekaligus
         $salesQuery = "
             SELECT
                 org.name as branch_name,
@@ -140,21 +134,21 @@ class SalesItemController extends Controller
     public function exportExcel(Request $request)
     {
         try {
-            // Use yesterday (H-1) since dashboard is updated daily
+            // Gunakan H-1 karena dashboard diupdate setiap hari
             $yesterday = date('Y-m-d', strtotime('-1 day'));
             $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
             $endDate = $request->input('end_date', $yesterday);
             $type = $request->get('type', 'rp');
 
-            // Validate type parameter
+            // Validasi parameter type
             if (!in_array($type, ['rp', 'pcs'])) {
                 return response()->json(['error' => 'Invalid type parameter'], 400);
             }
 
-            // Get all data for export
+            // Ambil semua data untuk export
             $branchData = $this->getAllSalesItemData($startDate, $endDate, $type);
 
-            // Transform data using TableHelper
+            // Transform data menggunakan TableHelper
             $valueField = $type === 'pcs' ? 'total_qty' : 'total_net';
             $transformedData = TableHelper::transformDataForBranchTable(
                 $branchData,
@@ -163,7 +157,7 @@ class SalesItemController extends Controller
                 ['product_status']
             );
 
-            // Format dates for filename and display
+            // Format tanggal untuk nama file dan tampilan
             $formattedStartDate = \Carbon\Carbon::parse($startDate)->format('d F Y');
             $formattedEndDate = \Carbon\Carbon::parse($endDate)->format('d F Y');
             $fileStartDate = \Carbon\Carbon::parse($startDate)->format('d-m-Y');
@@ -172,7 +166,6 @@ class SalesItemController extends Controller
 
             $filename = 'Penjualan_Per_Item_' . $typeLabel . '_' . $fileStartDate . '_sampai_' . $fileEndDate . '.xls';
 
-            // Create XLS content using HTML table format
             $headers = [
                 'Content-Type' => 'application/vnd.ms-excel',
                 'Content-Disposition' => 'attachment; filename="' . $filename . '"',
@@ -321,21 +314,21 @@ class SalesItemController extends Controller
     public function exportPdf(Request $request)
     {
         try {
-            // Use yesterday (H-1) since dashboard is updated daily
+            // Gunakan H-1 karena dashboard diupdate setiap hari
             $yesterday = date('Y-m-d', strtotime('-1 day'));
             $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
             $endDate = $request->input('end_date', $yesterday);
             $type = $request->get('type', 'rp');
 
-            // Validate type parameter
+            // Validasi parameter type
             if (!in_array($type, ['rp', 'pcs'])) {
                 return response()->json(['error' => 'Invalid type parameter'], 400);
             }
 
-            // Get all data for export
+            // Ambil semua data untuk export
             $branchData = $this->getAllSalesItemData($startDate, $endDate, $type);
 
-            // Transform data using TableHelper
+            // Transform data menggunakan TableHelper
             $valueField = $type === 'pcs' ? 'total_qty' : 'total_net';
             $transformedData = TableHelper::transformDataForBranchTable(
                 $branchData,
@@ -344,14 +337,13 @@ class SalesItemController extends Controller
                 ['product_status']
             );
 
-            // Format dates for filename and display
+            // Format tanggal untuk nama file dan tampilan
             $formattedStartDate = \Carbon\Carbon::parse($startDate)->format('d F Y');
             $formattedEndDate = \Carbon\Carbon::parse($endDate)->format('d F Y');
             $fileStartDate = \Carbon\Carbon::parse($startDate)->format('d-m-Y');
             $fileEndDate = \Carbon\Carbon::parse($endDate)->format('d-m-Y');
             $typeLabel = $type === 'pcs' ? 'Pieces' : 'Rupiah';
 
-            // Create HTML for PDF
             $html = '
             <!DOCTYPE html>
             <html>
@@ -482,7 +474,6 @@ class SalesItemController extends Controller
             </body>
             </html>';
 
-            // Use DomPDF to generate PDF
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
             $pdf->setPaper('A4', 'landscape');
 

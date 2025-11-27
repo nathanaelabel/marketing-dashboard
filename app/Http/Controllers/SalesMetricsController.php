@@ -12,31 +12,29 @@ class SalesMetricsController extends Controller
 {
     public function getData(Request $request)
     {
-        // Increase execution time limit for querying multiple databases
-        set_time_limit(180); // 3 minutes
+        set_time_limit(180);
         ini_set('max_execution_time', 180);
 
         try {
             $location = $request->input('location', 'National');
-            // Use yesterday (H-1) since dashboard is updated daily at night
+            // Gunakan H-1 karena dashboard diupdate setiap malam
             $yesterday = Carbon::now()->subDay();
             $startDate = Carbon::parse($request->input('start_date', $yesterday->copy()->subDays(21)))->format('Y-m-d');
             $endDate = Carbon::parse($request->input('end_date', $yesterday))->format('Y-m-d');
 
-            // Get current date from request or default to today (matching AccountsReceivableController pattern)
+            // Ambil tanggal dari request atau default ke hari ini
             $currentDate = $request->input('ar_current_date', now()->toDateString());
 
-            // Check if only AR data is requested (when AR date changes)
+            // Cek apakah hanya data AR yang diminta
             $arOnly = filter_var($request->input('ar_only', false), FILTER_VALIDATE_BOOLEAN);
 
             $locationFilter = ($location === 'National') ? '%' : $location;
 
-            // Initialize response data
             $responseData = [];
 
-            // Only query Sales Order, Stock Value, and Store Returns if not ar_only
+            // Hanya query SO, Stok, dan Retur jika bukan ar_only
             if (!$arOnly) {
-                // 1. Sales Order Query
+                // Query Sales Order
                 $salesOrderQuery = "
             SELECT
               SUM(d.linenetamt) AS total_so,
@@ -61,7 +59,7 @@ class SalesMetricsController extends Controller
                 }
                 $salesOrderData = DB::selectOne($salesOrderQuery, $soBindings);
 
-                // 2. Stock Value Query - Current stock value (point-in-time calculation)
+                // Query Nilai Stok
                 $stockValueQuery = "
             SELECT
               SUM(s.qtyonhand * prc.pricelist * 0.615) as stock_value
@@ -86,7 +84,7 @@ class SalesMetricsController extends Controller
 
                 $stockValueData = DB::selectOne($stockValueQuery, $stockValueBindings);
 
-                // 3. Store Returns Query
+                // Query Retur Toko
                 $storeReturnsQuery = "
             SELECT
               SUM(d.linenetamt) AS store_returns
@@ -122,10 +120,9 @@ class SalesMetricsController extends Controller
                 ];
             }
 
-            // 4. Accounts Receivable Pie Chart Query (matching AccountsReceivableController with 'all' filter)
-            // Query multiple branch databases in real-time like AccountsReceivableController
+            // Query Piutang Usaha untuk Pie Chart
 
-            // Define all branch database connections in desired display order
+            // Daftar koneksi database cabang
             $branchConnections = [
                 'pgsql_trg',
                 'pgsql_bks',
@@ -146,26 +143,23 @@ class SalesMetricsController extends Controller
                 'pgsql_pku',
             ];
 
-            // Define branches that are known to be offline or have anomalies
+            // Cabang yang diketahui offline atau memiliki anomali
             $offlineBranches = ['pgsql_mks', 'pgsql_sby'];
 
-            // Filter branch connections based on location
+            // Filter koneksi cabang berdasarkan lokasi
             $connectionsToQuery = [];
             if ($location === 'National' || $location === '%') {
-                // Query all branches
                 $connectionsToQuery = $branchConnections;
             } else {
-                // Query only the selected branch
                 $branchConnection = ChartHelper::getBranchConnection($location);
                 if ($branchConnection) {
                     $connectionsToQuery = [$branchConnection];
                 } else {
-                    // If branch connection not found, return empty data
                     $connectionsToQuery = [];
                 }
             }
 
-            // Build SQL query with 'all' filter (same as AccountsReceivableController lines 47-98)
+            // Query SQL dengan filter 'all'
             $sql = "
             SELECT
                 branch_name,
@@ -215,18 +209,18 @@ class SalesMetricsController extends Controller
             ORDER BY total_overdue DESC
             ";
 
-            // Query all branch databases and collect results
+            // Query semua database cabang
             $allResults = collect();
             $failedBranches = [];
 
             foreach ($connectionsToQuery as $connection) {
-                // Skip offline branches
+                // Lewati cabang offline
                 if (in_array($connection, $offlineBranches)) {
                     $failedBranches[] = $connection;
                     continue;
                 }
 
-                // Perform lightweight socket check before attempting database query
+                // Cek konektivitas socket sebelum query database
                 if (!$this->canConnectToBranch($connection)) {
                     Log::warning("Sales Metrics AR - Skipping {$connection} due to connectivity check failure");
                     $failedBranches[] = $connection;
@@ -234,37 +228,32 @@ class SalesMetricsController extends Controller
                 }
 
                 try {
-                    // Set shorter timeout per connection (30 seconds)
+                    // Timeout per koneksi 30 detik
                     DB::connection($connection)->statement("SET statement_timeout = 30000"); // 30 seconds
 
                     $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate, $currentDate]);
                     $allResults = $allResults->merge($branchResults);
 
-                    // Reset timeout
                     DB::connection($connection)->statement("SET statement_timeout = 0");
                 } catch (\Exception $e) {
-                    // Log error and track failed branch
+                    // Log error dan catat cabang yang gagal
                     Log::warning("Sales Metrics AR - Failed to query {$connection}: " . $e->getMessage());
                     $failedBranches[] = $connection;
 
-                    // Try to reset timeout even on error
                     try {
                         DB::connection($connection)->statement("SET statement_timeout = 0");
                     } catch (\Exception $resetError) {
-                        // Ignore reset errors
                     }
 
-                    // Continue to next branch without breaking
                     continue;
                 }
             }
 
-            // Log summary of failed branches if any
             if (!empty($failedBranches)) {
                 Log::info("Sales Metrics AR - Failed branches: " . implode(', ', $failedBranches));
             }
 
-            // Map results and ensure no negative values
+            // Map hasil dan pastikan tidak ada nilai negatif
             $queryResult = $allResults->map(function ($item) {
                 $item->range_0_104 = max(0, (float) ($item->range_0_104 ?? 0));
                 $item->range_105_120 = max(0, (float) ($item->range_105_120 ?? 0));
@@ -273,7 +262,7 @@ class SalesMetricsController extends Controller
                 return $item;
             });
 
-            // Aggregate results for pie chart (sum across all branches)
+            // Agregasi hasil untuk pie chart
             $arPieData = (object) [
                 'range_0_104' => $queryResult->sum('range_0_104'),
                 'range_105_120' => $queryResult->sum('range_105_120'),
@@ -295,7 +284,6 @@ class SalesMetricsController extends Controller
                 'current_date' => $currentDate
             ];
 
-            // Add AR data to response
             $responseData['ar_pie_chart'] = $arPieChartData;
 
             return response()->json($responseData);
@@ -304,9 +292,7 @@ class SalesMetricsController extends Controller
         }
     }
 
-    /**
-     * Perform a quick socket connectivity check to avoid long Postgres connection timeouts.
-     */
+    // Cek konektivitas socket untuk menghindari timeout koneksi database
     protected function canConnectToBranch(string $connection, int $timeoutSeconds = 3): bool
     {
         $config = config("database.connections.{$connection}");
@@ -342,7 +328,6 @@ class SalesMetricsController extends Controller
         try {
             $locations = ChartHelper::getLocations();
 
-            // Add National option at the beginning
             $locationOptions = collect([
                 [
                     'value' => '%',
@@ -350,7 +335,6 @@ class SalesMetricsController extends Controller
                 ]
             ]);
 
-            // Map locations to include both value (full name) and display name
             $branchOptions = $locations->map(function ($location) {
                 return [
                     'value' => $location,
@@ -358,7 +342,6 @@ class SalesMetricsController extends Controller
                 ];
             });
 
-            // Merge National option with branch options
             $allOptions = $locationOptions->merge($branchOptions);
 
             return response()->json($allOptions);

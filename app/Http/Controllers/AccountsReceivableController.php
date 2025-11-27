@@ -12,8 +12,8 @@ class AccountsReceivableController extends Controller
 {
     public function data(Request $request)
     {
-        // Increase execution time limit for querying multiple databases
-        set_time_limit(300); // 5 minutes
+        // Tingkatkan batas waktu eksekusi untuk query multi-database
+        set_time_limit(300);
         ini_set('max_execution_time', 300);
 
         $currentDate = $request->input('current_date', now()->toDateString());
@@ -28,11 +28,11 @@ class AccountsReceivableController extends Controller
             }
         }
 
-        // Define branches that are known to have anomalies
+        // Cabang yang diketahui memiliki anomali data
         $anomalyBranches = ['pgsql_mks', 'pgsql_sby'];
 
         if ($filter === 'all') {
-            // All: Show 0-104 Days, 105-120 Days, >120 Days
+            // Filter All: tampilkan semua rentang umur piutang
             $sql = "
             SELECT
                 branch_name,
@@ -83,7 +83,7 @@ class AccountsReceivableController extends Controller
             ORDER BY total_overdue DESC
             ";
         } else {
-            // Overdue: Show only 105-120 Days and >120 Days
+            // Filter Overdue: hanya tampilkan piutang jatuh tempo
             $sql = "
             SELECT
                 branch_name,
@@ -148,7 +148,7 @@ class AccountsReceivableController extends Controller
             }
 
             try {
-                // Set shorter timeout per connection (45 seconds)
+                // Timeout per koneksi 45 detik
                 DB::connection($connection)->statement("SET statement_timeout = 45000");
 
                 $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate, $currentDate]);
@@ -196,9 +196,7 @@ class AccountsReceivableController extends Controller
         return response()->json($formattedData);
     }
 
-    /**
-     * Perform a quick socket connectivity check to avoid long Postgres connection timeouts.
-     */
+    // Cek konektivitas socket untuk menghindari timeout koneksi database yang lama
     protected function canConnectToBranch(string $connection, int $timeoutSeconds = 3): bool
     {
         $config = config("database.connections.{$connection}");
@@ -231,7 +229,7 @@ class AccountsReceivableController extends Controller
 
     public function exportExcel(Request $request)
     {
-        set_time_limit(300); // 5 minutes
+        set_time_limit(300);
         ini_set('max_execution_time', 300);
 
         $currentDate = $request->input('current_date', now()->toDateString());
@@ -246,7 +244,7 @@ class AccountsReceivableController extends Controller
             }
         }
 
-        // Use correlated subquery to calculate payment per invoice with new aging ranges (0-104, 105-120, >120)
+        // Query dengan subquery korelasi untuk menghitung pembayaran per invoice
         $sql = "
         SELECT
             branch_name,
@@ -334,7 +332,7 @@ class AccountsReceivableController extends Controller
         }
 
         $queryResult = $allResults->map(function ($item) {
-            // Replace old branch names with standardized branch names used in getBranchOrder()
+            // Standarisasi nama cabang
             if ($item->branch_name === 'PT. Putra Mandiri Damai') {
                 $item->branch_name = 'PWM Makassar';
             }
@@ -351,7 +349,7 @@ class AccountsReceivableController extends Controller
             return $item;
         });
 
-        // Exclude branches with known anomaly from export (PWM Makassar, PWM Surabaya)
+        // Kecualikan cabang dengan anomali data (PWM Makassar, PWM Surabaya)
         $queryResult = $queryResult->reject(function ($item) {
             return in_array($item->branch_name, ['PWM Makassar', 'PWM Surabaya'], true);
         })->values();
@@ -367,7 +365,6 @@ class AccountsReceivableController extends Controller
         $fileDate = \Carbon\Carbon::parse($currentDate)->format('d-m-Y');
         $filename = 'Piutang_Usaha_' . $fileDate . '.xls';
 
-        // Create XLS content using HTML table format
         $headers = [
             'Content-Type' => 'application/vnd.ms-excel',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
@@ -517,8 +514,8 @@ class AccountsReceivableController extends Controller
 
     public function exportPdf(Request $request)
     {
-        // Increase execution time limit for export operations
-        set_time_limit(300); // 5 minutes
+        // Tingkatkan batas waktu eksekusi untuk operasi export
+        set_time_limit(300);
         ini_set('max_execution_time', 300);
 
         $currentDate = $request->input('current_date', now()->toDateString());
@@ -533,7 +530,7 @@ class AccountsReceivableController extends Controller
             }
         }
 
-        // Use correlated subquery to calculate payment per invoice with new aging ranges (0-104, 105-120, >120)
+        // Query dengan subquery korelasi untuk menghitung pembayaran per invoice
         $sql = "
         SELECT
             branch_name,
@@ -597,7 +594,7 @@ class AccountsReceivableController extends Controller
             }
 
             try {
-                // Set timeout per connection (30 seconds untuk export)
+                // Timeout per koneksi 30 detik
                 DB::connection($connection)->statement("SET statement_timeout = 30000");
 
                 $branchResults = DB::connection($connection)->select($sql, [$currentDate, $currentDate, $currentDate]);
@@ -638,7 +635,7 @@ class AccountsReceivableController extends Controller
             return $item;
         });
 
-        // Exclude branches with known anomaly from export (PWM Makassar, PWM Surabaya)
+        // Kecualikan cabang dengan anomali data (PWM Makassar, PWM Surabaya)
         $queryResult = $queryResult->reject(function ($item) {
             return in_array($item->branch_name, ['PWM Makassar', 'PWM Surabaya'], true);
         })->values();
@@ -764,7 +761,6 @@ class AccountsReceivableController extends Controller
         </body>
         </html>';
 
-        // Use DomPDF to generate PDF
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'landscape');
 

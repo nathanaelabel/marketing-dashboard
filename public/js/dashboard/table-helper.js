@@ -19,21 +19,22 @@ class TableHelper {
             prevPageBtnSelector: config.prevPageBtnSelector || "#prev-page",
             nextPageBtnSelector: config.nextPageBtnSelector || "#next-page",
             pageNumbersSelector: config.pageNumbersSelector || "#page-numbers",
-            // Don't set defaults for monthSelect and yearSelect - only use if explicitly configured
+            // Jangan set default untuk monthSelect dan yearSelect kecuali dikonfigurasi eksplisit
             monthSelectSelector: config.monthSelectSelector || null,
             yearSelectSelector: config.yearSelectSelector || null,
             perPage: config.perPage || 50,
-            disablePagination: config.disablePagination || false, // Option to disable pagination
-            requestTimeout: config.requestTimeout || 60000, // Default 60s timeout for complex queries
+            disablePagination: config.disablePagination || false,
+            // Timeout default 60 detik untuk query yang kompleks
+            requestTimeout: config.requestTimeout || 60000,
             ...config,
         };
 
         this.currentPage = 1;
         this.totalPages = 1;
         this.currentData = null;
-        this.allData = null; // Store all data for client-side operations
-        this.filteredData = null; // Store filtered data
-        this.perPage = 10; // Default entries per page
+        this.allData = null;
+        this.filteredData = null;
+        this.perPage = 10;
 
         this.initializeElements();
         this.bindEvents();
@@ -53,7 +54,6 @@ class TableHelper {
     }
 
     bindEvents() {
-        // Filter change events - these reload data from server
         if (this.elements.monthSelect) {
             this.elements.monthSelect.addEventListener("change", () => {
                 this.currentPage = 1;
@@ -68,7 +68,6 @@ class TableHelper {
             });
         }
 
-        // Client-side pagination events
         if (this.elements.prevPageBtn) {
             this.elements.prevPageBtn.addEventListener("click", () => {
                 if (this.currentPage > 1) {
@@ -87,7 +86,6 @@ class TableHelper {
             });
         }
 
-        // Entries per page change - use configured selector or default
         const entriesSelector =
             this.config.entriesPerPageSelector || "#entries-per-page";
         const entriesSelect = document.querySelector(entriesSelector);
@@ -99,7 +97,6 @@ class TableHelper {
             });
         }
 
-        // Search filter - only bind if searchInputSelector is configured
         if (this.config.searchInputSelector) {
             const searchInput = document.querySelector(
                 this.config.searchInputSelector
@@ -108,6 +105,7 @@ class TableHelper {
                 let searchTimeout;
                 searchInput.addEventListener("input", () => {
                     clearTimeout(searchTimeout);
+                    // Debounce pencarian 300ms
                     searchTimeout = setTimeout(() => {
                         this.currentPage = 1;
                         this.applyFiltersAndRender();
@@ -118,7 +116,6 @@ class TableHelper {
     }
 
     setDefaultValues() {
-        // Only set default values for month/year if those selectors are configured
         if (this.config.monthSelectSelector && this.elements.monthSelect) {
             const currentDate = new Date();
             this.elements.monthSelect.value = currentDate.getMonth() + 1;
@@ -129,7 +126,7 @@ class TableHelper {
         }
     }
 
-    // UI State Management
+    // State UI
     showLoading() {
         this.hideMessages();
         if (this.elements.loading) {
@@ -138,7 +135,6 @@ class TableHelper {
         if (this.elements.tableContainer) {
             this.elements.tableContainer.classList.add("hidden");
         }
-        // Disable pagination buttons during loading
         this.disablePaginationButtons(true);
     }
 

@@ -17,22 +17,20 @@ class SalesFamilyController extends Controller
     public function getData(Request $request)
     {
         try {
-            // Use yesterday (H-1) since dashboard is updated daily
+            // Gunakan H-1 karena dashboard diupdate setiap hari
             $yesterday = date('Y-m-d', strtotime('-1 day'));
             $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
             $endDate = $request->input('end_date', $yesterday);
-            $type = $request->get('type', 'rp'); // 'rp' or 'pcs'
+            $type = $request->get('type', 'rp');
 
-            // Validate type parameter
             if (!in_array($type, ['rp', 'pcs'])) {
                 return response()->json(['error' => 'Invalid type parameter'], 400);
             }
 
-            // Validate date range
             $start = \Carbon\Carbon::parse($startDate);
             $end = \Carbon\Carbon::parse($endDate);
 
-            // Check if start date is after end date
+            // Cek apakah tanggal mulai setelah tanggal akhir
             if ($start->gt($end)) {
                 return response()->json([
                     'error' => 'Invalid date range',
@@ -40,7 +38,7 @@ class SalesFamilyController extends Controller
                 ], 400);
             }
 
-            // Check if date range is too large (max 1 year)
+            // Cek apakah rentang tanggal terlalu besar (maks 1 tahun)
             $daysDiff = $start->diffInDays($end);
             if ($daysDiff > 365) {
                 return response()->json([
@@ -49,7 +47,7 @@ class SalesFamilyController extends Controller
                 ], 400);
             }
 
-            // Check if dates are too far in the past (before 2020)
+            // Cek apakah tanggal terlalu jauh di masa lalu (sebelum 2020)
             if ($start->year < 2020) {
                 return response()->json([
                     'error' => 'Invalid date range',
@@ -57,7 +55,6 @@ class SalesFamilyController extends Controller
                 ], 400);
             }
 
-            // Check if dates are in the future
             if ($end->isFuture()) {
                 return response()->json([
                     'error' => 'Invalid date range',
@@ -65,19 +62,17 @@ class SalesFamilyController extends Controller
                 ], 400);
             }
 
-            // Get all data at once for client-side pagination
+            // Ambil semua data sekaligus untuk pagination sisi klien
             $branchData = $this->getAllSalesFamilyData($startDate, $endDate, $type);
 
-            // Transform data using TableHelper
             $valueField = $type === 'pcs' ? 'total_qty' : 'total_rp';
             $transformedData = TableHelper::transformDataForBranchTable(
                 $branchData,
                 'family_name',
                 $valueField,
-                [] // No additional fields needed since we only use group1
+                []
             );
 
-            // Format period info for date range
             $formattedStartDate = \Carbon\Carbon::parse($startDate)->format('d F Y');
             $formattedEndDate = \Carbon\Carbon::parse($endDate)->format('d F Y');
             $period = [
@@ -105,11 +100,11 @@ class SalesFamilyController extends Controller
 
     private function getAllSalesFamilyData($startDate, $endDate, $type)
     {
-        // Choose field based on type
+        // Pilih field berdasarkan type
         $valueField = $type === 'pcs' ? 'qtyinvoiced' : 'linenetamt';
         $totalField = $type === 'pcs' ? 'total_qty' : 'total_rp';
 
-        // Get all sales family data at once for client-side pagination
+        // Ambil semua data penjualan family sekaligus
         $salesQuery = "
             SELECT
                 org.name as branch_name,
@@ -138,21 +133,21 @@ class SalesFamilyController extends Controller
     public function exportExcel(Request $request)
     {
         try {
-            // Use yesterday (H-1) since dashboard is updated daily
+            // Gunakan H-1 karena dashboard diupdate setiap hari
             $yesterday = date('Y-m-d', strtotime('-1 day'));
             $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
             $endDate = $request->input('end_date', $yesterday);
             $type = $request->get('type', 'rp');
 
-            // Validate type parameter
+            // Validasi parameter type
             if (!in_array($type, ['rp', 'pcs'])) {
                 return response()->json(['error' => 'Invalid type parameter'], 400);
             }
 
-            // Get all data for export
+            // Ambil semua data untuk export
             $branchData = $this->getAllSalesFamilyData($startDate, $endDate, $type);
 
-            // Transform data using TableHelper
+            // Transform data menggunakan TableHelper
             $valueField = $type === 'pcs' ? 'total_qty' : 'total_rp';
             $transformedData = TableHelper::transformDataForBranchTable(
                 $branchData,
@@ -161,7 +156,7 @@ class SalesFamilyController extends Controller
                 []
             );
 
-            // Format dates for filename and display
+            // Format tanggal untuk nama file dan tampilan
             $formattedStartDate = \Carbon\Carbon::parse($startDate)->format('d F Y');
             $formattedEndDate = \Carbon\Carbon::parse($endDate)->format('d F Y');
             $fileStartDate = \Carbon\Carbon::parse($startDate)->format('d-m-Y');
@@ -170,7 +165,6 @@ class SalesFamilyController extends Controller
 
             $filename = 'Penjualan_Per_Family_' . $typeLabel . '_' . $fileStartDate . '_sampai_' . $fileEndDate . '.xls';
 
-            // Create XLS content using HTML table format
             $headers = [
                 'Content-Type' => 'application/vnd.ms-excel',
                 'Content-Disposition' => 'attachment; filename="' . $filename . '"',
@@ -317,21 +311,21 @@ class SalesFamilyController extends Controller
     public function exportPdf(Request $request)
     {
         try {
-            // Use yesterday (H-1) since dashboard is updated daily
+            // Gunakan H-1 karena dashboard diupdate setiap hari
             $yesterday = date('Y-m-d', strtotime('-1 day'));
             $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
             $endDate = $request->input('end_date', $yesterday);
             $type = $request->get('type', 'rp');
 
-            // Validate type parameter
+            // Validasi parameter type
             if (!in_array($type, ['rp', 'pcs'])) {
                 return response()->json(['error' => 'Invalid type parameter'], 400);
             }
 
-            // Get all data for export
+            // Ambil semua data untuk export
             $branchData = $this->getAllSalesFamilyData($startDate, $endDate, $type);
 
-            // Transform data using TableHelper
+            // Transform data menggunakan TableHelper
             $valueField = $type === 'pcs' ? 'total_qty' : 'total_rp';
             $transformedData = TableHelper::transformDataForBranchTable(
                 $branchData,
@@ -340,14 +334,13 @@ class SalesFamilyController extends Controller
                 []
             );
 
-            // Format dates for filename and display
+            // Format tanggal untuk nama file dan tampilan
             $formattedStartDate = \Carbon\Carbon::parse($startDate)->format('d F Y');
             $formattedEndDate = \Carbon\Carbon::parse($endDate)->format('d F Y');
             $fileStartDate = \Carbon\Carbon::parse($startDate)->format('d-m-Y');
             $fileEndDate = \Carbon\Carbon::parse($endDate)->format('d-m-Y');
             $typeLabel = $type === 'pcs' ? 'Pieces' : 'Rupiah';
 
-            // Create HTML for PDF
             $html = '
             <!DOCTYPE html>
             <html>
@@ -476,7 +469,6 @@ class SalesFamilyController extends Controller
             </body>
             </html>';
 
-            // Use DomPDF to generate PDF
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
             $pdf->setPaper('A4', 'landscape');
 

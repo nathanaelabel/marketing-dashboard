@@ -11,11 +11,6 @@ use App\Helpers\ChartHelper;
 
 class SalesComparisonController extends Controller
 {
-
-    /**
-     * Get branch configuration dynamically from database
-     * Fetches pricelist_version_id and locator_id for each branch
-     */
     private function getBranchConfig()
     {
         $query = "
@@ -57,16 +52,14 @@ class SalesComparisonController extends Controller
     public function getData(Request $request)
     {
         try {
-            // Sales: yesterday (H-1)
-            // Stok & BDP: today
             $today = date('Y-m-d');
             $yesterday = date('Y-m-d', strtotime('-1 day'));
 
             $salesDate = $yesterday;
             $stokBdpDate = $today;
 
-            // Increase max execution time to 3 minutes for realtime queries
-            set_time_limit(180);
+            // Tingkatkan batas waktu eksekusi untuk query berat
+            set_time_limit(300);
             ini_set('memory_limit', '512M');
 
             $branchMapping = TableHelper::getBranchMapping();
@@ -109,14 +102,14 @@ class SalesComparisonController extends Controller
                     'connection_failed' => false,
                 ];
 
-                // Check if connection failed
+                // Lewati cabang dengan masalah koneksi
                 if (isset($branchData['connection_failed']) && $branchData['connection_failed']) {
                     $data[] = [
                         'no' => $no++,
                         'branch_code' => $branchCode,
                         'branch_name' => $branchName,
                         'connection_failed' => true,
-                        'error_message' => 'Connection failed. Please try again.',
+                        'error_message' => 'Koneksi gagal. Silakan coba lagi.',
                         'sales_mika' => null,
                         'sales_sparepart' => null,
                         'total_sales' => null,
@@ -136,7 +129,6 @@ class SalesComparisonController extends Controller
                     continue;
                 }
 
-                // Calculate totals
                 $totalSales = $branchData['sales_mika'] + $branchData['sales_sparepart'];
                 $totalStok = $branchData['stok_mika'] + $branchData['stok_sparepart'];
                 $totalBdp = $branchData['bdp_mika'] + $branchData['bdp_sparepart'];
@@ -169,7 +161,6 @@ class SalesComparisonController extends Controller
                     'grand_total' => $grandTotal,
                 ];
 
-                // Accumulate totals
                 $totals['sales_mika'] += $branchData['sales_mika'];
                 $totals['sales_sparepart'] += $branchData['sales_sparepart'];
                 $totals['total_sales'] += $totalSales;
@@ -208,15 +199,15 @@ class SalesComparisonController extends Controller
             ]);
 
             return response()->json([
-                'error' => 'Failed to fetch data',
-                'message' => 'An error occurred while retrieving data. Please check the logs for details.',
+                'error' => 'Gagal mengambil data',
+                'message' => 'Terjadi kesalahan saat mengambil data. Silakan periksa log untuk detail.',
                 'debug' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }
 
     /**
-     * Perform a quick socket connectivity check to avoid long Postgres connection timeouts
+     * Lakukan pengecekan koneksi socket untuk menghindari timeout koneksi Postgres yang lama
      */
     protected function canConnectToBranch(string $connection, int $timeoutSeconds = 3): bool
     {
@@ -249,36 +240,33 @@ class SalesComparisonController extends Controller
     }
 
     /**
-     * Query realtime STOK and BDP from branch database with 60 second timeout
-     * Uses optimized single query to fetch all data at once
-     * @param string $branchName Branch name (e.g., 'PWM Pontianak', 'MPM Tangerang')
-     * @param array $config Branch configuration (pricelist_version_id, locator_id)
-     * @param string $stokBdpDate Date for stok and BDP data
-     * @return array Returns stok and bdp data or connection_failed flag
+     * @param string $branchName Nama cabang (e.g., 'PWM Pontianak', 'MPM Tangerang')
+     * @param array $config Konfigurasi cabang (pricelist_version_id, locator_id)
+     * @param string $stokBdpDate Tanggal untuk data stok dan BDP
+     * @return array Mengembalikan data stok dan BDP atau flag connection_failed
      */
     private function queryBranchRealtimeData($branchName, $config, $stokBdpDate)
     {
         try {
-            // Get connection name from ChartHelper (same as AR Controller)
             $connectionName = ChartHelper::getBranchConnection($branchName);
 
             if (!$connectionName) {
                 return ['connection_failed' => true];
             }
 
-            // Perform lightweight socket check before attempting database query
+            // Lakukan pengecekan koneksi socket sebelum melakukan query database
             if (!$this->canConnectToBranch($connectionName)) {
                 Log::warning("Skipping {$branchName} due to connectivity check failure");
                 return ['connection_failed' => true];
             }
 
-            // Set timeout per connection (60 seconds)
-            DB::connection($connectionName)->statement("SET statement_timeout = 60000"); // 60 seconds
+            // Set timeout koneksi 60 detik
+            DB::connection($connectionName)->statement("SET statement_timeout = 60000");
 
             $pricelistVersionId = $config['pricelist_version_id'];
             $locatorId = $config['locator_id'];
 
-            // Optimized: Single query to get all STOK and BDP data at once
+            // Query STOK - Gabungan MIKA dan SPARE PART
             $combinedQuery = "
                 SELECT
                     -- STOK MIKA
@@ -323,7 +311,7 @@ class SalesComparisonController extends Controller
             $stokMika = $stockData ? (float)$stockData->stok_mika : 0;
             $stokSparepart = $stockData ? (float)$stockData->stok_sparepart : 0;
 
-            // BDP Query - Combined MIKA and SPARE PART
+            // Query BDP - Gabungan MIKA dan SPARE PART
             $bdpQuery = "
                 SELECT
                     -- BDP MIKA
@@ -363,7 +351,6 @@ class SalesComparisonController extends Controller
             $bdpMika = $bdpData ? (float)$bdpData->bdp_mika : 0;
             $bdpSparepart = $bdpData ? (float)$bdpData->bdp_sparepart : 0;
 
-            // Reset timeout
             DB::connection($connectionName)->statement("SET statement_timeout = 0");
 
             return [
@@ -374,17 +361,14 @@ class SalesComparisonController extends Controller
                 'connection_failed' => false,
             ];
         } catch (\Exception $e) {
-            // Log error for debugging
             Log::error("Branch realtime query failed for {$branchName}: " . $e->getMessage());
 
-            // Try to reset timeout even on error
             try {
                 $connectionName = ChartHelper::getBranchConnection($branchName);
                 if ($connectionName) {
                     DB::connection($connectionName)->statement("SET statement_timeout = 0");
                 }
             } catch (\Exception $resetError) {
-                // Ignore reset errors
             }
 
             return ['connection_failed' => true];
@@ -393,16 +377,15 @@ class SalesComparisonController extends Controller
 
     /**
      * 
-     * @param string $salesDate Date for sales data (yesterday)
-     * @param string $stokBdpDate Date for stok and BDP data (today)
-     * @param array $branchConfig Branch configuration
+     * @param string
+     * @param string
+     * @param array
      */
     private function getAllBranchesData($salesDate, $stokBdpDate, $branchConfig)
     {
         $salesDateStart = $salesDate . ' 00:00:00';
         $salesDateEnd = $salesDate . ' 23:59:59';
 
-        // Initialize result array
         $results = [];
         foreach (array_keys($branchConfig) as $branchName) {
             $results[$branchName] = [
@@ -416,7 +399,6 @@ class SalesComparisonController extends Controller
         }
 
         // 1. Get SALES data for all branches at once
-        // Uses yesterday's date (H-1)
         $salesMikaQuery = "
             SELECT
                 org.name as branch_name,
@@ -494,9 +476,8 @@ class SalesComparisonController extends Controller
             }
         }
 
-        // 2. Get STOCK and BDP data REALTIME from branch databases
+        // Ambil data STOK dan BDP secara realtime dari database cabang
         foreach ($branchConfig as $branchName => $config) {
-            // Query realtime STOK and BDP from branch database
             $realtimeData = $this->queryBranchRealtimeData($branchName, $config, $stokBdpDate);
 
             if (isset($realtimeData['connection_failed']) && $realtimeData['connection_failed']) {
@@ -1096,7 +1077,6 @@ class SalesComparisonController extends Controller
             </body>
             </html>';
 
-            // Use DomPDF to generate PDF
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
             $pdf->setPaper('A4', 'landscape');
 

@@ -114,7 +114,6 @@ const ChartHelper = {
 
         const chartContainer = chartContext.parentElement;
 
-        // Clear previous messages
         const existingError = chartContainer.querySelector(".error-message");
         if (existingError) {
             existingError.remove();
@@ -132,7 +131,6 @@ const ChartHelper = {
     },
 
     /**
-     * Calculate percentage growth between two values with decimal precision
      * @param {number} currentValue - Current period value
      * @param {number} previousValue - Previous period value
      * @param {number} decimalPlaces - Number of decimal places (default: 1)
@@ -150,7 +148,6 @@ const ChartHelper = {
     },
 
     /**
-     * Format value with appropriate unit (M/B) and decimal precision
      * @param {number} value - Raw value
      * @param {number} divisor - Divisor (1e6 for millions, 1e9 for billions)
      * @param {string} unit - Unit string ('M' or 'B')
@@ -190,7 +187,7 @@ const ChartHelper = {
                 const currentValue = datasets[1].data[context.dataIndex];
                 const previousValue = datasets[0].data[context.dataIndex];
 
-                // Only show growth on the higher bar
+                // Hanya tampilkan growth pada bar yang nilainya lebih tinggi
                 const isHigherBar =
                     (context.datasetIndex === 1 &&
                         currentValue >= previousValue) ||
@@ -210,7 +207,6 @@ const ChartHelper = {
     },
 
     /**
-     * Format number for display with appropriate scaling
      * @param {number} value - Raw value to format
      * @param {number} divisor - Divisor for scaling (1, 1000000, 1000000000)
      * @returns {string} Formatted display string
@@ -221,14 +217,11 @@ const ChartHelper = {
         const scaledValue = value / divisor;
 
         if (divisor === 1000000000) {
-            // Billions
             if (scaledValue % 1 === 0) return scaledValue.toFixed(0) + "M";
             return scaledValue.toFixed(1) + "M";
         } else if (divisor === 1000000) {
-            // Millions
             return Math.round(scaledValue) + "Jt";
         } else {
-            // For raw values or thousands
             return new Intl.NumberFormat("id-ID", {
                 minimumFractionDigits: 0,
                 maximumFractionDigits: 0,
@@ -251,7 +244,6 @@ const ChartHelper = {
 
         const chartContainer = chartContext.parentElement;
 
-        // Clear previous messages
         const existingMessage =
             chartContainer.querySelector(".no-data-message");
         if (existingMessage) {
@@ -294,7 +286,6 @@ const ChartHelper = {
         const currentYearNum = today.getFullYear();
 
         if (currentYear == currentYearNum) {
-            // For current year, show the actual period being compared
             const monthNames = [
                 "Januari",
                 "Februari",
@@ -314,7 +305,6 @@ const ChartHelper = {
 
             return `Perbandingan periode yang sama: Jan - ${currentDay} ${currentMonth} untuk kedua tahun`;
         } else {
-            // For historical years, show full year comparison
             return `Perbandingan periode penuh: Januari - Desember untuk kedua tahun`;
         }
     },
