@@ -13,7 +13,7 @@ class SyncStatusCommand extends Command
                            {--latest : Show status of the latest batch}
                            {--all : Show all batches}
                            {--failed : Show only failed tables}';
-    
+
     protected $description = 'Check the status of sync operations';
 
     public function handle()
@@ -67,8 +67,8 @@ class SyncStatusCommand extends Command
         foreach ($batches as $batch) {
             $progress = "{$batch->completed_tables}/{$batch->total_tables}";
             $percentage = $batch->getProgressPercentage();
-            $duration = $batch->duration_seconds 
-                ? gmdate('H:i:s', $batch->duration_seconds) 
+            $duration = $batch->duration_seconds
+                ? gmdate('H:i:s', $batch->duration_seconds)
                 : ($batch->status === 'running' ? 'Running...' : 'N/A');
 
             $rows[] = [
@@ -94,26 +94,24 @@ class SyncStatusCommand extends Command
         $this->info('====================================================================');
         $this->line('');
 
-        // Batch summary
         $this->info('Batch Summary:');
         $this->line("  Status: " . $this->colorizeStatus($batch->status));
         $this->line("  Started: {$batch->started_at->format('Y-m-d H:i:s')}");
-        
+
         if ($batch->completed_at) {
             $this->line("  Completed: {$batch->completed_at->format('Y-m-d H:i:s')}");
         }
-        
+
         if ($batch->duration_seconds) {
             $duration = gmdate('H:i:s', $batch->duration_seconds);
             $this->line("  Duration: {$duration}");
         }
-        
+
         $percentage = $batch->getProgressPercentage();
         $this->line("  Progress: {$batch->completed_tables}/{$batch->total_tables} tables ({$percentage}%)");
         $this->line("  Failed: {$batch->failed_tables} tables");
         $this->line('');
 
-        // Command options
         if ($batch->command_options) {
             $this->info('Command Options:');
             foreach ($batch->command_options as $key => $value) {
@@ -125,9 +123,8 @@ class SyncStatusCommand extends Command
             $this->line('');
         }
 
-        // Table progress
         $query = SyncProgress::where('batch_id', $batch->batch_id);
-        
+
         if ($showFailedOnly) {
             $query->where('status', 'failed');
             $this->info('Failed Tables:');
@@ -146,15 +143,15 @@ class SyncStatusCommand extends Command
         $rows = [];
 
         foreach ($progress as $p) {
-            $duration = $p->duration_seconds 
-                ? gmdate('H:i:s', $p->duration_seconds) 
+            $duration = $p->duration_seconds
+                ? gmdate('H:i:s', $p->duration_seconds)
                 : ($p->status === 'in_progress' ? 'Running...' : 'N/A');
-            
-            $records = $p->records_processed 
+
+            $records = $p->records_processed
                 ? number_format($p->records_processed) . ($p->records_skipped ? " (-{$p->records_skipped})" : '')
                 : 'N/A';
 
-            $error = $p->error_message 
+            $error = $p->error_message
                 ? (strlen($p->error_message) > 50 ? substr($p->error_message, 0, 47) . '...' : $p->error_message)
                 : '-';
 
@@ -188,7 +185,7 @@ class SyncStatusCommand extends Command
 
     private function colorizeStatus(string $status): string
     {
-        return match($status) {
+        return match ($status) {
             'completed' => "<fg=green>{$status}</>",
             'running', 'in_progress' => "<fg=yellow>{$status}</>",
             'failed' => "<fg=red>{$status}</>",

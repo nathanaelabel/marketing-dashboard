@@ -3,9 +3,7 @@
 namespace App\Console\Commands\Development;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Models\SyncBatch;
@@ -118,7 +116,7 @@ class SyncAllDev extends Command
                             'model' => $modelName,
                             'connection' => $connection
                         ]);
-                        continue; // Skip to next table instead of aborting
+                        continue;
                     }
                 }
             }
@@ -145,7 +143,7 @@ class SyncAllDev extends Command
                     $params = ['model' => $modelName, '--connection' => $connection];
                     if (!$this->callWithRetries('app:sync-table-dev', $params, 3, $connectionFailedSyncs, 'app:sync-table-dev', $modelName)) {
                         $this->warn("Failed to sync {$modelName} from {$connection}. Skipping to next table...");
-                        continue; // Skip to the next table in the current connection
+                        continue;
                     }
                 }
             }
@@ -155,11 +153,10 @@ class SyncAllDev extends Command
                 if (!empty($specificTables) && !in_array($tableInfo['model'], $specificTables)) {
                     continue;
                 }
-                // Use production sync for these tables
                 $params = ['model' => $tableInfo['model'], '--connection' => $connection];
                 if (!$this->callWithRetries('app:sync-table-dev', $params, 3, $connectionFailedSyncs, 'app:sync-table-dev', $tableInfo['model'])) {
                     $this->warn("Failed to sync {$tableInfo['model']} from {$connection}. Skipping to next table...");
-                    continue; // Skip to the next table in the current connection
+                    continue;
                 }
             }
 
@@ -171,16 +168,14 @@ class SyncAllDev extends Command
                 $params = ['model' => $modelName, '--connection' => $connection];
                 if (!$this->callWithRetries('app:sync-table-dev', $params, 3, $connectionFailedSyncs, 'app:sync-table-dev', $modelName)) {
                     $this->warn("Failed to sync {$modelName} from {$connection}. Skipping to next table...");
-                    continue; // Skip to the next table in the current connection
+                    continue;
                 }
             }
 
-            // Store failed syncs for this connection
             if (!empty($connectionFailedSyncs)) {
                 $failedSyncs[$connection] = $connectionFailedSyncs;
             }
 
-            // Final retry phase for this connection
             if (!empty($connectionFailedSyncs)) {
                 $this->line('');
                 $this->info("====================================================================");
@@ -194,12 +189,12 @@ class SyncAllDev extends Command
                     $this->line('');
                     $this->comment("Retrying: {$failedSync['command']} for model {$failedSync['model']} from connection {$connection}...");
 
-                    $tempRetryFailures = []; // Create temp array for pass by reference
+                    $tempRetryFailures = [];
                     $success = $this->callWithRetries(
                         $failedSync['command'],
                         $failedSync['params'],
-                        1, // Only 1 retry in final phase
-                        $tempRetryFailures, // Pass temp array instead of null
+                        1,
+                        $tempRetryFailures,
                         $failedSync['command'],
                         $failedSync['model']
                     );
@@ -239,7 +234,6 @@ class SyncAllDev extends Command
             }
         }
 
-        // Update batch status
         $this->currentBatch->update([
             'status' => 'completed',
             'completed_at' => now(),
@@ -268,19 +262,15 @@ class SyncAllDev extends Command
         $connectionName = $parameters['--connection'] ?? 'N/A';
         $modelName = $modelName ?? ($parameters['model'] ?? 'Unknown');
 
-        // Get or create progress entry
         $progress = $this->getOrCreateProgress($connectionName, $modelName);
 
-        // Check if table should be skipped (already completed in resume mode)
         if ($this->shouldSkipTable($connectionName, $modelName)) {
             $this->comment("⊙ Skipping {$modelName} from {$connectionName} (already completed)");
             return true;
         }
 
-        // Mark as started
         $progress->markAsStarted();
 
-        // Add batch-id to parameters if calling sync-table command
         if ($command === 'app:sync-table-dev' && !isset($parameters['--batch-id'])) {
             $parameters['--batch-id'] = $this->batchId;
         }
@@ -289,21 +279,17 @@ class SyncAllDev extends Command
             try {
                 $exitCode = $this->call($command, $parameters);
 
-                // Check if command returned failure (exit code 1)
                 if ($exitCode === Command::SUCCESS || $exitCode === 0) {
-                    // Mark as completed (records count will be updated by SyncTableDev)
                     $progress->markAsCompleted(0, 0);
                     $this->currentBatch->incrementCompleted();
                     return true;
                 } else {
-                    // Command executed but returned failure
                     $attempts++;
                     if ($attempts < $retries) {
                         $this->warn("⚠ Sync failed for table [{$modelName}] from [{$connectionName}]. Retrying in 10 seconds... (Attempt {$attempts}/{$retries})");
                         sleep(10);
                         continue;
                     } else {
-                        // Track failure
                         if ($failedSyncs !== null && $commandName !== null) {
                             $failedSyncs[] = [
                                 'command' => $commandName,
@@ -341,7 +327,6 @@ class SyncAllDev extends Command
                         sleep(10);
                         continue;
                     } else {
-                        // Track failure
                         if ($failedSyncs !== null && $commandName !== null) {
                             $failedSyncs[] = [
                                 'command' => $commandName,
@@ -363,7 +348,6 @@ class SyncAllDev extends Command
                         return false;
                     }
                 } else {
-                    // Non-timeout exception
                     $this->error("✗ Unexpected SQL error for table [{$modelName}] from [{$connectionName}]: " . $e->getMessage());
                     Log::error("SyncAllDev: Unexpected SQL error", [
                         'command' => $commandName ?? $command,
@@ -376,7 +360,6 @@ class SyncAllDev extends Command
                     return false;
                 }
             } catch (\Exception $e) {
-                // Catch other exceptions (like command exceptions)
                 $attempts++;
                 $isTimeout = $this->isConnectionTimeout($e);
 
@@ -392,7 +375,6 @@ class SyncAllDev extends Command
                     sleep(10);
                     continue;
                 } else {
-                    // Track failure if timeout
                     if ($isTimeout && $failedSyncs !== null && $commandName !== null) {
                         $failedSyncs[] = [
                             'command' => $commandName,
@@ -431,9 +413,6 @@ class SyncAllDev extends Command
         return false;
     }
 
-    /**
-     * Check if exception is a connection timeout
-     */
     private function isConnectionTimeout(\Exception $e): bool
     {
         $message = strtolower($e->getMessage());
@@ -456,15 +435,11 @@ class SyncAllDev extends Command
         return false;
     }
 
-    /**
-     * Get or create progress entry for a table sync
-     */
     private function getOrCreateProgress(string $connectionName, string $modelName): SyncProgress
     {
         $modelClass = "App\\Models\\{$modelName}";
         $tableName = (new $modelClass())->getTable();
 
-        // Check if progress entry exists for this batch
         $progress = SyncProgress::where('batch_id', $this->batchId)
             ->where('connection_name', $connectionName)
             ->where('model_name', $modelName)
@@ -479,16 +454,12 @@ class SyncAllDev extends Command
                 'status' => 'pending',
             ]);
 
-            // Increment total tables in batch
             $this->currentBatch->increment('total_tables');
         }
 
         return $progress;
     }
 
-    /**
-     * Check if table should be skipped (already completed in resume mode)
-     */
     private function shouldSkipTable(string $connectionName, string $modelName): bool
     {
         if (!$this->option('resume')) {

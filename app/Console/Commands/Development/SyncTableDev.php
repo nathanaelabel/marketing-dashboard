@@ -6,8 +6,6 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Database\QueryException;
 use PDOException;
 use App\Models\SyncProgress;
 
@@ -32,7 +30,6 @@ class SyncTableDev extends Command
             return Command::FAILURE;
         }
 
-        // Validate that connection is provided
         if (!$connectionName) {
             $this->error("Connection name is required. Use --connection option.");
             return Command::FAILURE;
@@ -49,7 +46,6 @@ class SyncTableDev extends Command
         try {
             $recordsProcessed = $this->runProductionSync($model, $connectionName, $tableName, $modelName);
 
-            // Update progress if batch_id is provided
             $batchId = $this->option('batch-id');
             if ($batchId) {
                 $progress = SyncProgress::where('batch_id', $batchId)
@@ -69,7 +65,6 @@ class SyncTableDev extends Command
             Log::info("SyncTableDev: Completed for {$tableName} from {$connectionName}");
             return Command::SUCCESS;
         } catch (\Exception $e) {
-            // Check if it's a connection timeout
             if ($this->isConnectionTimeout($e)) {
                 Log::error("SyncTableDev: Connection timeout for {$tableName} from {$connectionName}", [
                     'model' => $modelName,
@@ -89,10 +84,8 @@ class SyncTableDev extends Command
 
     private function runProductionSync(Model $model, string $connectionName, string $tableName, string $modelName): array
     {
-        // Get the table name in lowercase, as it's returned by getTable()
         $lowerTableName = strtolower($tableName);
 
-        // Define tables that should fetch all records
         $fullSyncTables = [
             'ad_org',
             'm_product_category',
@@ -119,7 +112,6 @@ class SyncTableDev extends Command
             'm_matchinv' => 'datetrx'
         ];
 
-        // Define tables with relationship filtering
         $relationshipFilterTables = [
             'm_productprice' => ['m_product_id'],
             'c_invoiceline' => ['c_invoice_id'],
@@ -138,34 +130,28 @@ class SyncTableDev extends Command
 
             $this->comment("Fetching records from {$tableName} with {$dateColumn} between {$startDate} and {$endDate}...");
             $query->whereBetween($dateColumn, [$startDate, $endDate]);
-        }
-        // Apply relationship filtering for specific tables
-        elseif (isset($relationshipFilterTables[$lowerTableName])) {
+        } elseif (isset($relationshipFilterTables[$lowerTableName])) {
             $foreignKeys = $relationshipFilterTables[$lowerTableName];
             $this->comment("Fetching records from {$tableName} with valid relationships...");
 
             foreach ($foreignKeys as $foreignKey) {
-                // Get the parent table name from foreign key
                 $parentTable = $this->getParentTableFromForeignKey($foreignKey);
                 if ($parentTable) {
                     $existingIds = $this->executeWithRetry(function () use ($parentTable, $foreignKey) {
                         return DB::table($parentTable)->pluck($foreignKey)->toArray();
                     }, $connectionName, "Fetching parent IDs from {$parentTable}");
 
-                    // Check if we have IDs to filter by
                     if (empty($existingIds)) {
                         $this->warn("No parent records found in {$parentTable} for {$foreignKey}. Skipping {$tableName}.");
-                        return ['processed' => 0, 'skipped' => 0]; // Skip this table if no parent records exist
+                        return ['processed' => 0, 'skipped' => 0];
                     }
 
-                    // Chunk the IDs to avoid PostgreSQL parameter limit (65535)
                     // Use much smaller chunks to be safe, accounting for other query parameters
-                    $chunkSize = 5000; // Very conservative chunk size
+                    $chunkSize = 5000;
                     $idChunks = array_chunk($existingIds, $chunkSize);
 
                     $this->comment("Filtering {$tableName} with " . count($existingIds) . " {$foreignKey} values in " . count($idChunks) . " chunks...");
 
-                    // Use a different approach: execute multiple queries and combine results
                     $allResults = collect();
                     foreach ($idChunks as $index => $chunk) {
                         $this->comment("Processing chunk " . ($index + 1) . " of " . count($idChunks) . " for {$tableName}...");
@@ -179,7 +165,6 @@ class SyncTableDev extends Command
                         $allResults = $allResults->concat($chunkResults);
                     }
 
-                    // Override the main query result with our chunked results
                     $sourceData = $allResults;
 
                     if ($sourceData->isEmpty()) {
@@ -190,7 +175,6 @@ class SyncTableDev extends Command
                     $this->comment("Found {" . $sourceData->count() . "} records from chunked queries. Preparing for upsert...");
                     $this->line('');
 
-                    // Skip to upsert since we already have our data
                     $skipNormalQuery = true;
                 }
             }
@@ -198,9 +182,7 @@ class SyncTableDev extends Command
         // For full sync tables, fetch all records
         elseif (in_array($lowerTableName, $fullSyncTables)) {
             $this->comment("Fetching all records from {$tableName}...");
-        }
-        // Fallback for unmapped tables (keep original logic)
-        else {
+        } else {
             $primaryKey = $model->getKeyName();
             $orderColumn = is_array($primaryKey) ? $primaryKey[0] : $primaryKey;
             $this->comment("Fetching the latest 10,000 records from {$tableName} ordered by {$orderColumn} DESC...");
@@ -209,7 +191,6 @@ class SyncTableDev extends Command
 
         // Execute the query only if we haven't already processed chunked results
         if (!isset($skipNormalQuery)) {
-            // Execute the query with progress indication for large datasets
             if (isset($relationshipFilterTables[$lowerTableName]) || isset($dateFilterTables[$lowerTableName])) {
                 $this->comment("Executing filtered query for {$tableName}...");
             }
@@ -219,7 +200,6 @@ class SyncTableDev extends Command
             }, $connectionName, "Executing query for {$tableName}");
         }
 
-        // Only check if sourceData is empty if we haven't already processed chunked results
         if (!isset($skipNormalQuery)) {
             if ($sourceData->isEmpty()) {
                 $this->info("No records found in {$tableName} from {$connectionName}. Skipping.");
@@ -300,12 +280,10 @@ class SyncTableDev extends Command
             ],
         ];
 
-        // Filter records if dependencies are defined for the current table
         if (isset($dependencies[$tableName])) {
             $this->line("Checking foreign key dependencies for {$tableName}...");
             $originalCount = $sourceData->count();
 
-            // Pre-fetch all required parent IDs to optimize DB queries
             $existingParentIds = [];
             foreach ($dependencies[$tableName] as $dep) {
                 $parentTable = $dep['parent_table'];
@@ -314,7 +292,7 @@ class SyncTableDev extends Command
                     $this->comment("Fetching parent IDs from {$parentTable}...");
                     $existingParentIds[$parentTable] = $this->executeWithRetry(function () use ($parentTable, $foreignKey) {
                         return DB::table($parentTable)->pluck($foreignKey)->flip();
-                    }, null, "Fetching parent IDs from {$parentTable}"); // Use flip for O(1) lookups
+                    }, null, "Fetching parent IDs from {$parentTable}");
                 }
             }
 
@@ -325,22 +303,18 @@ class SyncTableDev extends Command
                     $isOptional = $dep['optional'] ?? false;
                     $fkValue = $record->$foreignKey ?? null;
 
-                    // If the foreign key is null
                     if ($fkValue === null) {
-                        // If it's optional, we can ignore it and proceed to the next dependency.
                         if ($isOptional) {
                             continue;
                         }
-                        // If it's not optional, the record is invalid.
                         return false;
                     }
 
-                    // If the foreign key has a value, it must exist in the parent table.
                     if (!isset($existingParentIds[$parentTable][$fkValue])) {
-                        return false; // Skip if parent ID doesn't exist
+                        return false;
                     }
                 }
-                return true; // All dependencies are satisfied
+                return true;
             });
 
             $filteredCount = $sourceData->count();
@@ -350,7 +324,6 @@ class SyncTableDev extends Command
             }
         }
 
-        // Get all columns that should be upserted
         $fillable = $model->getFillable();
         $primaryKey = $model->getKeyName();
         $keyColumns = is_array($primaryKey) ? $primaryKey : [$primaryKey];
@@ -362,57 +335,46 @@ class SyncTableDev extends Command
             }, $dependencies[$tableName]);
         }
 
-        // Convert all column names to lowercase for case-insensitive matching.
         $upsertColumns = array_map('strtolower', array_unique(array_merge($keyColumns, $fillable, $timestampColumns, $foreignKeyColumns)));
 
         $dataToUpsert = $sourceData->map(function ($row) use ($upsertColumns) {
-            // Standardize source keys to lowercase to ensure case-insensitive matching.
             $lowerCaseRow = collect((array)$row)->mapWithKeys(function ($value, $key) {
                 return [strtolower($key) => $value];
             });
             return $lowerCaseRow->only($upsertColumns)->all();
-        })->filter()->all(); // Use filter() to remove any empty arrays that might result from the mapping.
+        })->filter()->all();
 
-        // Log the first processed record for debugging purposes.
         if (!empty($dataToUpsert)) {
             Log::channel('sync')->info('Sample processed data for ' . $modelName . ':', [reset($dataToUpsert)]);
         }
 
-        // Check if this is the first sync (table is empty)
         // First sync: INSERT new data only (table is empty, so all records are new)
         // Subsequent syncs: UPSERT (INSERT new + UPDATE existing changed records)
         $isFirstSync = $this->isFirstSync($tableName);
 
         if ($isFirstSync) {
             // First sync: Use insertOrIgnore for better performance when table is empty
-            // This will INSERT new records and ignore any duplicates (from other connections in same batch)
             $this->comment("First sync detected for {$tableName}. Using bulk INSERT (new data only)...");
             $this->executeWithRetry(function () use ($dataToUpsert, $model, $keyColumns) {
                 collect($dataToUpsert)->chunk(500)->each(function ($chunk) use ($model, $keyColumns) {
-                    // Use insertOrIgnore for first sync to handle potential duplicates from multiple connections
-                    // This is faster than upsert when table is empty
                     try {
                         DB::table($model->getTable())->insertOrIgnore($chunk->toArray());
                     } catch (\Exception $e) {
-                        // Fallback to upsert if insertOrIgnore fails (e.g., missing unique constraint)
                         $model->upsert($chunk->toArray(), $keyColumns);
                     }
                 });
             }, $connectionName, "Inserting data for {$tableName}");
 
-            $this->line(''); // Add spacing
+            $this->line('');
             $this->info("Bulk INSERT complete for {$tableName} from {$connectionName}. Total records inserted: " . count($dataToUpsert));
         } else {
-            // Subsequent syncs: Use upsert to automatically detect and update only changed records
             // Upsert will INSERT new records and UPDATE existing ones based on primary key
-            // This ensures data parity and only processes changed records efficiently
             $this->comment("Subsequent sync detected for {$tableName}. Using UPSERT (INSERT new + UPDATE changed records)...");
             $this->executeWithRetry(function () use ($dataToUpsert, $model, $keyColumns, $tableName) {
                 collect($dataToUpsert)->chunk(500)->each(function ($chunk) use ($model, $keyColumns, $tableName) {
                     try {
                         $model->upsert($chunk->toArray(), $keyColumns);
                     } catch (\Exception $e) {
-                        // If upsert fails (e.g., nullable columns in composite key), use insertOrIgnore as fallback
                         if (str_contains($e->getMessage(), 'no unique or exclusion constraint')) {
                             $this->warn("Upsert not supported for {$tableName}, using insertOrIgnore instead...");
                             DB::table($model->getTable())->insertOrIgnore($chunk->toArray());
@@ -423,20 +385,16 @@ class SyncTableDev extends Command
                 });
             }, $connectionName, "Upserting data for {$tableName}");
 
-            $this->line(''); // Add spacing
+            $this->line('');
             $this->info("UPSERT complete for {$tableName} from {$connectionName}. Total records processed: " . count($dataToUpsert));
         }
 
-        // Return counts for progress tracking
         return [
             'processed' => count($dataToUpsert),
             'skipped' => isset($skippedCount) ? $skippedCount : 0,
         ];
     }
 
-    /**
-     * Get parent table name from foreign key
-     */
     private function getParentTableFromForeignKey(string $foreignKey): ?string
     {
         $parentTableMap = [
@@ -460,9 +418,6 @@ class SyncTableDev extends Command
         return array_filter($columns);
     }
 
-    /**
-     * Execute a database operation with retry logic for connection timeouts
-     */
     private function executeWithRetry(callable $operation, ?string $connectionName, string $operationDescription, int $maxRetries = 3): mixed
     {
         $attempts = 0;
@@ -488,7 +443,6 @@ class SyncTableDev extends Command
                         sleep(10);
                         continue;
                     } else {
-                        // Final attempt failed
                         $connInfo = $connectionName ? "[{$connectionName}]" : "";
                         $this->error("Connection timeout during {$operationDescription} {$connInfo} after {$maxRetries} attempts.");
                         Log::error("SyncTableDev: Connection timeout after all retries", [
@@ -500,7 +454,6 @@ class SyncTableDev extends Command
                         throw $e;
                     }
                 } else {
-                    // Non-timeout exception, throw immediately
                     throw $e;
                 }
             }
@@ -509,9 +462,6 @@ class SyncTableDev extends Command
         throw $lastException;
     }
 
-    /**
-     * Check if this is the first sync for the table (table is empty)
-     */
     private function isFirstSync(string $tableName): bool
     {
         try {
@@ -526,9 +476,6 @@ class SyncTableDev extends Command
         }
     }
 
-    /**
-     * Check if exception is a connection timeout
-     */
     private function isConnectionTimeout(\Exception $e): bool
     {
         $message = strtolower($e->getMessage());
@@ -548,7 +495,6 @@ class SyncTableDev extends Command
             }
         }
 
-        // Also check for PDOException with timeout codes
         if ($e instanceof PDOException) {
             $pdoTimeoutCodes = ['08006', '08001', '08003', '08004'];
             if (in_array($e->getCode(), $pdoTimeoutCodes)) {

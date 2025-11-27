@@ -54,7 +54,7 @@ class IncrementalSyncTableCommand extends Command
                     $sourceQuery = DB::connection($connection)->table($tableName)
                         ->where(function ($query) use ($updatedAtColumn, $createdAtColumn, $lastSyncTimestamp) {
                             $query->where($updatedAtColumn, '>', $lastSyncTimestamp)
-                                  ->orWhere($createdAtColumn, '>', $lastSyncTimestamp);
+                                ->orWhere($createdAtColumn, '>', $lastSyncTimestamp);
                         });
 
                     $processChunk = function ($sourceData) use ($model, $keyColumns, &$processedCount, $connection, $tableName) {
@@ -139,9 +139,6 @@ class IncrementalSyncTableCommand extends Command
         $this->info("Timestamp updated to: {$timestamp->toDateTimeString()}");
     }
 
-    /**
-     * Execute a database operation with retry logic for connection timeouts
-     */
     private function executeWithRetry(callable $operation, ?string $connectionName, string $operationDescription, int $maxRetries = 3): mixed
     {
         $attempts = 0;
@@ -167,7 +164,6 @@ class IncrementalSyncTableCommand extends Command
                         sleep(10);
                         continue;
                     } else {
-                        // Final attempt failed
                         $connInfo = $connectionName ? "[{$connectionName}]" : "";
                         $this->error("Connection timeout during {$operationDescription} {$connInfo} after {$maxRetries} attempts.");
                         Log::error("IncrementalSync: Connection timeout after all retries", [
@@ -179,7 +175,6 @@ class IncrementalSyncTableCommand extends Command
                         throw $e;
                     }
                 } else {
-                    // Non-timeout exception, throw immediately
                     throw $e;
                 }
             }
@@ -188,9 +183,6 @@ class IncrementalSyncTableCommand extends Command
         throw $lastException;
     }
 
-    /**
-     * Check if exception is a connection timeout
-     */
     private function isConnectionTimeout(\Exception $e): bool
     {
         $message = strtolower($e->getMessage());
@@ -210,7 +202,6 @@ class IncrementalSyncTableCommand extends Command
             }
         }
 
-        // Also check for PDOException with timeout codes
         if ($e instanceof PDOException) {
             $pdoTimeoutCodes = ['08006', '08001', '08003', '08004'];
             if (in_array($e->getCode(), $pdoTimeoutCodes)) {
