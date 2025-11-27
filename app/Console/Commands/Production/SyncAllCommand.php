@@ -13,6 +13,7 @@ class SyncAllCommand extends Command
 {
     protected $signature = 'app:sync-all
                            {--connection= : The specific connection to process}
+                           {--sync-group=adempiere : The sync connection group to use (adempiere or adempiere_morning)}
                            {--skip-step1 : Skip Step 1 (single-source tables sync)}
                            {--tables= : A comma-separated list of specific models to sync}
                            {--resume= : Resume from a specific batch ID}';
@@ -32,7 +33,8 @@ class SyncAllCommand extends Command
         $skipStep1 = $this->option('skip-step1');
         $specificTables = $this->option('tables') ? explode(',', $this->option('tables')) : [];
         $resumeBatchId = $this->option('resume');
-        $connectionsToProcess = $targetConnection ? explode(',', $targetConnection) : config('database.sync_connections.adempiere', []);
+        $syncGroup = $this->option('sync-group');
+        $connectionsToProcess = $targetConnection ? explode(',', $targetConnection) : config("database.sync_connections.{$syncGroup}", []);
 
         if ($resumeBatchId) {
             $this->currentBatch = SyncBatch::find($resumeBatchId);

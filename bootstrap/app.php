@@ -15,17 +15,27 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withSchedule(function (Schedule $schedule): void {
-        // Data Sync Scheduler
+        // Data Sync Scheduler - Cabang Utama (13 cabang)
         // --------------------------------------------------------------------
-        // Runs full sync daily at 08:30 WIB
-        // This ensures 1:1 data parity with all 17 branch databases
-        // Uses optimized 3-month date filter for daily updates (data before this is already complete)
+        // Runs daily at 18:00 WIB for branches with 24-hour active servers
+        // TRG, BKS, JKT, LMP, CRB, BDG, MKS, SBY, SMG, PWT, DPS, PDG, MDN
         $schedule->command('app:sync-all')
-            ->dailyAt('08:30')
+            ->dailyAt('18:00')
             ->withoutOverlapping()
             ->timezone('Asia/Jakarta')
             ->sendOutputTo(storage_path('logs/sync-full.log'))
             ->appendOutputTo(storage_path('logs/sync-full.log'));
+
+        // Data Sync Scheduler - Cabang Pagi (4 cabang)
+        // --------------------------------------------------------------------
+        // Runs daily at 09:00 WIB for branches with servers inactive at night
+        // BJM, PKU, PLB, PTK
+        $schedule->command('app:sync-all --sync-group=adempiere_morning')
+            ->dailyAt('09:00')
+            ->withoutOverlapping()
+            ->timezone('Asia/Jakarta')
+            ->sendOutputTo(storage_path('logs/sync-morning.log'))
+            ->appendOutputTo(storage_path('logs/sync-morning.log'));
 
         // Return Comparison Cache Refresh
         // --------------------------------------------------------------------
