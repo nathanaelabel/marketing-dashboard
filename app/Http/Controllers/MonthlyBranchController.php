@@ -226,6 +226,14 @@ class MonthlyBranchController extends Controller
                                     AND p.name NOT LIKE '%BOHLAM%'
                                     AND psc.value = 'MIKA'
                                 )
+                                OR (
+                                    pc.value = 'PRODUCT IMPORT' 
+                                    AND (
+                                        p.name LIKE '%FILTER UDARA%'
+                                        OR p.name LIKE '%SWITCH REM%'
+                                        OR p.name LIKE '%DOP RITING%'
+                                    )
+                                )
                             )
                             ELSE pc.name = ?
                         END
@@ -268,6 +276,14 @@ class MonthlyBranchController extends Controller
                                     pc.value = 'PRODUCT IMPORT' 
                                     AND p.name NOT LIKE '%BOHLAM%'
                                     AND psc.value = 'MIKA'
+                                )
+                                OR (
+                                    pc.value = 'PRODUCT IMPORT' 
+                                    AND (
+                                        p.name LIKE '%FILTER UDARA%'
+                                        OR p.name LIKE '%SWITCH REM%'
+                                        OR p.name LIKE '%DOP RITING%'
+                                    )
                                 )
                             )
                             ELSE pc.name = ?
@@ -458,6 +474,14 @@ class MonthlyBranchController extends Controller
                                     AND p.name NOT LIKE '%BOHLAM%'
                                     AND psc.value = 'MIKA'
                                 )
+                                OR (
+                                    pc.value = 'PRODUCT IMPORT' 
+                                    AND (
+                                        p.name LIKE '%FILTER UDARA%'
+                                        OR p.name LIKE '%SWITCH REM%'
+                                        OR p.name LIKE '%DOP RITING%'
+                                    )
+                                )
                             )
                             ELSE pc.name = ?
                         END
@@ -504,6 +528,14 @@ class MonthlyBranchController extends Controller
                                     pc.value = 'PRODUCT IMPORT' 
                                     AND p.name NOT LIKE '%BOHLAM%'
                                     AND psc.value = 'MIKA'
+                                )
+                                OR (
+                                    pc.value = 'PRODUCT IMPORT' 
+                                    AND (
+                                        p.name LIKE '%FILTER UDARA%'
+                                        OR p.name LIKE '%SWITCH REM%'
+                                        OR p.name LIKE '%DOP RITING%'
+                                    )
                                 )
                             )
                             ELSE pc.name = ?
