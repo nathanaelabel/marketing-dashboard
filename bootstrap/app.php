@@ -39,10 +39,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Return Comparison Cache Refresh
         // --------------------------------------------------------------------
-        // Refresh cache for current month daily at 06:00 WIB
-        // This ensures data for ongoing month is always up-to-date
-        // Past months remain cached for 24 hours (data is final)
-        $schedule->command('cache:warm-return-comparison --current')
+        // Refresh cache for last 3 months daily at 06:00 WIB
+        // This ensures recent data is always up-to-date
+        $schedule->command('cache:warm-return-comparison --last-3-months')
             ->dailyAt('06:00')
             ->timezone('Asia/Jakarta')
             ->sendOutputTo(storage_path('logs/cache-return-comparison.log'))
