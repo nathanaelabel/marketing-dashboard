@@ -2,10 +2,9 @@
 trigger: always_on
 ---
 
-Windsurf Rules – Laravel, Alpine.js, Tailwind CSS, MCP Server Context 7
+AI Assistance Rules
 
-You are an expert in the stack: Laravel, Alpine.js, and Tailwind CSS, with a strong emphasis on Laravel and PHP best practices.
-When documentation or the latest framework details are needed, leverage MCP Server Context 7 to access or verify up-to-date official references.
+You are an expert in Laravel, Alpine.js, and Tailwind CSS, with a strong emphasis on Laravel and PHP best practices. When documentation or the latest framework details are needed, use MCP Server Context 7 to access official references. When writing code, use // comments in Indonesian only for important points (no excessive commenting). Do not create any README (.md files) while writing codes unless explicitly requested.
 
 Key Principles
 
@@ -15,110 +14,111 @@ Key Principles
 -   Prefer iteration and modularization over duplication.
 -   Use descriptive variable and method/component names.
 -   Favor dependency injection and service containers.
--   When additional clarity or framework updates are required, consult MCP Server Context 7 for authoritative documentation.
--   Do not produce README or documentation unless explicitly asked.
+-   When additional clarity or framework updates are required, consult MCP Server Context 7.
+-   Do not produce documentation unless explicitly asked.
+-   When writing code, use minimal // comment in Bahasa Indonesia hanya pada bagian inti yang penting.
 
 PHP and Laravel Core
 
--   Use PHP 8.1+ features when appropriate (e.g., typed properties, match expressions).
+-   Use PHP 8.1+ features (typed properties, match expressions, etc.).
 -   Follow PSR-12 coding standards.
--   Use strict typing: declare(strict_types=1);
--   Utilize Laravel's built-in features and helpers when possible.
--   Follow Laravel's directory structure and naming conventions.
--   Use lowercase with dashes for directories (e.g., app/Http/Controllers).
+-   Use strict typing with declare(strict_types=1);
+-   Utilize Laravel built-in helpers and features.
+-   Follow Laravel directory structure and naming conventions.
+-   Use lowercase with dashes for directories.
 -   Implement proper error handling and logging:
-    -   Use Laravel's exception handling and logging features.
-    -   Create custom exceptions when necessary.
-    -   Use try-catch blocks for expected exceptions.
--   Use Laravel's validation features for form and request validation.
--   Implement middleware for request filtering and modification.
--   Utilize Laravel's Eloquent ORM for database interactions.
--   Use Laravel's query builder for complex database queries.
--   Implement proper database migrations and seeders.
+    -   Use Laravel exception handling.
+    -   Create custom exceptions when needed.
+    -   Use try-catch blocks for expected errors.
+-   Use Laravel validation and Form Request classes.
+-   Implement middleware for request filtering and preprocessing.
+-   Utilize Eloquent ORM for database interaction.
+-   Use Query Builder for advanced queries.
+-   Implement proper migrations and seeders.
 
 Laravel Best Practices
 
--   Use Eloquent ORM instead of raw SQL queries when possible.
--   Implement Repository pattern for data access layer.
--   Use Laravel's built-in authentication and authorization features.
--   Utilize Laravel's caching mechanisms for improved performance.
+-   Use Eloquent instead of raw SQL when possible.
+-   Implement Repository pattern for data access.
+-   Use built-in authentication and authorization features.
+-   Utilize Laravel caching for performance.
 -   Implement job queues for long-running tasks.
--   Use Laravel's built-in testing tools (PHPUnit, Pest) for unit and feature tests.
--   Implement API versioning for public APIs.
--   Use Laravel's localization features for multi-language support.
--   Implement proper CSRF protection and security measures.
--   Use Vite for modern frontend asset bundling and hot reloading.
--   Implement proper database indexing for improved query performance.
--   Use Laravel's built-in pagination features.
--   Implement proper error logging and monitoring.
+-   Use PHPUnit or Pest for testing.
+-   Implement API versioning.
+-   Use localization for multi-language apps.
+-   Implement CSRF protection.
+-   Use Vite for modern asset bundling.
+-   Optimize using database indexing.
+-   Use Laravel pagination.
+-   Implement proper logging and monitoring.
 
 Alpine.js Implementation
 
--   Use Alpine.js for lightweight interactivity on the frontend.
--   Keep components small and focused, using x-data, x-model, x-bind, and x-on effectively.
--   Prefer declarative bindings instead of imperative DOM manipulation.
--   Use Alpine stores for shared/global state management when needed.
--   Leverage x-cloak, x-show, and transitions for smooth UI experiences.
--   Keep business logic in Laravel, and use Alpine only for UI state and interactivity.
+-   Use Alpine.js for lightweight interactivity.
+-   Keep components small with x-data, x-model, x-bind, x-on.
+-   Prefer declarative binding instead of DOM manipulation.
+-   Use Alpine stores for shared state.
+-   Use x-cloak, x-show, transitions for better UX.
+-   Keep business logic in Laravel; Alpine only for UI state.
 
 Tailwind CSS Styling
 
--   Utilize Tailwind's utility classes for responsive design.
--   Implement a consistent color scheme and typography using Tailwind's configuration.
--   Use Tailwind's @apply directive in CSS files or <style> blocks for reusable component styles.
--   Optimize for production by purging unused CSS classes.
--   Apply transitions, animations, and hover states for a polished UI.
+-   Use Tailwind utility classes for responsive layout.
+-   Apply consistent colors and typography via Tailwind config.
+-   Use @apply in CSS or <style> blocks when needed.
+-   Purge unused CSS classes in production.
+-   Apply transitions, animations, hover states.
 
 Performance Optimization
 
--   Use Laravel's caching mechanisms for frequently accessed data.
--   Minimize database queries by eager loading relationships.
--   Implement pagination for large data sets.
--   Use Laravel's built-in scheduling features for recurring tasks.
--   Keep Alpine.js usage lightweight; avoid over-engineering interactivity.
--   When analyzing optimization techniques, cross-check performance best practices via MCP Server Context 7.
+-   Use Laravel caching for frequently accessed data.
+-   Reduce queries with eager loading.
+-   Implement pagination for heavy datasets.
+-   Use scheduler for recurring tasks.
+-   Keep Alpine.js usage lightweight.
+-   Validate performance best practices through MCP Server Context 7.
 
 Security Best Practices
 
 -   Always validate and sanitize user input.
--   Use Laravel's CSRF protection for all forms.
--   Implement proper authentication and authorization using Laravel's built-in features.
--   Use Laravel's prepared statements to prevent SQL injection.
--   Implement proper database transactions for data integrity.
--   Refer to the latest Laravel and PHP security advisories through MCP Server Context 7 when needed.
+-   Use Laravel CSRF protection.
+-   Use built-in authentication, policies, gates.
+-   Use prepared statements (Eloquent/Query Builder already safe).
+-   Use transactions for data integrity.
+-   Refer to Laravel/PHP security advisories via MCP Server Context 7.
 
 Using MCP Server Context 7 in Laravel Development Workflow
 
--   When implementing new Laravel features, always validate syntax, helper methods, or breaking changes through MCP Server Context 7 to ensure compliance with the latest Laravel documentation.
--   For optimization, testing, or deployment processes, query MCP Server Context 7 to cross-check the most current recommendations and official performance guidelines.
--   When encountering deprecations or unclear framework behavior, MCP Server Context 7 should serve as the authoritative source before relying on third-party articles or outdated tutorials.
--   During integration of Alpine.js or Tailwind CSS features, use MCP Server Context 7 to verify compatibility notes or configuration updates relevant to Laravel’s Vite pipeline.
+-   Validate syntax, helpers, or breaking changes via MCP server.
+-   Cross-check optimization, testing, deployment best practices.
+-   Resolve deprecations by referencing MCP before third-party guides.
+-   Verify Alpine.js, Tailwind, and Vite compatibility notes via MCP.
 
 Testing
 
--   Write unit tests for Laravel controllers and models.
--   Implement feature tests for endpoints and Blade responses.
--   Use Laravel Dusk or Cypress for end-to-end testing when necessary.
--   Keep Alpine.js logic simple enough that most testing is covered by Laravel + integration tests.
--   Consult MCP Server Context 7 for up-to-date testing best practices or new framework features.
+-   Write unit tests for controllers and models.
+-   Write feature tests for routes, endpoints, and Blade.
+-   Use Dusk or Cypress for end-to-end testing when needed.
+-   Keep Alpine.js logic simple so tests rely on backend integration.
+-   Consult MCP Server Context 7 for updated testing practices.
 
 Key Conventions
 
-1. Follow Laravel's MVC architecture.
-2. Use Laravel's routing system for defining application endpoints.
-3. Implement proper request validation using Form Requests.
-4. Use Blade + Alpine.js to build dynamic, reactive frontend interfaces.
-5. Implement proper database relationships using Eloquent.
-6. Use Laravel Breeze, Jetstream, or custom scaffolding for authentication.
-7. Implement proper API resource transformations and Blade responses.
-8. Use Laravel's event and listener system for decoupled code.
-9. Utilize MCP Server Context 7 for framework documentation, new syntax, or breaking changes verification.
+1. Follow Laravel MVC structure.
+2. Use Laravel routing for all endpoints.
+3. Use Form Request for validation.
+4. Build reactive UI using Blade + Alpine.js.
+5. Implement proper Eloquent relationships.
+6. Use Breeze, Jetstream, or custom scaffolding for authentication.
+7. Use API Resource and Blade response formatting.
+8. Use events and listeners for decoupling logic.
+9. Use MCP Server Context 7 to verify syntax, conventions, and new framework behavior.
 
 Dependencies
 
--   Laravel (latest stable version)
+-   Laravel (latest stable)
 -   Alpine.js
 -   Tailwind CSS
--   Vite for frontend tooling
--   MCP Server Context 7 (for documentation and framework reference)
--   Composer and NPM for dependency management
+-   Vite
+-   MCP Server Context 7
+-   Composer and NPM
