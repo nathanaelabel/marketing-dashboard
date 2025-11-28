@@ -15,10 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withSchedule(function (Schedule $schedule): void {
-        // Data Sync Scheduler - Cabang Utama (13 cabang)
+        // Data Sync Scheduler - Cabang Utama (12 cabang)
         // --------------------------------------------------------------------
         // Runs daily at 18:00 WIB for branches with 24-hour active servers
-        // TRG, BKS, JKT, LMP, CRB, BDG, MKS, SBY, SMG, PWT, DPS, PDG, MDN
+        // TRG, BKS, JKT, LMP, BDG, MKS, SBY, SMG, PWT, DPS, PDG, MDN
+        // Failed connections will be automatically queued for morning retry
         $schedule->command('app:sync-all')
             ->dailyAt('18:00')
             ->withoutOverlapping()
@@ -26,11 +27,11 @@ return Application::configure(basePath: dirname(__DIR__))
             ->sendOutputTo(storage_path('logs/sync-full.log'))
             ->appendOutputTo(storage_path('logs/sync-full.log'));
 
-        // Data Sync Scheduler - Cabang Pagi (4 cabang)
+        // Data Sync Scheduler - Cabang Pagi (5 cabang + retry failed dari sore)
         // --------------------------------------------------------------------
         // Runs daily at 09:00 WIB for branches with servers inactive at night
-        // BJM, PKU, PLB, PTK
-        $schedule->command('app:sync-all --sync-group=adempiere_morning')
+        // BJM, PKU, PLB, PTK, CRB + auto-retry failed connections from evening sync
+        $schedule->command('app:sync-all --sync-group=adempiere_morning --retry-failed')
             ->dailyAt('09:00')
             ->withoutOverlapping()
             ->timezone('Asia/Jakarta')

@@ -4,6 +4,7 @@ namespace App\Console\Commands\Production;
 
 use Illuminate\Console\Command;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Models\SyncBatch;
@@ -16,7 +17,8 @@ class SyncAllCommand extends Command
                            {--sync-group=adempiere : The sync connection group to use (adempiere or adempiere_morning)}
                            {--skip-step1 : Skip Step 1 (single-source tables sync)}
                            {--tables= : A comma-separated list of specific models to sync}
-                           {--resume= : Resume from a specific batch ID}';
+                           {--resume= : Resume from a specific batch ID}
+                           {--retry-failed : Retry failed connections from evening sync}';
     protected $description = 'Orchestrator for synchronizing all tables with insert/update mechanism from 17 branches';
 
     private ?SyncBatch $currentBatch = null;
@@ -34,7 +36,27 @@ class SyncAllCommand extends Command
         $specificTables = $this->option('tables') ? explode(',', $this->option('tables')) : [];
         $resumeBatchId = $this->option('resume');
         $syncGroup = $this->option('sync-group');
+        $retryFailed = $this->option('retry-failed');
         $connectionsToProcess = $targetConnection ? explode(',', $targetConnection) : config("database.sync_connections.{$syncGroup}", []);
+
+        // Jika retry-failed aktif, tambahkan koneksi yang gagal dari sync sore ke akhir queue
+        if ($retryFailed) {
+            $failedConnections = Cache::get('sync_failed_connections', []);
+            if (!empty($failedConnections)) {
+                $this->info("Found " . count($failedConnections) . " failed connection(s) from evening sync to retry.");
+                foreach ($failedConnections as $conn) {
+                    if (!in_array($conn, $connectionsToProcess)) {
+                        $connectionsToProcess[] = $conn;
+                        $this->info("  → Added [{$conn}] to retry queue");
+                    }
+                }
+                // Hapus cache setelah diambil
+                Cache::forget('sync_failed_connections');
+            } else {
+                $this->info("No failed connections from evening sync to retry.");
+            }
+            $this->line('');
+        }
 
         if ($resumeBatchId) {
             $this->currentBatch = SyncBatch::find($resumeBatchId);
@@ -228,6 +250,22 @@ class SyncAllCommand extends Command
         $this->info('====================================================================');
         $this->info('Production Adempiere Data Synchronization Process Completed');
         $this->info('====================================================================');
+
+        // Simpan koneksi yang gagal ke cache untuk retry di sync pagi (hanya untuk grup adempiere/sore)
+        if ($syncGroup === 'adempiere' && !empty($failedSyncs)) {
+            $failedConnectionNames = array_unique(array_keys($failedSyncs));
+            // Simpan ke cache dengan TTL 18 jam (cukup sampai sync pagi berikutnya)
+            Cache::put('sync_failed_connections', $failedConnectionNames, now()->addHours(18));
+            $this->line('');
+            $this->warn("⚠ " . count($failedConnectionNames) . " connection(s) failed and queued for morning retry:");
+            foreach ($failedConnectionNames as $connName) {
+                $this->warn("  → {$connName}");
+            }
+            Log::warning("SyncAll: Failed connections queued for morning retry", [
+                'connections' => $failedConnectionNames,
+                'batch_id' => $this->batchId
+            ]);
+        }
 
         $this->currentBatch->markAsCompleted();
         $this->info("Batch {$this->batchId} completed successfully.");

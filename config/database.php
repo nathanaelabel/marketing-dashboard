@@ -317,7 +317,6 @@ return [
             'pgsql_bks',
             'pgsql_jkt',
             'pgsql_lmp',
-            'pgsql_crb',
             'pgsql_bdg',
             'pgsql_mks',
             'pgsql_sby',
@@ -328,11 +327,13 @@ return [
             'pgsql_mdn',
         ],
         // Cabang dengan server tidak aktif malam hari - sync jam 09:00 WIB
+        // Juga menerima retry otomatis dari cabang yang gagal di sync sore
         'adempiere_morning' => [
             'pgsql_bjm',
             'pgsql_pku',
             'pgsql_plb',
             'pgsql_ptk',
+            'pgsql_crb',
         ],
     ],
 
