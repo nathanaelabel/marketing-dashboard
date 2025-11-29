@@ -154,6 +154,14 @@ class BranchGrowthController extends Controller
                                         AND prd.name NOT LIKE '%BOHLAM%'
                                         AND psc.value = 'MIKA'
                                     )
+                                    OR (
+                                        cat.value = 'PRODUCT IMPORT' 
+                                        AND (
+                                            prd.name LIKE '%FILTER UDARA%'
+                                            OR prd.name LIKE '%SWITCH REM%'
+                                            OR prd.name LIKE '%DOP RITING%'
+                                        )
+                                    )
                                 )
                                 ELSE cat.name = ?
                             END
@@ -201,6 +209,14 @@ class BranchGrowthController extends Controller
                                         cat.value = 'PRODUCT IMPORT' 
                                         AND prd.name NOT LIKE '%BOHLAM%'
                                         AND psc.value = 'MIKA'
+                                    )
+                                    OR (
+                                        cat.value = 'PRODUCT IMPORT' 
+                                        AND (
+                                            prd.name LIKE '%FILTER UDARA%'
+                                            OR prd.name LIKE '%SWITCH REM%'
+                                            OR prd.name LIKE '%DOP RITING%'
+                                        )
                                     )
                                 )
                                 ELSE cat.name = ?
@@ -417,6 +433,14 @@ class BranchGrowthController extends Controller
                                     AND prd.name NOT LIKE '%BOHLAM%'
                                     AND psc.value = 'MIKA'
                                 )
+                                OR (
+                                    cat.value = 'PRODUCT IMPORT' 
+                                    AND (
+                                        prd.name LIKE '%FILTER UDARA%'
+                                        OR prd.name LIKE '%SWITCH REM%'
+                                        OR prd.name LIKE '%DOP RITING%'
+                                    )
+                                )
                             )
                             ELSE cat.name = ?
                         END
@@ -563,6 +587,14 @@ class BranchGrowthController extends Controller
                                     AND prd.name NOT LIKE '%BOHLAM%'
                                     AND psc.value = 'MIKA'
                                 )
+                                OR (
+                                    cat.value = 'PRODUCT IMPORT' 
+                                    AND (
+                                        prd.name LIKE '%FILTER UDARA%'
+                                        OR prd.name LIKE '%SWITCH REM%'
+                                        OR prd.name LIKE '%DOP RITING%'
+                                    )
+                                )
                             )
                             ELSE cat.name = ?
                         END
@@ -609,6 +641,14 @@ class BranchGrowthController extends Controller
                                     cat.value = 'PRODUCT IMPORT' 
                                     AND prd.name NOT LIKE '%BOHLAM%'
                                     AND psc.value = 'MIKA'
+                                )
+                                OR (
+                                    cat.value = 'PRODUCT IMPORT' 
+                                    AND (
+                                        prd.name LIKE '%FILTER UDARA%'
+                                        OR prd.name LIKE '%SWITCH REM%'
+                                        OR prd.name LIKE '%DOP RITING%'
+                                    )
                                 )
                             )
                             ELSE cat.name = ?
@@ -890,6 +930,14 @@ class BranchGrowthController extends Controller
                                     AND prd.name NOT LIKE '%BOHLAM%'
                                     AND psc.value = 'MIKA'
                                 )
+                                OR (
+                                    cat.value = 'PRODUCT IMPORT' 
+                                    AND (
+                                        prd.name LIKE '%FILTER UDARA%'
+                                        OR prd.name LIKE '%SWITCH REM%'
+                                        OR prd.name LIKE '%DOP RITING%'
+                                    )
+                                )
                             )
                             ELSE cat.name = ?
                         END
@@ -936,6 +984,14 @@ class BranchGrowthController extends Controller
                                     cat.value = 'PRODUCT IMPORT' 
                                     AND prd.name NOT LIKE '%BOHLAM%'
                                     AND psc.value = 'MIKA'
+                                )
+                                OR (
+                                    cat.value = 'PRODUCT IMPORT' 
+                                    AND (
+                                        prd.name LIKE '%FILTER UDARA%'
+                                        OR prd.name LIKE '%SWITCH REM%'
+                                        OR prd.name LIKE '%DOP RITING%'
+                                    )
                                 )
                             )
                             ELSE cat.name = ?
