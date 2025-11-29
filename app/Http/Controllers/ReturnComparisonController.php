@@ -232,6 +232,14 @@ class ReturnComparisonController extends Controller
                         AND p.name NOT LIKE '%BOHLAM%'
                         AND psc.value = 'MIKA'
                     )
+                    OR (
+                        pc.value = 'PRODUCT IMPORT' 
+                        AND (
+                            p.name LIKE '%FILTER UDARA%'
+                            OR p.name LIKE '%SWITCH REM%'
+                            OR p.name LIKE '%DOP RITING%'
+                        )
+                    )
                 )
                 AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
             GROUP BY org.name
@@ -277,6 +285,14 @@ class ReturnComparisonController extends Controller
                         AND prd.name NOT LIKE '%BOHLAM%'
                         AND psc.value = 'MIKA'
                     )
+                    OR (
+                        cat.value = 'PRODUCT IMPORT' 
+                        AND (
+                            prd.name LIKE '%FILTER UDARA%'
+                            OR prd.name LIKE '%SWITCH REM%'
+                            OR prd.name LIKE '%DOP RITING%'
+                        )
+                    )
                 )
                 AND (
                     loc.value LIKE 'Gudang Rusak%' 
@@ -312,20 +328,12 @@ class ReturnComparisonController extends Controller
             INNER JOIN c_order co ON col.c_order_id = co.c_order_id
             INNER JOIN m_product prd ON col.m_product_id = prd.m_product_id
             INNER JOIN m_product_category pc ON prd.m_product_category_id = pc.m_product_category_id
-            LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
             INNER JOIN ad_org org ON miol.ad_org_id = org.ad_org_id
             WHERE co.documentno LIKE 'SOC%'
                 AND co.docstatus = 'CL'
                 AND mio.documentno LIKE 'SJC%'
                 AND mio.docstatus IN ('CO', 'CL')
-                AND (
-                    pc.value = 'MIKA'
-                    OR (
-                        pc.value = 'PRODUCT IMPORT' 
-                        AND prd.name NOT LIKE '%BOHLAM%'
-                        AND psc.value = 'MIKA'
-                    )
-                )
+                AND pc.value = 'MIKA'
                 AND EXTRACT(year FROM mio.movementdate) = ?
                 AND EXTRACT(month FROM mio.movementdate) = ?
                 AND NOT EXISTS (
@@ -372,6 +380,14 @@ class ReturnComparisonController extends Controller
                         pc.value = 'PRODUCT IMPORT' 
                         AND prd.name NOT LIKE '%BOHLAM%'
                         AND psc.value = 'MIKA'
+                    )
+                    OR (
+                        pc.value = 'PRODUCT IMPORT' 
+                        AND (
+                            prd.name LIKE '%FILTER UDARA%'
+                            OR prd.name LIKE '%SWITCH REM%'
+                            OR prd.name LIKE '%DOP RITING%'
+                        )
                     )
                 )
                 AND EXTRACT(year FROM inv.dateinvoiced) = ?

@@ -271,7 +271,7 @@ class SalesComparisonController extends Controller
                 SELECT
                     -- STOK MIKA
                     COALESCE(SUM(CASE 
-                        WHEN (cat.value = 'MIKA' OR (cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA'))
+                        WHEN (cat.value = 'MIKA' OR (cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA') OR (cat.value = 'PRODUCT IMPORT' AND (prd.name LIKE '%FILTER UDARA%' OR prd.name LIKE '%SWITCH REM%' OR prd.name LIKE '%DOP RITING%')))
                         THEN stock_qty.qty_onhand * prc.pricelist * 0.615 
                         ELSE 0 
                     END), 0) AS stok_mika,
@@ -302,6 +302,14 @@ class SalesComparisonController extends Controller
                             AND prd.name NOT LIKE '%BOHLAM%'
                             AND psc.value = 'MIKA'
                         )
+                        OR (
+                            cat.value = 'PRODUCT IMPORT' 
+                            AND (
+                                prd.name LIKE '%FILTER UDARA%'
+                                OR prd.name LIKE '%SWITCH REM%'
+                                OR prd.name LIKE '%DOP RITING%'
+                            )
+                        )
                     )
                     AND plv.m_pricelist_version_id = ?
                     AND org.name = ?
@@ -316,7 +324,7 @@ class SalesComparisonController extends Controller
                 SELECT
                     -- BDP MIKA
                     COALESCE(SUM(CASE 
-                        WHEN (cat.value = 'MIKA' OR (cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA'))
+                        WHEN (cat.value = 'MIKA' OR (cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA') OR (cat.value = 'PRODUCT IMPORT' AND (prd.name LIKE '%FILTER UDARA%' OR prd.name LIKE '%SWITCH REM%' OR prd.name LIKE '%DOP RITING%')))
                         THEN (d.qtyinvoiced - COALESCE(match_qty.qtymr, 0)) * d.priceactual
                         ELSE 0 
                     END), 0) AS bdp_mika,
@@ -420,8 +428,6 @@ class SalesComparisonController extends Controller
                 AND invl.linenetamt > 0
                 AND inv.docstatus IN ('CO', 'CL')
                 AND inv.isactive = 'Y'
-                AND inv.dateinvoiced >= ?
-                AND inv.dateinvoiced <= ?
                 AND inv.documentno LIKE 'INC%'
                 AND (
                     cat.value = 'MIKA'
@@ -429,6 +435,14 @@ class SalesComparisonController extends Controller
                         cat.value = 'PRODUCT IMPORT' 
                         AND prd.name NOT LIKE '%BOHLAM%'
                         AND psc.value = 'MIKA'
+                    )
+                    OR (
+                        cat.value = 'PRODUCT IMPORT' 
+                        AND (
+                            prd.name LIKE '%FILTER UDARA%'
+                            OR prd.name LIKE '%SWITCH REM%'
+                            OR prd.name LIKE '%DOP RITING%'
+                        )
                     )
                 )
                 AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
@@ -541,6 +555,14 @@ class SalesComparisonController extends Controller
                             AND prd.name NOT LIKE '%BOHLAM%'
                             AND psc.value = 'MIKA'
                         )
+                        OR (
+                            cat.value = 'PRODUCT IMPORT' 
+                            AND (
+                                prd.name LIKE '%FILTER UDARA%'
+                                OR prd.name LIKE '%SWITCH REM%'
+                                OR prd.name LIKE '%DOP RITING%'
+                            )
+                        )
                     )
                     AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
                     AND org.name = ?
@@ -572,7 +594,7 @@ class SalesComparisonController extends Controller
                     AND inv.issotrx = 'Y'
                     AND invl.qtyinvoiced > 0
                     AND invl.linenetamt > 0
-                    AND cat.value = 'SPARE PART'
+                    AND cat.name = 'SPARE PART'
                     AND inv.docstatus IN ('CO', 'CL')
                     AND inv.isactive = 'Y'
                     AND org.name = ?
@@ -613,6 +635,14 @@ class SalesComparisonController extends Controller
                             cat.value = 'PRODUCT IMPORT' 
                             AND prd.name NOT LIKE '%BOHLAM%'
                             AND psc.value = 'MIKA'
+                        )
+                        OR (
+                            cat.value = 'PRODUCT IMPORT' 
+                            AND (
+                                prd.name LIKE '%FILTER UDARA%'
+                                OR prd.name LIKE '%SWITCH REM%'
+                                OR prd.name LIKE '%DOP RITING%'
+                            )
                         )
                     )
                     AND plv.m_pricelist_version_id = ?
@@ -687,6 +717,14 @@ class SalesComparisonController extends Controller
                                     cat.value = 'PRODUCT IMPORT' 
                                     AND prd.name NOT LIKE '%BOHLAM%'
                                     AND psc.value = 'MIKA'
+                                )
+                                OR (
+                                    cat.value = 'PRODUCT IMPORT' 
+                                    AND (
+                                        prd.name LIKE '%FILTER UDARA%'
+                                        OR prd.name LIKE '%SWITCH REM%'
+                                        OR prd.name LIKE '%DOP RITING%'
+                                    )
                                 )
                             )
                             AND h.dateinvoiced >= ?

@@ -103,6 +103,7 @@ class CategoryItemController extends Controller
                 DB::raw("CASE 
                     WHEN cat.value = 'MIKA' THEN 'MIKA'
                     WHEN cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA' THEN 'MIKA'
+                    WHEN cat.value = 'PRODUCT IMPORT' AND (prd.name LIKE '%FILTER UDARA%' OR prd.name LIKE '%SWITCH REM%' OR prd.name LIKE '%DOP RITING%') THEN 'MIKA'
                     ELSE cat.name 
                 END as category"),
                 DB::raw('SUM(CASE
@@ -119,6 +120,7 @@ class CategoryItemController extends Controller
                 DB::raw("CASE 
                     WHEN cat.value = 'MIKA' THEN 'MIKA'
                     WHEN cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA' THEN 'MIKA'
+                    WHEN cat.value = 'PRODUCT IMPORT' AND (prd.name LIKE '%FILTER UDARA%' OR prd.name LIKE '%SWITCH REM%' OR prd.name LIKE '%DOP RITING%') THEN 'MIKA'
                     ELSE cat.name 
                 END as category"),
                 DB::raw('SUM(d.linenetamt) as total_revenue')
@@ -130,6 +132,7 @@ class CategoryItemController extends Controller
         $dataQuery->groupBy('org.name', DB::raw("CASE 
             WHEN cat.value = 'MIKA' THEN 'MIKA'
             WHEN cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA' THEN 'MIKA'
+            WHEN cat.value = 'PRODUCT IMPORT' AND (prd.name LIKE '%FILTER UDARA%' OR prd.name LIKE '%SWITCH REM%' OR prd.name LIKE '%DOP RITING%') THEN 'MIKA'
             ELSE cat.name 
         END"));
 
@@ -226,6 +229,7 @@ class CategoryItemController extends Controller
                 DB::raw("CASE 
                     WHEN cat.value = 'MIKA' THEN 'MIKA'
                     WHEN cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA' THEN 'MIKA'
+                    WHEN cat.value = 'PRODUCT IMPORT' AND (prd.name LIKE '%FILTER UDARA%' OR prd.name LIKE '%SWITCH REM%' OR prd.name LIKE '%DOP RITING%') THEN 'MIKA'
                     ELSE cat.name 
                 END as category"),
                 DB::raw('SUM(CASE
@@ -242,6 +246,7 @@ class CategoryItemController extends Controller
                 DB::raw("CASE 
                     WHEN cat.value = 'MIKA' THEN 'MIKA'
                     WHEN cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA' THEN 'MIKA'
+                    WHEN cat.value = 'PRODUCT IMPORT' AND (prd.name LIKE '%FILTER UDARA%' OR prd.name LIKE '%SWITCH REM%' OR prd.name LIKE '%DOP RITING%') THEN 'MIKA'
                     ELSE cat.name 
                 END as category"),
                 DB::raw('SUM(d.linenetamt) as total_revenue')
@@ -445,6 +450,7 @@ class CategoryItemController extends Controller
                 DB::raw("CASE 
                     WHEN cat.value = 'MIKA' THEN 'MIKA'
                     WHEN cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA' THEN 'MIKA'
+                    WHEN cat.value = 'PRODUCT IMPORT' AND (prd.name LIKE '%FILTER UDARA%' OR prd.name LIKE '%SWITCH REM%' OR prd.name LIKE '%DOP RITING%') THEN 'MIKA'
                     ELSE cat.name 
                 END as category"),
                 DB::raw('SUM(CASE
@@ -461,6 +467,7 @@ class CategoryItemController extends Controller
                 DB::raw("CASE 
                     WHEN cat.value = 'MIKA' THEN 'MIKA'
                     WHEN cat.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA' THEN 'MIKA'
+                    WHEN cat.value = 'PRODUCT IMPORT' AND (prd.name LIKE '%FILTER UDARA%' OR prd.name LIKE '%SWITCH REM%' OR prd.name LIKE '%DOP RITING%') THEN 'MIKA'
                     ELSE cat.name 
                 END as category"),
                 DB::raw('SUM(d.linenetamt) as total_revenue')
