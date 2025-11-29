@@ -13,35 +13,128 @@ class SalesComparisonController extends Controller
 {
     private function getBranchConfig()
     {
-        $query = "
-            SELECT 
-                org.name AS branch_name,
-                plv.m_pricelist_version_id,
-                loc.m_locator_id
-            FROM m_locator loc
-            INNER JOIN ad_org org ON loc.ad_org_id = org.ad_org_id
-            LEFT JOIN m_pricelist_version plv ON plv.ad_org_id = org.ad_org_id 
-                AND plv.isactive = 'Y'
-                AND UPPER(plv.name) LIKE '%PURCHASE%'
-            WHERE loc.ad_client_id = 1000001
-                AND loc.isactive = 'Y'
-                AND org.isactive = 'Y'
-                AND org.name NOT LIKE '%HEAD OFFICE%'
-                AND plv.m_pricelist_version_id IS NOT NULL
-            ORDER BY org.name
-        ";
-
-        $results = DB::select($query);
-
-        $config = [];
-        foreach ($results as $row) {
-            $config[$row->branch_name] = [
-                'pricelist_version_id' => $row->m_pricelist_version_id,
-                'locator_id' => $row->m_locator_id,
-            ];
-        }
-
-        return $config;
+        // Hard-coded branch configuration
+        return [
+            'PWM Surabaya' => [
+                'code' => 'SBY',
+                'locator_id' => 1000011,
+                'locator_value' => 'Gudang PWM SBY',
+                'pricelist_version_id' => 110000004,
+                'pricelist_name' => '20061101SBY-Purchase01',
+            ],
+            'PWM Jakarta' => [
+                'code' => 'JKT',
+                'locator_id' => 1000006,
+                'locator_value' => 'Gudang PWM JKT',
+                'pricelist_version_id' => 10000001,
+                'pricelist_name' => '20060629JKT-Purchase',
+            ],
+            'PWM Bandung' => [
+                'code' => 'BDG',
+                'locator_id' => 1000003,
+                'locator_value' => 'Gudang PWM BDG',
+                'pricelist_version_id' => 20000006,
+                'pricelist_name' => '20061101BDG-Purchase01',
+            ],
+            'PWM Semarang' => [
+                'code' => 'SMG',
+                'locator_id' => 1000012,
+                'locator_value' => 'Gudang PWM SMG',
+                'pricelist_version_id' => 30000007,
+                'pricelist_name' => '20061101SMG-Purchase01',
+            ],
+            'PWM Medan' => [
+                'code' => 'MDN',
+                'locator_id' => 1000007,
+                'locator_value' => 'Gudang PWM MDN',
+                'pricelist_version_id' => 40000000,
+                'pricelist_name' => '20060628MDN-Purchase',
+            ],
+            'PWM Palembang' => [
+                'code' => 'PLB',
+                'locator_id' => 1000009,
+                'locator_value' => 'Gudang PWM PLB',
+                'pricelist_version_id' => 50000004,
+                'pricelist_name' => '20060628PLB-Purchase',
+            ],
+            'PWM Banjarmasin' => [
+                'code' => 'BJM',
+                'locator_id' => 1000004,
+                'locator_value' => 'Gudang PWM BJM',
+                'pricelist_version_id' => 60000004,
+                'pricelist_name' => '20060628BJM-Purchase',
+            ],
+            'PWM Denpasar' => [
+                'code' => 'DPS',
+                'locator_id' => 1000005,
+                'locator_value' => 'Gudang PWM DPS',
+                'pricelist_version_id' => 70000000,
+                'pricelist_name' => '20060422DPS-Purchase',
+            ],
+            'PWM Makassar' => [
+                'code' => 'MKS',
+                'locator_id' => 1000002,
+                'locator_value' => 'Gudang PM',
+                'pricelist_version_id' => 80000007,
+                'pricelist_name' => '20061101MKS-Purchase01',
+            ],
+            'PWM Pekanbaru' => [
+                'code' => 'PKU',
+                'locator_id' => 1000008,
+                'locator_value' => 'Gudang PWM PKU',
+                'pricelist_version_id' => 90000000,
+                'pricelist_name' => '20070301PKU-Purchase',
+            ],
+            'PWM Pontianak' => [
+                'code' => 'PTK',
+                'locator_id' => 1000010,
+                'locator_value' => 'Gudang PWM PTK',
+                'pricelist_version_id' => 120000004,
+                'pricelist_name' => '20061101PTK-Purchase01',
+            ],
+            'PWM Cirebon' => [
+                'code' => 'CRB',
+                'locator_id' => 1000046,
+                'locator_value' => 'Gudang PWM CRB',
+                'pricelist_version_id' => 130000000,
+                'pricelist_name' => '20110316 CRB-Purchase',
+            ],
+            'PWM Padang' => [
+                'code' => 'PDG',
+                'locator_id' => 1000051,
+                'locator_value' => 'Gudang PWM PDG',
+                'pricelist_version_id' => 140000001,
+                'pricelist_name' => '20110316 PDG-Purchase',
+            ],
+            'PWM Purwokerto' => [
+                'code' => 'PWT',
+                'locator_id' => 1000055,
+                'locator_value' => 'Gudang PWM PWT',
+                'pricelist_version_id' => 150000001,
+                'pricelist_name' => '20110316 PWT-Purchase',
+            ],
+            'PWM Bekasi' => [
+                'code' => 'BKS',
+                'locator_id' => 1000059,
+                'locator_value' => 'Gudang PM ABG',
+                'pricelist_version_id' => 160000001,
+                'pricelist_name' => 'BKS-Purchase',
+            ],
+            'MPM Tangerang' => [
+                'code' => 'TGR',
+                'locator_id' => 1000065,
+                'locator_value' => 'Gudang PWM MPM',
+                'pricelist_version_id' => 170000000,
+                'pricelist_name' => 'MPM-Purchase',
+            ],
+            'PWM Lampung' => [
+                'code' => 'LMP',
+                'locator_id' => 1000069,
+                'locator_value' => 'Gudang PWM LMP',
+                'pricelist_version_id' => 180000000,
+                'pricelist_name' => 'Lampung-Purchase',
+            ],
+        ];
     }
 
     public function index()
@@ -266,7 +359,7 @@ class SalesComparisonController extends Controller
             $pricelistVersionId = $config['pricelist_version_id'];
             $locatorId = $config['locator_id'];
 
-            // Query STOK - Gabungan MIKA dan SPARE PART
+            // Query STOK - Gabungan MIKA dan SPARE PART (tanpa filter org.name karena sudah spesifik via locator_id dan pricelist_version_id)
             $combinedQuery = "
                 SELECT
                     -- STOK MIKA
@@ -287,7 +380,6 @@ class SalesComparisonController extends Controller
                 LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
                 INNER JOIN m_productprice prc ON prd.m_product_id = prc.m_product_id
                 INNER JOIN m_pricelist_version plv ON plv.m_pricelist_version_id = prc.m_pricelist_version_id
-                INNER JOIN ad_org org ON plv.ad_org_id = org.ad_org_id
                 LEFT JOIN (
                     SELECT st.m_product_id, SUM(st.qtyonhand) AS qty_onhand
                     FROM m_storage st
@@ -310,16 +402,16 @@ class SalesComparisonController extends Controller
                                 OR prd.name LIKE '%DOP RITING%'
                             )
                         )
+                        OR cat.name = 'SPARE PART'
                     )
                     AND plv.m_pricelist_version_id = ?
-                    AND org.name = ?
             ";
 
-            $stockData = DB::connection($connectionName)->selectOne($combinedQuery, [$locatorId, $pricelistVersionId, $branchName]);
+            $stockData = DB::connection($connectionName)->selectOne($combinedQuery, [$locatorId, $pricelistVersionId]);
             $stokMika = $stockData ? (float)$stockData->stok_mika : 0;
             $stokSparepart = $stockData ? (float)$stockData->stok_sparepart : 0;
 
-            // Query BDP - Gabungan MIKA dan SPARE PART
+            // Query BDP - Gabungan MIKA dan SPARE PART (tanpa filter org.name karena query ke database cabang spesifik)
             $bdpQuery = "
                 SELECT
                     -- BDP MIKA
@@ -346,16 +438,14 @@ class SalesComparisonController extends Controller
                 INNER JOIN m_product prd ON d.m_product_id = prd.m_product_id
                 INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
                 LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
-                INNER JOIN ad_org org ON h.ad_org_id = org.ad_org_id
                 WHERE h.documentno LIKE 'INS-%'
                     AND h.docstatus = 'CO'
                     AND h.issotrx = 'N'
-                    AND org.name = ?
                     AND h.dateinvoiced::date <= ?::date
                     AND d.qtyinvoiced <> COALESCE(match_qty.qtymr, 0)
             ";
 
-            $bdpData = DB::connection($connectionName)->selectOne($bdpQuery, [$stokBdpDate, $branchName, $stokBdpDate]);
+            $bdpData = DB::connection($connectionName)->selectOne($bdpQuery, [$stokBdpDate, $stokBdpDate]);
             $bdpMika = $bdpData ? (float)$bdpData->bdp_mika : 0;
             $bdpSparepart = $bdpData ? (float)$bdpData->bdp_sparepart : 0;
 
@@ -446,14 +536,40 @@ class SalesComparisonController extends Controller
                     )
                 )
                 AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
+                AND inv.dateinvoiced >= ?
+                AND inv.dateinvoiced <= ?
             GROUP BY org.name
         ";
 
         $salesMikaData = DB::select($salesMikaQuery, [$salesDateStart, $salesDateEnd]);
 
+        // Mapping nama org dari database ke nama branchConfig
+        $orgNameMapping = [
+            'MPM Tangerang' => 'MPM Tangerang',
+            'PM Bekasi' => 'PWM Bekasi',
+            'PWM Bekasi' => 'PWM Bekasi',
+            'PWM Jakarta' => 'PWM Jakarta',
+            'PWM Pontianak' => 'PWM Pontianak',
+            'PWM Lampung' => 'PWM Lampung',
+            'PWM Banjarmasin' => 'PWM Banjarmasin',
+            'PWM Cirebon' => 'PWM Cirebon',
+            'PWM Bandung' => 'PWM Bandung',
+            'PM Makassar' => 'PWM Makassar',
+            'PWM Makassar' => 'PWM Makassar',
+            'PWM Surabaya' => 'PWM Surabaya',
+            'PWM Semarang' => 'PWM Semarang',
+            'PWM Purwokerto' => 'PWM Purwokerto',
+            'PWM Denpasar' => 'PWM Denpasar',
+            'PWM Palembang' => 'PWM Palembang',
+            'PWM Padang' => 'PWM Padang',
+            'PWM Medan' => 'PWM Medan',
+            'PWM Pekanbaru' => 'PWM Pekanbaru',
+        ];
+
         foreach ($salesMikaData as $row) {
-            if (isset($results[$row->branch_name])) {
-                $results[$row->branch_name]['sales_mika'] = (float)$row->total_sales;
+            $mappedName = $orgNameMapping[$row->branch_name] ?? $row->branch_name;
+            if (isset($results[$mappedName])) {
+                $results[$mappedName]['sales_mika'] = (float)$row->total_sales;
             }
         }
 
@@ -485,8 +601,9 @@ class SalesComparisonController extends Controller
         $salesSparepartData = DB::select($salesSparepartQuery, [$salesDateStart, $salesDateEnd]);
 
         foreach ($salesSparepartData as $row) {
-            if (isset($results[$row->branch_name])) {
-                $results[$row->branch_name]['sales_sparepart'] = (float)$row->total_sales;
+            $mappedName = $orgNameMapping[$row->branch_name] ?? $row->branch_name;
+            if (isset($results[$mappedName])) {
+                $results[$mappedName]['sales_sparepart'] = (float)$row->total_sales;
             }
         }
 
