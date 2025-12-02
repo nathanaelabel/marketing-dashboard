@@ -76,8 +76,8 @@ class ReturnComparisonController extends Controller
                     'branchMapping' => $branchMapping,
                 ];
 
-                // Durasi cache: 24 jam untuk menjamin akses cepat antara 06:00–19:00 WIB
-                $cacheDuration = 86400; // 24 hours
+                // Durasi cache 24 jam
+                $cacheDuration = 86400;
 
                 Cache::put($cacheKey, $cachedData, $cacheDuration);
                 Log::info("ReturnComparison: Data cached for {$year}-{$month} with duration 24 hours");
