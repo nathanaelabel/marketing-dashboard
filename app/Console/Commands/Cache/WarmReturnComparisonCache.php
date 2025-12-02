@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Cache;
 
 use Illuminate\Console\Command;
 use Illuminate\Http\Request;
@@ -73,6 +73,11 @@ class WarmReturnComparisonCache extends Command
             $month = $date->month;
             $year = $date->year;
 
+            // Hapus cache lama sebelum warming untuk memastikan data fresh
+            $cacheKey = "return_comparison_{$year}_{$month}";
+            Cache::forget($cacheKey);
+            $this->line("  → Cache cleared for {$month}/{$year}");
+
             $result = $this->warmSpecificMonth($month, $year, false);
 
             if ($result === Command::SUCCESS) {
@@ -91,6 +96,11 @@ class WarmReturnComparisonCache extends Command
     {
         if ($showHeader) {
             $this->info("Warming up cache for Return Comparison: Month={$month}, Year={$year}");
+
+            // Jika dipanggil langsung (bukan dari warmLastMonths), hapus cache dulu
+            $cacheKey = "return_comparison_{$year}_{$month}";
+            Cache::forget($cacheKey);
+            $this->line("  → Cache cleared");
         } else {
             $this->line("  → Processing {$month}/{$year}...");
         }

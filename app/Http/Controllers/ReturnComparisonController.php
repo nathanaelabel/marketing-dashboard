@@ -34,35 +34,17 @@ class ReturnComparisonController extends Controller
 
             // Buat cache key berdasarkan bulan dan tahun
             $cacheKey = "return_comparison_{$year}_{$month}";
-            $checksumKey = "return_comparison_checksum_{$year}_{$month}";
 
-            // Durasi cache berdasarkan apakah bulan berjalan atau bulan lalu
-            $currentMonth = (int)date('n');
-            $currentYear = (int)date('Y');
-            $isCurrentMonth = ($month == $currentMonth && $year == $currentYear);
+            // Cek apakah cache sudah ada - jika ada, langsung return tanpa query tambahan
+            $cachedData = Cache::get($cacheKey);
+            if ($cachedData !== null) {
+                Log::info("ReturnComparison: Cache hit for {$year}-{$month}, returning cached data");
+            } else {
+                // Cache tidak ada, ambil data baru
+                Log::info("ReturnComparison: Cache miss for {$year}-{$month}, fetching fresh data");
 
-            // Bulan berjalan: cache 1 jam, bulan lalu: cache 24 jam dengan validasi checksum
-            $cacheDuration = $isCurrentMonth ? 3600 : 86400;
-
-            // Cek apakah data berubah dengan membandingkan checksum
-            $currentChecksum = $this->calculateDataChecksum($month, $year);
-            $cachedChecksum = Cache::get($checksumKey);
-
-            if ($cachedChecksum && $cachedChecksum !== $currentChecksum) {
-                // Data berubah, invalidasi cache
-                Cache::forget($cacheKey);
-                Cache::forget($checksumKey);
-                Log::info("ReturnComparison: Data changed for {$year}-{$month}, cache invalidated");
-            }
-
-            Log::info("ReturnComparison: Cache duration for {$year}-{$month}: " .
-                ($isCurrentMonth ? "1 hour (current month)" : "24 hours (past month, checksum validated)"));
-
-            // Coba ambil data dari cache
-            $cachedData = Cache::remember($cacheKey, $cacheDuration, function () use ($month, $year, $checksumKey, $currentChecksum, $cacheDuration) {
                 $branchMapping = TableHelper::getBranchMapping();
 
-                // Ambil semua data dalam query tunggal (dioptimasi)
                 $startTime = microtime(true);
                 $salesBrutoData = $this->getAllSalesBruto($month, $year);
                 $salesBrutoTime = round((microtime(true) - $startTime) * 1000, 2);
@@ -86,17 +68,20 @@ class ReturnComparisonController extends Controller
                 $totalTime = $salesBrutoTime + $cncTime + $barangTime + $cabangPabrikTime;
                 Log::info("ReturnComparison: Total query time {$totalTime}ms for month={$month}, year={$year}");
 
-                // Tingkatkan batas waktu eksekusi untuk operasi export
-                Cache::put($checksumKey, $currentChecksum, $cacheDuration);
-
-                return [
+                $cachedData = [
                     'salesBrutoData' => $salesBrutoData,
                     'cncData' => $cncData,
                     'barangData' => $barangData,
                     'cabangPabrikData' => $cabangPabrikData,
                     'branchMapping' => $branchMapping,
                 ];
-            });
+
+                // Durasi cache: 24 jam untuk menjamin akses cepat antara 06:00–19:00 WIB
+                $cacheDuration = 86400; // 24 hours
+
+                Cache::put($cacheKey, $cachedData, $cacheDuration);
+                Log::info("ReturnComparison: Data cached for {$year}-{$month} with duration 24 hours");
+            }
 
             // Ekstrak data dari cache
             $salesBrutoData = $cachedData['salesBrutoData'];
@@ -1111,47 +1096,6 @@ class ReturnComparisonController extends Controller
                 ["error" => "Failed to clear cache"],
                 500,
             );
-        }
-    }
-
-    private function calculateDataChecksum($month, $year)
-    {
-        try {
-            $query = "
-                SELECT 
-                    COUNT(*) as total_records,
-                    COALESCE(SUM(invl.linenetamt), 0) as total_amount,
-                    MAX(inv.updated) as last_updated
-                FROM c_invoice inv
-                INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
-                WHERE inv.ad_client_id = 1000001
-                    AND inv.isactive = 'Y'
-                    AND inv.docstatus IN ('CO', 'CL')
-                    AND EXTRACT(year FROM inv.dateinvoiced) = ?
-                    AND EXTRACT(month FROM inv.dateinvoiced) = ?
-                    AND (
-                        inv.documentno LIKE 'INC%' 
-                        OR inv.documentno LIKE 'CNC%'
-                        OR inv.documentno LIKE 'DNS-%'
-                    )
-            ";
-
-            $result = DB::selectOne($query, [$year, $month]);
-
-            $checksumData = [
-                'records' => $result->total_records ?? 0,
-                'amount' => $result->total_amount ?? 0,
-                'updated' => $result->last_updated ?? '',
-            ];
-
-            $checksum = md5(json_encode($checksumData));
-
-            Log::debug("ReturnComparison: Checksum for {$year}-{$month}: {$checksum}", $checksumData);
-
-            return $checksum;
-        } catch (\Exception $e) {
-            Log::error("ReturnComparison: Failed to calculate checksum: " . $e->getMessage());
-            return md5($year . $month . date('YmdH'));
         }
     }
 }
