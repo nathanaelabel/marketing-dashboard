@@ -390,50 +390,95 @@ p_month;
 -- Step 2: Query Data Cabang Pabrik
 -- ================================
 RETURN QUERY
-SELECT
-    org.name :: VARCHAR as branch_name,
-    COALESCE(SUM(invl.qtyinvoiced), 0) :: NUMERIC as total_qty,
-    COALESCE(SUM(invl.linenetamt), 0) :: NUMERIC as total_nominal
-FROM
-    c_invoiceline invl
+WITH combined_data AS (
+    -- Query 1: DNS (Debit Note Supplier) - Data existing
+    SELECT
+        org.name as branch_name,
+        invl.qtyinvoiced as qty,
+        invl.linenetamt as nominal
+    FROM c_invoiceline invl
     INNER JOIN c_invoice inv ON invl.c_invoice_id = inv.c_invoice_id
     INNER JOIN m_product prd ON invl.m_product_id = prd.m_product_id
     INNER JOIN m_product_category pc ON prd.m_product_category_id = pc.m_product_category_id
     LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
     INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
-WHERE
-    inv.issotrx = 'N'
-    AND inv.docstatus IN ('CO', 'CL')
-    AND inv.isactive = 'Y'
-    AND inv.documentno LIKE 'DNS-%'
-    AND (
-        pc.value = 'MIKA'
-        OR (
-            pc.value = 'PRODUCT IMPORT'
-            AND prd.name NOT LIKE '%BOHLAM%'
-            AND psc.value = 'MIKA'
+    WHERE inv.issotrx = 'N'
+        AND inv.docstatus IN ('CO', 'CL')
+        AND inv.isactive = 'Y'
+        AND inv.documentno LIKE 'DNS-%'
+        AND (
+            pc.value = 'MIKA'
+            OR (pc.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA')
+            OR (pc.value = 'PRODUCT IMPORT' AND (prd.name LIKE '%FILTER UDARA%' OR prd.name LIKE '%SWITCH REM%' OR prd.name LIKE '%DOP RITING%'))
         )
-        OR (
-            pc.value = 'PRODUCT IMPORT'
-            AND (
-                prd.name LIKE '%FILTER UDARA%'
-                OR prd.name LIKE '%SWITCH REM%'
-                OR prd.name LIKE '%DOP RITING%'
-            )
+        AND EXTRACT(year FROM inv.dateinvoiced) = p_year
+        AND EXTRACT(month FROM inv.dateinvoiced) = p_month
+
+    UNION ALL
+
+    -- Query 2: FX013 - Retur CNC ke Pabrik
+    SELECT
+        org.name as branch_name,
+        invl.qtyinvoiced as qty,
+        invl.linenetamt as nominal
+    FROM c_invoiceline invl
+    INNER JOIN m_product prd ON invl.m_product_id = prd.m_product_id
+    INNER JOIN m_product_category pc ON prd.m_product_category_id = pc.m_product_category_id
+    LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
+    INNER JOIN c_invoice inv ON invl.c_invoice_id = inv.c_invoice_id
+    INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
+    INNER JOIN m_inoutline mil ON invl.m_inoutline_id = mil.m_inoutline_id
+    INNER JOIN m_locator gdg ON mil.m_locator_id = gdg.m_locator_id
+    WHERE inv.ad_client_id = 1000001
+        AND inv.issotrx = 'Y'
+        AND inv.docstatus IN ('CO', 'CL')
+        AND inv.isactive = 'Y'
+        AND inv.documentno LIKE 'CNC-%'
+        AND gdg.value LIKE '%Gudang Barang Rusak%'
+        AND (
+            pc.value = 'MIKA'
+            OR (pc.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA')
+            OR (pc.value = 'PRODUCT IMPORT' AND (prd.name LIKE '%FILTER UDARA%' OR prd.name LIKE '%SWITCH REM%' OR prd.name LIKE '%DOP RITING%'))
         )
-    )
-    AND EXTRACT(
-        year
-        FROM
-            inv.dateinvoiced
-    ) = p_year
-    AND EXTRACT(
-        month
-        FROM
-            inv.dateinvoiced
-    ) = p_month
-GROUP BY
-    org.name;
+        AND EXTRACT(year FROM inv.dateinvoiced) = p_year
+        AND EXTRACT(month FROM inv.dateinvoiced) = p_month
+
+    UNION ALL
+
+    -- Query 3: FX015 - Ganti Barang ke Pabrik
+    SELECT
+        org.name as branch_name,
+        mil.movementqty as qty,
+        (mil.movementqty * col.priceactual) as nominal
+    FROM m_inoutline mil
+    INNER JOIN m_inout mi ON mil.m_inout_id = mi.m_inout_id
+    INNER JOIN c_orderline col ON mil.c_orderline_id = col.c_orderline_id
+    INNER JOIN c_order co ON col.c_order_id = co.c_order_id
+    INNER JOIN m_product prd ON mil.m_product_id = prd.m_product_id
+    INNER JOIN m_product_category pc ON prd.m_product_category_id = pc.m_product_category_id
+    LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
+    INNER JOIN m_locator gdg ON mil.m_locator_id = gdg.m_locator_id
+    INNER JOIN ad_org org ON mi.ad_org_id = org.ad_org_id
+    WHERE mi.documentno LIKE 'MRC%'
+        AND mi.docstatus IN ('CO', 'CL')
+        AND co.documentno LIKE 'RSO%'
+        AND co.docstatus = 'CL'
+        AND mil.movementqty > 0
+        AND gdg.value LIKE '%Gudang Barang Rusak%'
+        AND (
+            pc.value = 'MIKA'
+            OR (pc.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA')
+            OR (pc.value = 'PRODUCT IMPORT' AND (prd.name LIKE '%FILTER UDARA%' OR prd.name LIKE '%SWITCH REM%' OR prd.name LIKE '%DOP RITING%'))
+        )
+        AND EXTRACT(year FROM mi.movementdate) = p_year
+        AND EXTRACT(month FROM mi.movementdate) = p_month
+)
+SELECT
+    cd.branch_name::VARCHAR,
+    COALESCE(SUM(cd.qty), 0)::NUMERIC as total_qty,
+    COALESCE(SUM(cd.nominal), 0)::NUMERIC as total_nominal
+FROM combined_data cd
+GROUP BY cd.branch_name;
 
 -- =====================
 -- Step 3: Logging hasil
@@ -472,7 +517,7 @@ COMMENT ON FUNCTION sp_get_return_comparison_cnc (INTEGER, INTEGER) IS 'Mengambi
 
 COMMENT ON FUNCTION sp_get_return_comparison_barang (INTEGER, INTEGER) IS 'Mengambil data Barang retur per cabang untuk periode tertentu. Parameter: p_year (tahun), p_month (bulan 1-12)';
 
-COMMENT ON FUNCTION sp_get_return_comparison_cabang_pabrik (INTEGER, INTEGER) IS 'Mengambil data Cabang ke Pabrik per cabang untuk periode tertentu. Parameter: p_year (tahun), p_month (bulan 1-12)';
+COMMENT ON FUNCTION sp_get_return_comparison_cabang_pabrik (INTEGER, INTEGER) IS 'Mengambil data Cabang ke Pabrik per cabang untuk periode tertentu. Gabungan dari: DNS (Debit Note), FX013 (Retur CNC), FX015 (Ganti Barang). Parameter: p_year (tahun), p_month (bulan 1-12)';
 
 -- =================================
 -- GRANT EXECUTE untuk user aplikasi
