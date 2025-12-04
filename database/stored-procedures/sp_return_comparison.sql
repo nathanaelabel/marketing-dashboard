@@ -292,30 +292,30 @@ FROM
     INNER JOIN c_order co ON col.c_order_id = co.c_order_id
     INNER JOIN m_product prd ON col.m_product_id = prd.m_product_id
     INNER JOIN m_product_category pc ON prd.m_product_category_id = pc.m_product_category_id
+    LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
     INNER JOIN ad_org org ON miol.ad_org_id = org.ad_org_id
 WHERE
     co.documentno LIKE 'SOC%'
     AND co.docstatus = 'CL'
     AND mio.documentno LIKE 'SJC%'
     AND mio.docstatus IN ('CO', 'CL')
-    AND pc.value = 'MIKA'
-    AND EXTRACT(
-        year
-        FROM
-            mio.movementdate
-    ) = p_year
-    AND EXTRACT(
-        month
-        FROM
-            mio.movementdate
-    ) = p_month
+    AND EXTRACT(year FROM mio.movementdate) = p_year
+    AND EXTRACT(month FROM mio.movementdate) = p_month
     AND NOT EXISTS (
-        SELECT
-            1
-        FROM
-            c_invoiceline cil
-        WHERE
-            cil.m_inoutline_id = miol.m_inoutline_id
+        SELECT 1
+        FROM c_invoiceline cil
+        WHERE cil.m_inoutline_id = miol.m_inoutline_id
+    )
+    -- Filter produk: MIKA + Product Import untuk cabang TGR, BKS, PTK, CRB, PWT
+    AND (
+        CASE 
+            WHEN org.name IN ('MPM Tangerang', 'PWM Bekasi', 'PWM Pontianak', 'PWM Cirebon', 'PWM Purwokerto') THEN
+                pc.value = 'MIKA'
+                OR (pc.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA')
+                OR (pc.value = 'PRODUCT IMPORT' AND (prd.name LIKE '%FILTER UDARA%' OR prd.name LIKE '%SWITCH REM%' OR prd.name LIKE '%DOP RITING%'))
+            ELSE
+                pc.value = 'MIKA'
+        END
     )
 GROUP BY
     org.name;
