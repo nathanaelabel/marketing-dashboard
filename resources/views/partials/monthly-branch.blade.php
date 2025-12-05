@@ -37,6 +37,8 @@
                         class="pl-3 pr-8 py-1.5 w-32 text-sm rounded-md border border-gray-300 shadow-sm focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 focus:ring-opacity-50">
                         <option value="2025">2024 - 2025</option>
                         <option value="2024">2023 - 2024</option>
+                        <option value="2023">2022 - 2023</option>
+                        <option value="2022">2021 - 2022</option>
                     </select>
                 </div>
 

@@ -627,18 +627,18 @@ class ChartHelper
             [
                 'label' => $previousYear,
                 'data' => $previousYearValues,
-                // Blue 500 (lighter) for previous year
-                'backgroundColor' => 'rgba(59, 130, 246, 0.7)',
-                'borderColor' => 'rgba(59, 130, 246, 1)',
+                // Merah muda untuk tahun sebelumnya
+                'backgroundColor' => 'rgba(239, 68, 68, 0.2)',
+                'borderColor' => 'rgba(239, 68, 68, 1)',
                 'borderWidth' => 1,
                 'borderRadius' => 6,
             ],
             [
                 'label' => $year,
                 'data' => $currentYearValues,
-                // Blue 600 (darker) for current year
-                'backgroundColor' => 'rgba(38, 102, 241, 0.9)',
-                'borderColor' => 'rgba(37, 99, 235, 1)',
+                // Biru muda untuk tahun ini
+                'backgroundColor' => "rgba(54, 162, 235, 0.2)",
+                'borderColor' => "rgba(54, 162, 235, 1)",
                 'borderWidth' => 1,
                 'borderRadius' => 6,
             ]

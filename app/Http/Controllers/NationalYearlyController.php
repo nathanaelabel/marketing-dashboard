@@ -160,172 +160,39 @@ class NationalYearlyController extends Controller
 
     public function getCategories()
     {
-        // Delegasikan ke helper bersama untuk menghindari duplikasi
         $categories = ChartHelper::getCategories();
         return response()->json($categories);
     }
 
     private function getRevenueData($startDate, $endDate, $category, $type = 'BRUTO')
     {
+        $startTime = microtime(true);
+
         try {
-            try {
-                $driver = DB::connection()->getDriverName();
-                if ($driver === 'pgsql') {
-                    // Set timeout 2 menit
-                    DB::statement("SET statement_timeout = 120000");
-                }
-            } catch (\Exception $e) {
-                Log::debug('Could not set statement timeout', ['error' => $e->getMessage()]);
-            }
-
             if ($type === 'NETTO') {
-                // Query Netto - INC dikurangi CNC
-                $query = "
-                    SELECT
-                        org.name AS branch_name,
-                        COALESCE(SUM(CASE
-                            WHEN SUBSTR(inv.documentno, 1, 3) IN ('INC') THEN invl.linenetamt
-                            WHEN SUBSTR(inv.documentno, 1, 3) IN ('CNC') THEN -invl.linenetamt
-                        END), 0) AS total_revenue
-                    FROM
-                        c_invoice inv
-                        INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
-                        INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
-                        INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
-                        INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
-                        INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
-                        LEFT JOIN m_productsubcat psc ON p.m_productsubcat_id = psc.m_productsubcat_id
-                    WHERE
-                        inv.ad_client_id = 1000001
-                        AND inv.issotrx = 'Y'
-                        AND invl.qtyinvoiced > 0
-                        AND invl.linenetamt > 0
-                        AND inv.docstatus IN ('CO', 'CL')
-                        AND inv.isactive = 'Y'
-                        AND org.name NOT LIKE '%HEAD OFFICE%'
-                        AND inv.dateinvoiced::date >= ? AND inv.dateinvoiced::date <= ?
-                        AND SUBSTR(inv.documentno, 1, 3) IN ('INC', 'CNC')
-                        AND (
-                            CASE 
-                                WHEN ? = 'MIKA' THEN (
-                                    pc.value = 'MIKA' 
-                                    OR (
-                                        pc.value = 'PRODUCT IMPORT' 
-                                        AND p.name NOT LIKE '%BOHLAM%'
-                                        AND psc.value = 'MIKA'
-                                    )
-                                    OR (
-                                        pc.value = 'PRODUCT IMPORT' 
-                                        AND (
-                                            p.name LIKE '%FILTER UDARA%'
-                                            OR p.name LIKE '%SWITCH REM%'
-                                            OR p.name LIKE '%DOP RITING%'
-                                        )
-                                    )
-                                )
-                                ELSE pc.name = ?
-                            END
-                        )
-                        AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
-                    GROUP BY
-                        org.name
-                    ORDER BY
-                        org.name
-                ";
+                $result = DB::select(
+                    'SELECT * FROM sp_get_national_yearly_netto(?, ?, ?)',
+                    [$startDate, $endDate, $category]
+                );
             } else {
-                // Query Bruto - hanya dokumen INC
-                $query = "
-                    SELECT
-                        org.name AS branch_name,
-                        COALESCE(SUM(invl.linenetamt), 0) AS total_revenue
-                    FROM
-                        c_invoice inv
-                        INNER JOIN c_invoiceline invl ON inv.c_invoice_id = invl.c_invoice_id
-                        INNER JOIN ad_org org ON inv.ad_org_id = org.ad_org_id
-                        INNER JOIN c_bpartner cust ON inv.c_bpartner_id = cust.c_bpartner_id
-                        INNER JOIN m_product p ON invl.m_product_id = p.m_product_id
-                        INNER JOIN m_product_category pc ON p.m_product_category_id = pc.m_product_category_id
-                        LEFT JOIN m_productsubcat psc ON p.m_productsubcat_id = psc.m_productsubcat_id
-                    WHERE
-                        inv.ad_client_id = 1000001
-                        AND inv.issotrx = 'Y'
-                        AND invl.qtyinvoiced > 0
-                        AND invl.linenetamt > 0
-                        AND inv.docstatus IN ('CO', 'CL')
-                        AND inv.isactive = 'Y'
-                        AND org.name NOT LIKE '%HEAD OFFICE%'
-                        AND inv.dateinvoiced::date >= ? AND inv.dateinvoiced::date <= ?
-                        AND inv.documentno LIKE 'INC%'
-                        AND (
-                            CASE 
-                                WHEN ? = 'MIKA' THEN (
-                                    pc.value = 'MIKA' 
-                                    OR (
-                                        pc.value = 'PRODUCT IMPORT' 
-                                        AND p.name NOT LIKE '%BOHLAM%'
-                                        AND psc.value = 'MIKA'
-                                    )
-                                    OR (
-                                        pc.value = 'PRODUCT IMPORT' 
-                                        AND (
-                                            p.name LIKE '%FILTER UDARA%'
-                                            OR p.name LIKE '%SWITCH REM%'
-                                            OR p.name LIKE '%DOP RITING%'
-                                        )
-                                    )
-                                )
-                                ELSE pc.name = ?
-                            END
-                        )
-                        AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
-                    GROUP BY
-                        org.name
-                    ORDER BY
-                        org.name
-                ";
+                $result = DB::select(
+                    'SELECT * FROM sp_get_national_yearly_bruto(?, ?, ?)',
+                    [$startDate, $endDate, $category]
+                );
             }
 
-            $result = DB::select($query, [$startDate, $endDate, $category, $category]);
-
-            try {
-                $driver = DB::connection()->getDriverName();
-                if ($driver === 'pgsql') {
-                    DB::statement("SET statement_timeout = 0");
-                }
-            } catch (\Exception $e) {
-            }
+            $duration = round((microtime(true) - $startTime) * 1000, 2);
+            Log::info("NationalYearly: getRevenueData ({$type}) took {$duration}ms", [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'category' => $category,
+                'rows' => count($result)
+            ]);
 
             $sortedResult = ChartHelper::sortByBranchOrder(collect($result), 'branch_name');
 
             return $sortedResult->all();
-        } catch (\PDOException $e) {
-            try {
-                $driver = DB::connection()->getDriverName();
-                if ($driver === 'pgsql') {
-                    DB::statement("SET statement_timeout = 0");
-                }
-            } catch (\Exception $resetError) {
-            }
-
-            Log::error('NationalYearlyController getRevenueData PDO error', [
-                'start_date' => $startDate,
-                'end_date' => $endDate,
-                'category' => $category,
-                'type' => $type,
-                'error' => $e->getMessage(),
-                'code' => $e->getCode()
-            ]);
-
-            throw $e;
         } catch (\Exception $e) {
-            try {
-                $driver = DB::connection()->getDriverName();
-                if ($driver === 'pgsql') {
-                    DB::statement("SET statement_timeout = 0");
-                }
-            } catch (\Exception $resetError) {
-            }
-
             Log::error('NationalYearlyController getRevenueData error', [
                 'start_date' => $startDate,
                 'end_date' => $endDate,
