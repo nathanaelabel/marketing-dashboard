@@ -168,7 +168,6 @@ class MonthlyBranchController extends Controller
         }
     }
 
-    // Mengambil data revenue bulanan menggunakan Stored Procedure
     private function getMonthlyRevenueData($startDate, $endDate, $category, $branch, $type = 'BRUTO')
     {
         $startTime = microtime(true);
@@ -286,7 +285,6 @@ class MonthlyBranchController extends Controller
         $previousStartDate = $previousYear . '-01-01';
         $previousEndDate = $previousYear . '-12-31';
 
-        // Menggunakan Stored Procedure untuk export
         $startTime = microtime(true);
 
         if ($type === 'NETTO') {
@@ -594,7 +592,6 @@ class MonthlyBranchController extends Controller
 
         $previousYear = $year - 1;
 
-        // Menggunakan Stored Procedure via getMonthlyRevenueData
         $currentYearData = $this->getMonthlyRevenueData($startDate, $endDate, $category, $branch, $type);
 
         $previousStartDate = $previousYear . '-01-01';
