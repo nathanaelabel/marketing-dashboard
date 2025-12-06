@@ -281,44 +281,38 @@ p_month;
 -- Step 2: Query Data Barang
 -- =========================
 RETURN QUERY
-SELECT
-    org.name :: VARCHAR as branch_name,
-    COALESCE(SUM(miol.movementqty), 0) :: NUMERIC as total_qty,
-    COALESCE(SUM(col.priceactual * miol.movementqty), 0) :: NUMERIC as total_nominal
-FROM
-    m_inoutline miol
-    INNER JOIN m_inout mio ON miol.m_inout_id = mio.m_inout_id
-    INNER JOIN c_orderline col ON miol.c_orderline_id = col.c_orderline_id
-    INNER JOIN c_order co ON col.c_order_id = co.c_order_id
-    INNER JOIN m_product prd ON col.m_product_id = prd.m_product_id
-    INNER JOIN m_product_category pc ON prd.m_product_category_id = pc.m_product_category_id
-    LEFT JOIN m_productsubcat psc ON prd.m_productsubcat_id = psc.m_productsubcat_id
-    INNER JOIN ad_org org ON miol.ad_org_id = org.ad_org_id
-WHERE
-    co.documentno LIKE 'SOC%'
-    AND co.docstatus = 'CL'
-    AND mio.documentno LIKE 'SJC%'
-    AND mio.docstatus IN ('CO', 'CL')
-    AND EXTRACT(year FROM mio.movementdate) = p_year
-    AND EXTRACT(month FROM mio.movementdate) = p_month
-    AND NOT EXISTS (
-        SELECT 1
-        FROM c_invoiceline cil
-        WHERE cil.m_inoutline_id = miol.m_inoutline_id
-    )
-    -- Filter produk: MIKA + Product Import untuk cabang TGR, BKS, PTK, CRB, PWT
-    AND (
-        CASE 
-            WHEN org.name IN ('MPM Tangerang', 'PWM Bekasi', 'PWM Pontianak', 'PWM Cirebon', 'PWM Purwokerto') THEN
-                pc.value = 'MIKA'
-                OR (pc.value = 'PRODUCT IMPORT' AND prd.name NOT LIKE '%BOHLAM%' AND psc.value = 'MIKA')
-                OR (pc.value = 'PRODUCT IMPORT' AND (prd.name LIKE '%FILTER UDARA%' OR prd.name LIKE '%SWITCH REM%' OR prd.name LIKE '%DOP RITING%'))
-            ELSE
-                pc.value = 'MIKA'
-        END
-    )
+SELECT 
+    ss.cabang :: VARCHAR AS branch_name, 
+    COALESCE(SUM(ss.totalqty), 0) :: NUMERIC AS total_qty, 
+    COALESCE(SUM(ss.subtotal), 0) :: NUMERIC AS total_nominal 
+FROM (
+    SELECT
+        org.name AS cabang, 
+        SUM(miol.movementqty) AS totalqty,
+        SUM(col.priceactual * miol.movementqty) AS subtotal
+    FROM
+        m_inoutline miol
+        INNER JOIN m_inout mio ON miol.m_inout_id = mio.m_inout_id
+        INNER JOIN m_product prd ON miol.m_product_id = prd.m_product_id
+        INNER JOIN m_product_category cat ON prd.m_product_category_id = cat.m_product_category_id
+        INNER JOIN c_orderline col ON miol.c_orderline_id = col.c_orderline_id
+        INNER JOIN c_order co ON col.c_order_id = co.c_order_id
+        LEFT OUTER JOIN c_invoiceline cil ON col.c_orderline_id = cil.c_orderline_id
+        INNER JOIN ad_org org ON miol.ad_org_id = org.ad_org_id
+    WHERE
+        co.documentno LIKE 'SOC%' 
+        AND co.docstatus = 'CL' 
+        AND mio.documentno LIKE 'SJC%' 
+        AND mio.docstatus IN ('CO', 'CL')
+        AND cat.name LIKE 'MIKA'
+        AND mio.movementdate >= make_date(p_year, p_month, 1)
+        AND mio.movementdate < make_date(p_year, p_month, 1) + INTERVAL '1 month'
+        AND cil.c_invoiceline_id IS NULL
+    GROUP BY
+        org.name, cat.name, prd.name
+) AS ss
 GROUP BY
-    org.name;
+    ss.cabang;
 
 -- =====================
 -- Step 3: Logging hasil

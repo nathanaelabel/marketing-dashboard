@@ -19,8 +19,8 @@ class ReturnComparisonController extends Controller
     public function getData(Request $request)
     {
         try {
-            // Tingkatkan batas waktu eksekusi untuk query berat
-            set_time_limit(180);
+            // Tingkatkan batas waktu eksekusi untuk query berat (6 menit)
+            set_time_limit(360);
             $month = $request->get("month", date("n"));
             $year = $request->get("year", date("Y"));
 
@@ -917,7 +917,6 @@ class ReturnComparisonController extends Controller
                     "message" => "Cache cleared for {$month}/{$year}",
                 ]);
             } else {
-                // Gunakan H-1 karena dashboard diupdate setiap malam
                 $clearedKeys = [];
                 $currentDate = now();
 

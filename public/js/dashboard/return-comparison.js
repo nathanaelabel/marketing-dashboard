@@ -17,12 +17,12 @@ document.addEventListener("DOMContentLoaded", function () {
         // Disable pagination for this table
         disablePagination: true,
 
-        // Timeout for queries (first load needs more time before cache kicks in)
-        requestTimeout: 180000, // 180 seconds (3 minutes for first uncached load)
+        // Timeout untuk query berat (6 menit maksimal)
+        requestTimeout: 360000, // 360 seconds (6 menit)
 
-        // Enable retry on timeout
-        enableRetry: true,
-        maxRetries: 2,
+        // Disable retry - biarkan abort error langsung muncul
+        enableRetry: false,
+        maxRetries: 0,
 
         renderTable: function (data) {
             if (!data.data || data.data.length === 0) {

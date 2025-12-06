@@ -120,7 +120,6 @@ class SalesFamilyController extends Controller
                 AND h.docstatus IN ('CO', 'CL')
                 AND h.issotrx = 'Y'
                 AND d.qtyinvoiced > 0
-                AND d.linenetamt > 0
                 AND DATE(h.dateinvoiced) BETWEEN ? AND ?
                 AND UPPER(cust.name) NOT LIKE '%KARYAWAN%'
             GROUP BY org.name, prd.group1
