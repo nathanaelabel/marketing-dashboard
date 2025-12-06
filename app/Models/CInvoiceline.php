@@ -25,6 +25,7 @@ class CInvoiceline extends Model
         'c_invoice_id',
         'm_product_id',
         'm_inoutline_id',
+        'c_orderline_id',
         'qtyinvoiced',
         'priceactual',
         'linenetamt',
@@ -48,6 +49,11 @@ class CInvoiceline extends Model
     public function inoutLine()
     {
         return $this->belongsTo(MInoutline::class, 'm_inoutline_id', 'm_inoutline_id');
+    }
+
+    public function orderLine()
+    {
+        return $this->belongsTo(COrderline::class, 'c_orderline_id', 'c_orderline_id');
     }
 
     public function matchInvoices()

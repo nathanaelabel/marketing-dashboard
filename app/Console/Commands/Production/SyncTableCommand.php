@@ -238,6 +238,7 @@ class SyncTableCommand extends Command
                 ['parent_table' => 'c_invoice', 'foreign_key' => 'c_invoice_id'],
                 ['parent_table' => 'm_product', 'foreign_key' => 'm_product_id'],
                 ['parent_table' => 'm_inoutline', 'foreign_key' => 'm_inoutline_id', 'optional' => true],
+                ['parent_table' => 'c_orderline', 'foreign_key' => 'c_orderline_id', 'optional' => true],
             ],
             'c_order' => [
                 ['parent_table' => 'ad_org', 'foreign_key' => 'ad_org_id'],
